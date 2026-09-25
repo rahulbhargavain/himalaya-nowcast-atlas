@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import icimod, land, model, radar, water
+from nowcast import archive, icimod, land, model, radar, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -270,6 +270,8 @@ def main():
     # artifact.html: the bare fragment; the claude.ai artifact host adds its own skeleton.
     with open(os.path.join(out_dir, "artifact.html"), "w", encoding="utf-8") as f:
         f.write(body)
+    # Point-in-time record of this build, filed into the data branch by the workflow.
+    archive.write_snapshot(os.path.join(HERE, "snapshot"), data, frames_all, t_all, t0_index, radar.STEP_MIN)
     log(f"wrote {args.out} ({len(html) / 1e6:.1f} MB): {len(r_times)} observed + {len(fc)} extrapolated frames, "
         f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events")
 

@@ -42,6 +42,10 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 
 Radar extrapolation assumes storms keep their motion and strength. It is useful for about the first two hours; after that, compare it with the model rain layer.
 
+## Point-in-time archive
+
+Each build also writes a compact record of what it knew (town-by-town radar and model rain, snow line, pressure centres, airport observations, river flow, and the observed radar with its +1/+2/+4/+8 h extrapolation). The workflow appends it to the [`data` branch](https://github.com/rahulbhargavain/himalaya-nowcast-atlas/tree/data), about 30 KB per build. Nothing already archived is rewritten, so analyses see only what was known at the time. See that branch's README for the tables.
+
 ## TV mode
 
 Add `?tv` to the URL (https://rahulbhargavain.github.io/himalaya-nowcast-atlas/?tv) for a kiosk view: just the map, legend and time, with a fixed set of weather layers, looping through the timeline. The [weather-android-tv](https://github.com/rahulbhargavain/weather-android-tv) dashboard embeds this view.

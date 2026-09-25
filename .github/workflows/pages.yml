@@ -9,7 +9,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write   # to append snapshots to the data branch
   pages: write
   id-token: write
 
@@ -41,6 +41,25 @@ jobs:
           restore-keys: atlas-cache-
 
       - run: python build.py && rm -f dist/artifact.html
+
+      # Point-in-time archive: file this build's snapshot into the data branch.
+      - name: Check out the archive branch
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: archive
+
+      - name: Archive this build
+        run: |
+          python -m nowcast.archive snapshot archive
+          cd archive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -q -m "Snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push -q
+          fi
 
       - uses: actions/upload-pages-artifact@v3
         with:
