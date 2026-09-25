@@ -46,6 +46,10 @@ Radar extrapolation assumes storms keep their motion and strength. It is useful 
 
 Each build also writes a compact record of what it knew (town-by-town radar and model rain, snow line, pressure centres, airport observations, river flow, and the observed radar with its +1/+2/+4/+8 h extrapolation). The workflow appends it to the [`data` branch](https://github.com/rahulbhargavain/himalaya-nowcast-atlas/tree/data), about 30 KB per build. Nothing already archived is rewritten, so analyses see only what was known at the time. See that branch's README for the tables.
 
+## Analyses
+
+- [Winter chill in the Himalayan apple belts, 1990–2026](https://rahulbhargavain.github.io/himalaya-nowcast-atlas/chill_report.html): chill hours and the 1,000-hour "chill line" for eight apple districts from ERA5-Land (`analysis/chill.py`, results in `analysis/chill_by_winter.csv`).
+
 ## TV mode
 
 Add `?tv` to the URL (https://rahulbhargavain.github.io/himalaya-nowcast-atlas/?tv) for a kiosk view: just the map, legend and time, with a fixed set of weather layers, looping through the timeline. The [weather-android-tv](https://github.com/rahulbhargavain/weather-android-tv) dashboard embeds this view.

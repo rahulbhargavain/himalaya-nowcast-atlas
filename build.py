@@ -270,6 +270,12 @@ def main():
     # artifact.html: the bare fragment; the claude.ai artifact host adds its own skeleton.
     with open(os.path.join(out_dir, "artifact.html"), "w", encoding="utf-8") as f:
         f.write(body)
+    # Published alongside the atlas: standalone analyses (see analysis/).
+    for extra in ("chill_report.html",):
+        src = os.path.join(HERE, "analysis", extra)
+        if os.path.exists(src):
+            import shutil
+            shutil.copy(src, os.path.join(out_dir, extra))
     # Point-in-time record of this build, filed into the data branch by the workflow.
     archive.write_snapshot(os.path.join(HERE, "snapshot"), data, frames_all, t_all, t0_index, radar.STEP_MIN)
     log(f"wrote {args.out} ({len(html) / 1e6:.1f} MB): {len(r_times)} observed + {len(fc)} extrapolated frames, "
