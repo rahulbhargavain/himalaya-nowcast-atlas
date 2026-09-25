@@ -1,0 +1,900 @@
+<title>Himalaya Nowcast Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans+SC:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#eef0ea; --panel:#f7f8f4; --ink:#1f2a2e; --ink2:#4d5a5c; --rule:#cfd4cb;
+  --accent:#b8324f; --accent-ink:#fff; --glacier:#4f86a3; --contour:#8a5a3b; --forest:#2f5d3a;
+  --ok:#2f8f7f; --warn:#c07a1e; --bad:#b8324f; --chip:#e3e7df; --chip-on:#1f2a2e; --chip-on-ink:#f7f8f4;
+  --shadow:0 1px 2px rgba(20,30,30,.08);
+  --f-display:"Alegreya",Georgia,"Times New Roman",serif;
+  --f-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+  --f-sc:"Alegreya Sans SC","Alegreya Sans","Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#11171a; --panel:#182024; --ink:#e3e8e2; --ink2:#a3aea9; --rule:#2c373b;
+    --accent:#e0607a; --accent-ink:#11171a; --glacier:#7fb3cf; --contour:#c79a78; --forest:#7fb08a;
+    --ok:#5cc2b0; --warn:#e3a34a; --bad:#e0607a; --chip:#222c30; --chip-on:#e3e8e2; --chip-on-ink:#11171a;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#11171a; --panel:#182024; --ink:#e3e8e2; --ink2:#a3aea9; --rule:#2c373b;
+  --accent:#e0607a; --accent-ink:#11171a; --glacier:#7fb3cf; --contour:#c79a78; --forest:#7fb08a;
+  --ok:#5cc2b0; --warn:#e3a34a; --bad:#e0607a; --chip:#222c30; --chip-on:#e3e8e2; --chip-on-ink:#11171a;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.45 var(--f-body);padding-inline:16px;padding-block:14px 40px}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font:700 clamp(26px,3.2vw,38px)/1.05 var(--f-display);letter-spacing:.2px}
+h2{font:700 15px/1.2 var(--f-sc);letter-spacing:.6px;text-transform:lowercase;color:var(--ink2)}
+.sc{font-family:var(--f-sc);letter-spacing:.5px;text-transform:lowercase}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink2)}
+a{color:var(--glacier)}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+header.top .sub{font-size:15px;color:var(--ink2);max-width:70ch}
+.stamp{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.stamp b{font-family:var(--f-mono);font-weight:500}
+
+/* layer chips */
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:flex-start}
+.group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.group > .sc{font-size:13px;color:var(--ink2);margin-right:2px}
+button{font:inherit;color:inherit}
+.chip{border:1px solid var(--rule);background:var(--chip);border-radius:999px;padding:3px 11px 4px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);border-color:var(--chip-on)}
+.chip .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.chip:focus-visible,.btn:focus-visible,input[type=range]:focus-visible,.mbtn:focus-visible,tr[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* map */
+.mapbox{position:relative;border:1px solid var(--rule);background:#c9ccc0;overflow:hidden;border-radius:3px;touch-action:none;box-shadow:var(--shadow)}
+.stage{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;will-change:transform}
+.stage > img,.stage > canvas,.stage > svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.stage > img.shade{image-rendering:auto}
+#radarImg{image-rendering:auto}
+svg text{font-family:var(--f-body)}
+.maptools{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
+.btn{border:1px solid rgba(0,0,0,.25);background:rgba(250,250,246,.92);color:#1f2a2e;border-radius:3px;min-width:30px;height:30px;padding:0 8px;cursor:pointer;font-size:15px}
+.readout{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12.5px;line-height:1.35;max-width:min(340px,70%);pointer-events:none}
+.readout .mono{font-size:12px}
+.legend{position:absolute;right:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12px;max-width:min(300px,45%);display:flex;flex-direction:column;gap:5px}
+.zoomhint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:4;background:rgba(31,42,46,.88);color:#f7f8f4;border-radius:3px;padding:6px 10px;font-size:13px;pointer-events:none}
+.legend .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.legend .bar{height:8px;flex:1;min-width:80px;border-radius:2px}
+.legend .ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;color:#4d5a5c}
+.legend .k{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
+
+/* timeline */
+.timeline{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:10px 12px}
+.tl-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.tl-time{font:500 20px/1 var(--f-mono)}
+.pill{font:700 12px/1 var(--f-sc);letter-spacing:.5px;text-transform:lowercase;padding:4px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.obs{color:var(--ok)} .pill.fc{color:var(--warn)} .pill.low{color:var(--bad)}
+.track{position:relative;height:44px}
+.track input{position:absolute;left:0;right:0;top:16px;width:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;height:22px;z-index:2}
+.track input::-webkit-slider-runnable-track{height:6px;background:transparent}
+.track input::-moz-range-track{height:6px;background:transparent}
+.track input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:22px;margin-top:-8px;border-radius:3px;background:var(--ink);border:2px solid var(--panel)}
+.track input::-moz-range-thumb{width:14px;height:20px;border-radius:3px;background:var(--ink);border:2px solid var(--panel)}
+.track .bg{position:absolute;left:8px;right:8px;top:24px;height:6px;border-radius:3px;overflow:hidden;display:flex}
+.track .ticks{position:absolute;left:8px;right:8px;top:0;height:16px}
+.track .ev{position:absolute;top:2px;width:3px;height:12px;border-radius:1px;transform:translateX(-1px)}
+.track .hr{position:absolute;top:34px;font:10.5px var(--f-mono);color:var(--ink2);transform:translateX(-50%);white-space:nowrap}
+.conf{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.conf .meter{width:120px;height:6px;background:var(--rule);border-radius:3px;overflow:hidden}
+.conf .meter i{display:block;height:100%;background:var(--ok)}
+
+/* panels */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card p{margin:0;max-width:70ch}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:700 12.5px var(--f-sc);letter-spacing:.4px;text-transform:lowercase;color:var(--ink2);text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:4px 6px;border-bottom:1px solid var(--rule);vertical-align:middle}
+td.num,th.num{text-align:right;white-space:nowrap}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+tr[tabindex]{cursor:pointer}
+tr[tabindex]:hover td{background:var(--chip)}
+.badge{display:inline-block;min-width:34px;text-align:center;font:500 12px/1.5 var(--f-mono);border-radius:3px;padding:0 4px}
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto}
+.events li{display:grid;grid-template-columns:62px 12px 1fr;gap:8px;align-items:baseline;font-size:14px;padding:3px 4px;border-radius:3px;cursor:pointer}
+.events li:hover{background:var(--chip)}
+.events .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
+.mbtn{border:1px solid var(--rule);background:var(--chip);border-radius:3px;padding:5px 0;font:500 13px var(--f-sc);text-transform:lowercase;cursor:pointer}
+.mbtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.cal{display:grid;grid-template-columns:minmax(120px,1.4fr) repeat(12,minmax(14px,1fr));gap:2px;font-size:13px;align-items:center}
+.cal .c{height:16px;border-radius:2px;background:var(--chip)}
+.cal .lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;cursor:pointer}
+.cal .lab.off{opacity:.45}
+.cal .hd{font:500 11px var(--f-sc);text-align:center;color:var(--ink2)}
+.cal .cur{outline:2px solid var(--ink);outline-offset:-1px}
+.spark{display:block;width:100%;height:auto}
+.gauge{display:grid;grid-template-columns:minmax(0,1fr) 120px 56px;gap:8px;align-items:center;font-size:14px;padding:3px 0;border-bottom:1px solid var(--rule)}
+.gauge .nm{min-width:0}
+.gauge .nm small{color:var(--ink2);display:block;font-size:12px}
+.note{font-size:13.5px;color:var(--ink2)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:14px}
+details summary{cursor:pointer;font-weight:500}
+@media (max-width:640px){
+  .legend{display:none}
+  .readout{max-width:calc(100% - 20px)}
+  .gauge{grid-template-columns:minmax(0,1fr) 90px 50px}
+}
+@media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto!important} }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Himalaya Nowcast Atlas</h1>
+      <div class="sub">Radar tracked forward by optical flow for eight hours, the model's pressure, rain and snow line, live airport reports, river flow, and the seasonal shape of the mountains: tree line, snow, snow leopard range and fruiting belts. Kashmir to Arunachal, 72–97°E.</div>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="mapbox" id="mapbox">
+    <div class="stage" id="stage">
+      <img class="shade" id="shadeImg" alt="Shaded relief of the Himalaya from Kashmir to Arunachal Pradesh">
+      <canvas id="cvLand"></canvas>
+      <canvas id="cvSnow"></canvas>
+      <canvas id="cvSeason"></canvas>
+      <canvas id="cvModel"></canvas>
+      <img id="radarImg" alt="">
+      <canvas id="cvLines"></canvas>
+      <svg id="svg" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="maptools">
+      <button class="btn" id="zin" aria-label="Zoom in">+</button>
+      <button class="btn" id="zout" aria-label="Zoom out">−</button>
+      <button class="btn" id="zreset" aria-label="Reset view">⤢</button>
+    </div>
+    <div class="readout" id="readout">Move over the map for elevation, land cover, snow and rain at that point.</div>
+    <div class="legend" id="legend"></div>
+    <div class="zoomhint" id="zoomHint" hidden>Hold Ctrl (⌘ on Mac) and scroll to zoom, or use + and −</div>
+  </div>
+
+  <section class="timeline" aria-label="Timeline">
+    <div class="tl-head">
+      <button class="btn" id="play" aria-label="Play">▶</button>
+      <span class="tl-time" id="tlTime"></span>
+      <span class="pill" id="tlKind"></span>
+      <span class="muted" id="tlLead"></span>
+      <span class="conf" id="conf"><span>Radar extrapolation confidence</span><span class="meter"><i id="confBar"></i></span></span>
+    </div>
+    <div class="track">
+      <div class="ticks" id="evTicks"></div>
+      <div class="bg" id="trackBg"></div>
+      <input type="range" id="scrub" min="0" max="60" step="1" value="12" aria-label="Time step">
+      <div id="hourLabels"></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Next eight hours, town by town</h2>
+      <div class="scroll"><table id="townTable"></table></div>
+      <p class="note">Radar onset is the first extrapolated step with echo of 25 dBZ or more within about 7 km. Model rain is the sum of the forecast's hourly rain from now to +8 h. Select a town to zoom to it.</p>
+    </section>
+
+    <section class="card">
+      <h2>What happens when</h2>
+      <ul class="events" id="events"></ul>
+      <div id="motion" class="note"></div>
+      <div class="scroll"><table id="cellTable"></table></div>
+    </section>
+
+    <section class="card">
+      <h2>Ground truth: airport reports</h2>
+      <div class="scroll"><table id="stationTable"></table></div>
+      <p class="note">METARs from aviationweather.gov: the latest report in the last 3 hours from each airport within about 60 km of mountains over 1,500 m. Hover a station on the map for the raw report. IMD and Nepal DHM automatic stations publish only through their websites and aren't included.</p>
+    </section>
+
+    <section class="card">
+      <h2>Rivers: flow against normal</h2>
+      <div id="gauges"></div>
+      <p class="note">Modelled discharge from GloFAS v4 (via the Open-Meteo Flood API), not a measured river stage. Grey band: 10th–90th percentile of the same calendar days over the last 15 years; line: last 60 days and 7-day forecast. Lake levels have no free live source, so lakes show extent only.</p>
+    </section>
+
+    <section class="card">
+      <h2>Seasons</h2>
+      <div class="months" id="months" role="group" aria-label="Month for seasonal layers"></div>
+      <div>
+        <div class="sc muted" style="font-size:13px;margin-bottom:4px">snow line by month, per sector</div>
+        <svg id="snowChart" class="spark" viewBox="0 0 440 200" role="img" aria-label="Seasonal snow line by sector"></svg>
+        <p class="note" id="snowNote"></p>
+      </div>
+      <div>
+        <div class="sc muted" style="font-size:13px;margin-bottom:4px">fruiting calendar (select a fruit to show or hide it)</div>
+        <div class="cal" id="cal"></div>
+      </div>
+      <div>
+        <div class="sc muted" style="font-size:13px;margin-bottom:4px">snow leopard band</div>
+        <svg id="leoChart" class="spark" viewBox="0 0 440 150" role="img" aria-label="Snow leopard elevation band by month"></svg>
+        <p class="note">Modelled habitat, not an observed range map: rugged ground (slope 12° or more) of open alpine types (shrub, meadow, steppe, rock) within the month's elevation band. The band follows wild sheep and ibex, higher in summer and down toward the tree line in winter.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tree line and shrub line</h2>
+      <div class="scroll"><table id="treeTable"></table></div>
+      <p class="note" id="treeNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Sources and method</h2>
+      <div class="note" id="method"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+"use strict";
+const D = DATA, F = D.frame, GW = F.gw, GH = F.gh;
+const $ = s => document.querySelector(s);
+const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
+const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtIST = (t, opt) => new Intl.DateTimeFormat("en-IN", Object.assign({timeZone:"Asia/Kolkata", hour:"2-digit", minute:"2-digit", hour12:false}, opt || {})).format(new Date(t * 1000));
+const store = { get(k, d){ try { const v = localStorage.getItem("hna:" + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem("hna:" + k, JSON.stringify(v)); } catch(e){} } };
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* ---------------- geometry ---------------- */
+const WORLD = 256 * 128; // zoom 7
+function gridToLonLat(gx, gy){
+  const X = F.x0 + (gx + .5) * 2, Y = F.y0 + (gy + .5) * 2;
+  const lon = X / WORLD * 360 - 180;
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * Y / WORLD))) * 180 / Math.PI;
+  return [lon, lat];
+}
+function lonLatToGrid(lon, lat){
+  const r = lat * Math.PI / 180;
+  const X = (lon + 180) / 360 * WORLD, Y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * WORLD;
+  return [(X - F.x0) / 2, (Y - F.y0) / 2];
+}
+
+/* ---------------- state ---------------- */
+const nowMonth = new Date(D.generated * 1000).getMonth();
+const state = {
+  step: D.radar.t0_index,
+  month: store.get("month", nowMonth),
+  layers: Object.assign({radar:true, model:false, pressure:true, snowline:true, stations:true,
+    land:true, tree:true, snowRecent:false, water:true,
+    snowMonth:false, leopard:false, fruit:false, places:true}, store.get("layers", {})),
+  fruitsOff: new Set(store.get("fruitsOff", [])),
+  zoom: 1, tx: 0, ty: 0,
+};
+
+/* ---------------- decode embedded grids ---------------- */
+function loadImg(src){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+function pixels(img){ const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const x = c.getContext("2d", {willReadFrequently:true}); x.drawImage(img, 0, 0); return x.getImageData(0, 0, c.width, c.height).data; }
+
+const N = GW * GH;
+const dem = new Float32Array(N), lc = new Uint8Array(N), slope = new Uint8Array(N), snowRecent = new Uint8Array(N), flags = new Uint8Array(N);
+const snowMonth = Array.from({length:12}, () => new Uint8Array(N));
+
+/* ---------------- colours ---------------- */
+const LC_TINT = {
+  1:[36,84,48,120], 2:[36,96,52,120], 3:[60,100,50,110], 4:[70,116,58,110], 5:[46,92,54,120],
+  8:[92,124,66,90], 6:[132,104,70,105], 7:[160,130,86,80], 9:[176,150,84,60], 10:[186,160,96,55],
+  11:[70,120,150,90], 12:[214,200,120,40], 14:[196,180,110,45], 13:[150,70,70,110],
+  15:[236,244,250,170], 16:[0,0,0,0], 17:[96,146,178,200],
+};
+const PRECIP = [[.2,[150,172,232,90]],[1,[108,136,222,150]],[3,[70,90,200,185]],[8,[58,44,168,205]],[20,[118,34,150,220]]];
+function precipRGBA(v){
+  if (v < PRECIP[0][0]) return null;
+  for (let i = PRECIP.length - 1; i >= 0; i--) if (v >= PRECIP[i][0]) {
+    if (i === PRECIP.length - 1) return PRECIP[i][1];
+    const [a, ca] = PRECIP[i], [b, cb] = PRECIP[i + 1], t = (v - a) / (b - a);
+    return ca.map((c, k) => c + (cb[k] - c) * t);
+  }
+}
+const FRUIT_COL = {kafal:[158,30,58], hisalu:[222,160,20], fig:[122,70,40], apricot:[236,120,30], apple:[196,32,40], cardamom:[92,40,120], walnut:[104,78,50], seabuckthorn:[245,140,0], orange:[240,110,20]};
+const LC_OK = {
+  wild: new Set([1,2,3,4,5,6,7,8,9,10,14]),
+  orchard: new Set([8,9,10,12,14]),
+  orchard_dry: new Set([7,9,10,12,14,16]),
+};
+const LEO_LC = new Set([6,7,9,10,16,8]);
+
+/* ---------------- layer rendering ---------------- */
+function setupCanvas(id){ const c = $(id); c.width = GW; c.height = GH; return c.getContext("2d"); }
+let ctxLand, ctxSnow, ctxSeason, ctxModel, ctxLines;
+
+function drawLand(){
+  const img = ctxLand.createImageData(GW, GH), d = img.data;
+  if (state.layers.land) for (let i = 0; i < N; i++) {
+    const t = LC_TINT[lc[i]]; if (!t || !t[3]) continue;
+    d[i*4] = t[0]; d[i*4+1] = t[1]; d[i*4+2] = t[2]; d[i*4+3] = t[3];
+  }
+  ctxLand.putImageData(img, 0, 0);
+}
+function drawLines(){
+  ctxLines.clearRect(0, 0, GW, GH);
+  if (!state.layers.tree) return;
+  const img = ctxLines.createImageData(GW, GH), d = img.data;
+  for (let i = 0; i < N; i++) {
+    const f = flags[i];
+    if (f & 1) { d[i*4] = 16; d[i*4+1] = 58; d[i*4+2] = 30; d[i*4+3] = 255; }
+    else if (f & 2) { d[i*4] = 130; d[i*4+1] = 70; d[i*4+2] = 30; d[i*4+3] = 255; }
+  }
+  ctxLines.putImageData(img, 0, 0);
+}
+function drawSnow(){
+  const img = ctxSnow.createImageData(GW, GH), d = img.data;
+  const src = state.layers.snowMonth ? snowMonth[state.month] : (state.layers.snowRecent ? snowRecent : null);
+  if (src) for (let i = 0; i < N; i++) {
+    const v = src[i]; if (v < 10) continue;
+    d[i*4] = 236; d[i*4+1] = 246; d[i*4+2] = 255; d[i*4+3] = Math.min(235, 60 + v * 1.8);
+  }
+  ctxSnow.putImageData(img, 0, 0);
+}
+function drawSeason(){
+  const img = ctxSeason.createImageData(GW, GH), d = img.data;
+  const m = state.month;
+  if (state.layers.leopard) {
+    const lo = D.leopard.lo[m], hi = D.leopard.hi[m], ms = D.leopard.min_slope;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+      const i = y * GW + x, e = dem[i];
+      if (e < lo || e > hi || slope[i] < ms || !LEO_LC.has(lc[i])) continue;
+      const hatch = ((x + y) % 5) < 2;
+      d[i*4] = 176; d[i*4+1] = 120; d[i*4+2] = 40; d[i*4+3] = hatch ? 230 : 70;
+    }
+  }
+  if (state.layers.fruit) {
+    const active = D.fruits.filter(f => f.months.includes(m + 1) && !state.fruitsOff.has(f.id));
+    active.forEach((f, k) => {
+      const ok = LC_OK[f.lc], col = FRUIT_COL[f.id] || [200,40,80];
+      const lonMin = f.lon[0], lonMax = f.lon[1];
+      const [x0] = lonLatToGrid(lonMin, 30), [x1] = lonLatToGrid(lonMax, 30);
+      for (let y = 0; y < GH; y++) for (let x = Math.max(0, Math.floor(x0)); x < Math.min(GW, Math.ceil(x1)); x++) {
+        // Dot pattern, offset per fruit so overlapping belts interleave.
+        if (((x + k * 2) % 4) || ((y + k) % 3)) continue;
+        const i = y * GW + x, e = dem[i];
+        if (e < f.elev[0] || e > f.elev[1] || !ok.has(lc[i])) continue;
+        d[i*4] = col[0]; d[i*4+1] = col[1]; d[i*4+2] = col[2]; d[i*4+3] = 255;
+      }
+    });
+  }
+  ctxSeason.putImageData(img, 0, 0);
+}
+
+/* model grid interpolation */
+const M = D.model, ML = M.lats, MN = M.lons, MNI = ML.length, MNJ = MN.length;
+let fiArr, fjArr;
+function modelIndexFor(t){
+  const ts = M.times;
+  if (t <= ts[0]) return [0, 0, 0];
+  for (let k = 0; k < ts.length - 1; k++) if (t >= ts[k] && t <= ts[k+1]) return [k, k + 1, (t - ts[k]) / (ts[k+1] - ts[k])];
+  return [ts.length - 1, ts.length - 1, 0];
+}
+function sampleModel(arr, k, fi, fj){
+  const i0 = Math.max(0, Math.min(MNI - 2, Math.floor(fi))), j0 = Math.max(0, Math.min(MNJ - 2, Math.floor(fj)));
+  const di = Math.min(1, Math.max(0, fi - i0)), dj = Math.min(1, Math.max(0, fj - j0));
+  const g = arr[k];
+  return g[i0][j0] * (1-di) * (1-dj) + g[i0+1][j0] * di * (1-dj) + g[i0][j0+1] * (1-di) * dj + g[i0+1][j0+1] * di * dj;
+}
+function drawModel(){
+  ctxModel.clearRect(0, 0, GW, GH);
+  if (!state.layers.model) return;
+  const t = stepTime(state.step), [ka, kb, w] = modelIndexFor(t);
+  const img = ctxModel.createImageData(GW, GH), d = img.data;
+  for (let i = 0; i < N; i++) {
+    const v = ((1 - w) * sampleModel(M.precip10, ka, fiArr[i], fjArr[i]) + w * sampleModel(M.precip10, kb, fiArr[i], fjArr[i])) / 10;
+    const c = precipRGBA(v); if (!c) continue;
+    d[i*4] = c[0]; d[i*4+1] = c[1]; d[i*4+2] = c[2]; d[i*4+3] = c[3];
+  }
+  ctxModel.putImageData(img, 0, 0);
+}
+
+/* radar */
+const frames = D.radar.frames;
+const radarImgs = frames.map(f => { const i = new Image(); i.decoding = "async"; i.src = f.src; return i; });
+function stepTime(s){ return frames[s].t; }
+let radarPix = null, radarPixStep = -1;
+function radarDbzAt(gx, gy){
+  if (!state.layers.radar) return null;
+  if (radarPixStep !== state.step) {
+    const im = radarImgs[state.step]; if (!im.complete) return null;
+    radarPix = pixels(im); radarPixStep = state.step;
+  }
+  const i = (gy * GW + gx) * 4; if (radarPix[i + 3] < 20) return 0;
+  const st = D.radar.dbz_stops, cs = D.radar.dbz_rgba;
+  let best = 0, bd = 1e9;
+  for (let k = 0; k < st.length; k++) { const c = cs[k]; const dd = (c[0]-radarPix[i])**2 + (c[1]-radarPix[i+1])**2 + (c[2]-radarPix[i+2])**2; if (dd < bd) { bd = dd; best = st[k]; } }
+  return best;
+}
+
+/* ---------------- SVG overlays ---------------- */
+const svg = $("#svg");
+svg.setAttribute("viewBox", `0 0 ${GW} ${GH}`);
+const gWater = svgEl("g"), gPressure = svgEl("g"), gSnowline = svgEl("g"), gCells = svgEl("g"), gPlaces = svgEl("g"), gGauges = svgEl("g"), gStations = svgEl("g"), gFocus = svgEl("g");
+[gWater, gPressure, gSnowline, gCells, gGauges, gPlaces, gStations, gFocus].forEach(g => svg.appendChild(g));
+const marker = (x, y) => { const o = svgEl("g", {transform:`translate(${x.toFixed(1)},${y.toFixed(1)})`, class:"mk"}); const inner = svgEl("g", {class:"mki"}); o.appendChild(inner); return [o, inner]; };
+
+function buildWater(){
+  const W = D.water;
+  W.lakes.forEach(l => gWater.appendChild(svgEl("path", {d:l.d, fill:"rgb(120,168,196)", "fill-opacity":".85", stroke:"rgb(60,110,140)", "stroke-width":".6", "vector-effect":"non-scaling-stroke"})));
+  W.rivers.sort((a, b) => b.rank - a.rank).forEach(r => {
+    const w = r.rank <= 3 ? 2.2 : r.rank <= 6 ? 1.5 : 1;
+    const p = svgEl("path", {d:r.d, fill:"none", stroke:"rgb(52,110,150)", "stroke-width":w, "stroke-linejoin":"round", "stroke-linecap":"round", "vector-effect":"non-scaling-stroke", opacity:".9"});
+    if (r.name) p.appendChild(svgEl("title")).textContent = r.name;
+    gWater.appendChild(p);
+  });
+  W.small_lakes.forEach(l => {
+    const [o, g] = marker(l.x, l.y);
+    g.appendChild(svgEl("circle", {r:3.2, fill:"rgb(120,168,196)", stroke:"rgb(40,90,120)", "stroke-width":1}));
+    const t = svgEl("text", {x:5, y:3, "font-size":10.5, fill:"#1f4a66", "font-style":"italic", "paint-order":"stroke", stroke:"rgba(245,246,240,.85)", "stroke-width":2.5}); t.textContent = l.name; g.appendChild(t);
+    gWater.appendChild(o);
+  });
+}
+function gaugeColor(p){ if (p == null) return "#888"; if (p >= 200) return "#b8324f"; if (p >= 130) return "#2d6fa3"; if (p >= 70) return "#2f8f7f"; return "#c07a1e"; }
+function buildGauges(){
+  D.water.gauges.forEach(g => {
+    const [o, i] = marker(g.x, g.y);
+    i.appendChild(svgEl("path", {d:"M0,-7 L6,4 L-6,4 Z", fill:gaugeColor(g.pct_of_median), stroke:"#fff", "stroke-width":1.3}));
+    const t = svgEl("title"); t.textContent = `${g.river} at ${g.place}: ${g.q_now == null ? "n/a" : Math.round(g.q_now) + " m³/s"}${g.pct_of_median != null ? `, ${g.pct_of_median}% of normal` : ""}`; o.appendChild(t);
+    gGauges.appendChild(o);
+  });
+}
+function wxColor(wx){ if (/TS/.test(wx)) return "#6d3fa0"; if (/SN|SG|PL/.test(wx)) return "#5aa9d6"; if (/RA|DZ|SH/.test(wx)) return "#2d6fa3"; if (/FG|BR/.test(wx)) return "#7c8a8c"; if (/HZ|FU|DU/.test(wx)) return "#a08452"; return "#1f2a2e"; }
+function buildStations(){
+  D.stations.forEach(s => {
+    const [o, g] = marker(s.x, s.y);
+    const col = wxColor(s.wx);
+    if (s.wspd && s.wdir != null && s.wdir !== "VRB") {
+      const a = (Number(s.wdir)) * Math.PI / 180, L = 6 + Math.min(18, s.wspd * 1.1);
+      g.appendChild(svgEl("line", {x1:0, y1:0, x2:(Math.sin(a) * L).toFixed(1), y2:(-Math.cos(a) * L).toFixed(1), stroke:"#1f2a2e", "stroke-width":1.4}));
+    }
+    g.appendChild(svgEl("rect", {x:-4, y:-4, width:8, height:8, fill:col, stroke:"#fff", "stroke-width":1.3, transform:"rotate(45)"}));
+    const label = (s.t != null ? `${s.t}°` : "") + (s.wx ? " " + s.wx : "");
+    const t = svgEl("text", {x:7, y:-5, "font-size":11, "font-weight":700, fill:col, "paint-order":"stroke", stroke:"rgba(248,248,244,.9)", "stroke-width":3}); t.textContent = label; g.appendChild(t);
+    const tt = svgEl("title"); tt.textContent = `${s.id} ${s.name}\n${s.raw || ""}`; o.appendChild(tt);
+    gStations.appendChild(o);
+  });
+}
+function buildPlaces(){
+  D.places.forEach(p => {
+    const [o, g] = marker(p.x, p.y);
+    g.appendChild(svgEl("circle", {r:2.4, fill:"#1f2a2e", stroke:"#fff", "stroke-width":1}));
+    const t = svgEl("text", {x:5, y:10, "font-size":11.5, fill:"#1f2a2e", "paint-order":"stroke", stroke:"rgba(248,248,244,.88)", "stroke-width":3}); t.textContent = p.name; g.appendChild(t);
+    gPlaces.appendChild(o);
+  });
+}
+function buildCells(){
+  D.radar.cells.forEach(c => {
+    const [o, g] = marker(c.x, c.y);
+    const a = c.heading * Math.PI / 180, L = 10 + Math.min(40, c.speed_kmh * .9);
+    const x2 = Math.sin(a) * L, y2 = -Math.cos(a) * L;
+    g.appendChild(svgEl("line", {x1:0, y1:0, x2:x2.toFixed(1), y2:y2.toFixed(1), stroke:"#b8324f", "stroke-width":2.2}));
+    const h = a + Math.PI, hl = 6;
+    g.appendChild(svgEl("path", {d:`M${x2.toFixed(1)},${y2.toFixed(1)} L${(x2 + Math.sin(h - .45) * hl).toFixed(1)},${(y2 - Math.cos(h - .45) * hl).toFixed(1)} L${(x2 + Math.sin(h + .45) * hl).toFixed(1)},${(y2 - Math.cos(h + .45) * hl).toFixed(1)} Z`, fill:"#b8324f"}));
+    g.appendChild(svgEl("circle", {r:4, fill:"none", stroke:"#b8324f", "stroke-width":1.8}));
+    gCells.appendChild(o);
+  });
+}
+function drawPressure(){
+  gPressure.innerHTML = "";
+  if (!state.layers.pressure) return;
+  const [ka, kb, w] = modelIndexFor(stepTime(state.step)), k = w < .5 ? ka : kb;
+  const hour = M.pressure[k];
+  hour.iso.forEach(c => {
+    const major = Math.round(c.level) % 4 === 0;
+    gPressure.appendChild(svgEl("path", {d:c.d, fill:"none", stroke:"#3a3050", "stroke-width":major ? 1.3 : .8, "stroke-opacity":major ? .8 : .55, "vector-effect":"non-scaling-stroke"}));
+    const m = c.d.match(/M([\d.]+),([\d.]+)/);
+    if (m && major) {
+      const [o, g] = marker(+m[1], +m[2]);
+      const t = svgEl("text", {"font-size":10, fill:"#3a3050", "font-family":"IBM Plex Mono, monospace", "paint-order":"stroke", stroke:"rgba(248,248,244,.85)", "stroke-width":2.5, x:2, y:-2}); t.textContent = Math.round(c.level); g.appendChild(t);
+      gPressure.appendChild(o);
+    }
+  });
+  hour.centres.forEach(c => {
+    const [o, g] = marker(c.x, c.y);
+    const col = c.kind === "H" ? "#1f5f8b" : "#b8324f";
+    const t = svgEl("text", {"text-anchor":"middle", "font-size":24, "font-weight":700, fill:col, "font-family":"Alegreya, Georgia, serif", "paint-order":"stroke", stroke:"rgba(248,248,244,.9)", "stroke-width":3.5, y:6}); t.textContent = c.kind; g.appendChild(t);
+    const s = svgEl("text", {"text-anchor":"middle", "font-size":10.5, fill:col, "font-family":"IBM Plex Mono, monospace", "paint-order":"stroke", stroke:"rgba(248,248,244,.9)", "stroke-width":2.5, y:19}); s.textContent = c.hpa.toFixed(0); g.appendChild(s);
+    gPressure.appendChild(o);
+  });
+  rescaleMarkers(gPressure);
+}
+function drawSnowline(){
+  gSnowline.innerHTML = "";
+  if (!state.layers.snowline) return;
+  const [ka, kb, w] = modelIndexFor(stepTime(state.step)), k = w < .5 ? ka : kb;
+  const sl = M.snowline[k]; if (!sl.d) return;
+  gSnowline.appendChild(svgEl("path", {d:sl.d, fill:"none", stroke:"#1d4f73", "stroke-width":3.4, "stroke-opacity":.55, "vector-effect":"non-scaling-stroke", "stroke-linejoin":"round"}));
+  gSnowline.appendChild(svgEl("path", {d:sl.d, fill:"none", stroke:"#ffffff", "stroke-width":1.5, "vector-effect":"non-scaling-stroke", "stroke-linejoin":"round"}));
+}
+function syncOverlayVisibility(){
+  gWater.style.display = state.layers.water ? "" : "none";
+  gGauges.style.display = state.layers.water ? "" : "none";
+  gStations.style.display = state.layers.stations ? "" : "none";
+  gPlaces.style.display = state.layers.places ? "" : "none";
+  gCells.style.display = state.layers.radar && state.step === D.radar.t0_index ? "" : "none";
+  $("#radarImg").style.display = state.layers.radar ? "" : "none";
+}
+
+/* ---------------- pan / zoom ---------------- */
+const box = $("#mapbox"), stage = $("#stage");
+box.style.aspectRatio = `${F.w} / ${F.h}`;
+function unitPx(){ return box.clientWidth / GW; }
+function applyView(){
+  const w = box.clientWidth, h = box.clientHeight;
+  state.zoom = Math.max(1, Math.min(8, state.zoom));
+  state.tx = Math.min(0, Math.max(w - w * state.zoom, state.tx));
+  state.ty = Math.min(0, Math.max(h - h * state.zoom, state.ty));
+  stage.style.transform = `translate(${state.tx}px,${state.ty}px) scale(${state.zoom})`;
+  rescaleMarkers(svg);
+}
+// Markers are drawn in screen pixels: undo the map scale on each one.
+function rescaleMarkers(root){
+  const u = unitPx(); if (!u) return;  // not laid out yet
+  const s = 1 / (u * state.zoom);
+  root.querySelectorAll(".mki").forEach(g => g.setAttribute("transform", `scale(${s.toFixed(4)})`));
+}
+function zoomAt(f, cx, cy){
+  const z0 = state.zoom, z1 = Math.max(1, Math.min(8, z0 * f));
+  state.tx = cx - (cx - state.tx) * z1 / z0; state.ty = cy - (cy - state.ty) * z1 / z0; state.zoom = z1; applyView();
+}
+// Plain wheel scrolls the page; Ctrl/Cmd + wheel (and trackpad pinch) zooms.
+let hintTimer = null;
+box.addEventListener("wheel", e => {
+  if (!(e.ctrlKey || e.metaKey)) {
+    const h = $("#zoomHint"); h.hidden = false; clearTimeout(hintTimer); hintTimer = setTimeout(() => { h.hidden = true; }, 1200);
+    return;
+  }
+  e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top);
+}, {passive:false});
+let drag = null;
+box.addEventListener("pointerdown", e => { if (e.target.closest(".maptools")) return; drag = {x:e.clientX, y:e.clientY, tx:state.tx, ty:state.ty}; box.setPointerCapture(e.pointerId); });
+box.addEventListener("pointermove", e => {
+  if (drag) { state.tx = drag.tx + e.clientX - drag.x; state.ty = drag.ty + e.clientY - drag.y; applyView(); }
+  readout(e);
+});
+box.addEventListener("pointerup", () => { drag = null; });
+box.addEventListener("pointercancel", () => { drag = null; });
+$("#zin").onclick = () => zoomAt(1.5, box.clientWidth / 2, box.clientHeight / 2);
+$("#zout").onclick = () => zoomAt(1 / 1.5, box.clientWidth / 2, box.clientHeight / 2);
+$("#zreset").onclick = () => { state.zoom = 1; state.tx = 0; state.ty = 0; applyView(); };
+window.addEventListener("resize", applyView);
+function focusOn(gx, gy, z){
+  state.zoom = z || 3.5;
+  const u = unitPx();
+  state.tx = box.clientWidth / 2 - gx * u * state.zoom; state.ty = box.clientHeight / 2 - gy * u * state.zoom;
+  applyView();
+  gFocus.innerHTML = "";
+  const [o, g] = marker(gx, gy); g.appendChild(svgEl("circle", {r:14, fill:"none", stroke:"#b8324f", "stroke-width":2.5})); gFocus.appendChild(o); applyView();
+  box.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"center"});
+}
+
+/* ---------------- hover readout ---------------- */
+function readout(e){
+  if (!dem.length) return;
+  const r = box.getBoundingClientRect();
+  const u = unitPx();
+  const gx = Math.floor((e.clientX - r.left - state.tx) / state.zoom / u), gy = Math.floor((e.clientY - r.top - state.ty) / state.zoom / u);
+  if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return;
+  const i = gy * GW + gx, [lon, lat] = gridToLonLat(gx, gy);
+  const t = stepTime(state.step), [ka, kb, w] = modelIndexFor(t);
+  const fi = fiArr[i], fj = fjArr[i];
+  const rain = ((1 - w) * sampleModel(M.precip10, ka, fi, fj) + w * sampleModel(M.precip10, kb, fi, fj)) / 10;
+  const fz = ((1 - w) * sampleModel(M.freeze10, ka, fi, fj) + w * sampleModel(M.freeze10, kb, fi, fj)) * 10;
+  const sl = Math.max(0, fz - M.snow_offset);
+  const dbz = radarDbzAt(gx, gy);
+  const cls = D.land.igbp[lc[i]] || "Unknown";
+  const e_ = Math.round(dem[i]);
+  const ms = snowMonth[state.month][i];
+  $("#readout").innerHTML =
+    `<div class="mono">${lat.toFixed(2)}°N ${lon.toFixed(2)}°E · ${e_.toLocaleString("en-IN")} m · slope ${slope[i]}°</div>` +
+    `<div>${esc(cls)}${flags[i] & 1 ? " · <b>tree line</b>" : flags[i] & 2 ? " · <b>shrub line</b>" : ""}</div>` +
+    `<div>Snow line ${Math.round(sl).toLocaleString("en-IN")} m ${e_ > sl ? "(this point is above it)" : ""}</div>` +
+    `<div>Model rain ${rain.toFixed(1)} mm/h${dbz != null ? ` · radar ${dbz ? "~" + dbz + " dBZ" : "no echo"}${flags[i] & 4 ? "" : " (outside radar coverage)"}` : ""}</div>` +
+    `<div>Snow cover: last 8 days ${snowRecent[i]}%, typical ${MONTHS[state.month]} ${ms}%</div>`;
+}
+
+/* ---------------- controls ---------------- */
+const LAYER_GROUPS = [
+  ["weather", [["radar","Radar",[48,170,160]],["model","Model rain",[70,90,200]],["pressure","Pressure",[58,48,80]],["snowline","Snow line (hourly)",[29,79,115]],["stations","Airport reports",[31,42,46]]]],
+  ["surface", [["land","Land cover",[46,92,54]],["tree","Tree & shrub line",[16,58,30]],["snowRecent","Snow, last 8 days",[200,225,240]],["water","Rivers, lakes, flow",[52,110,150]],["places","Towns",[31,42,46]]]],
+  ["seasons", [["snowMonth","Typical snow for month",[200,225,240]],["leopard","Snow leopard band",[176,120,40]],["fruit","Fruiting belts",[196,32,40]]]],
+];
+function buildControls(){
+  const c = $("#controls");
+  LAYER_GROUPS.forEach(([name, items]) => {
+    const g = el("div", {class:"group", role:"group", "aria-label":name});
+    g.appendChild(el("span", {class:"sc"}, name));
+    items.forEach(([key, label, col]) => {
+      const b = el("button", {class:"chip", "aria-pressed":String(!!state.layers[key]), "data-layer":key}, `<span class="sw" style="background:rgb(${col})"></span>${label}`);
+      b.onclick = () => toggleLayer(key);
+      g.appendChild(b);
+    });
+    c.appendChild(g);
+  });
+}
+function toggleLayer(key){
+  state.layers[key] = !state.layers[key];
+  if (key === "snowMonth" && state.layers.snowMonth) state.layers.snowRecent = false;
+  if (key === "snowRecent" && state.layers.snowRecent) state.layers.snowMonth = false;
+  document.querySelectorAll("[data-layer]").forEach(b => b.setAttribute("aria-pressed", String(!!state.layers[b.dataset.layer])));
+  store.set("layers", state.layers);
+  if (key === "land") drawLand();
+  if (key === "tree") drawLines();
+  if (key === "snowMonth" || key === "snowRecent") drawSnow();
+  if (key === "leopard" || key === "fruit") drawSeason();
+  if (key === "model") drawModel();
+  if (key === "pressure") drawPressure();
+  if (key === "snowline") drawSnowline();
+  syncOverlayVisibility(); renderLegend();
+}
+
+/* ---------------- timeline ---------------- */
+const scrub = $("#scrub");
+scrub.max = frames.length - 1;
+const T0 = D.t0, T0I = D.radar.t0_index, LAST = frames.length - 1;
+function pctOf(step){ return step / LAST * 100; }
+function buildTrack(){
+  const bg = $("#trackBg");
+  bg.innerHTML = `<span style="width:${pctOf(T0I)}%;background:var(--ok);opacity:.55"></span>` +
+    `<span style="flex:1;background:linear-gradient(90deg, var(--warn), var(--rule))"></span>`;
+  const ticks = $("#evTicks");
+  const colors = {radar:"#30aaa0", model:"#4650c0", snow:"#1d4f73", pressure:"#3a3050"};
+  D.events.forEach(e => {
+    const step = T0I + e.t / D.step_min;
+    const s = el("span", {class:"ev", title:`+${fmtLead(e.t)} ${e.text}`});
+    s.style.left = pctOf(step) + "%"; s.style.background = colors[e.kind] || "#888";
+    ticks.appendChild(s);
+  });
+  const hl = $("#hourLabels");
+  for (let s = 0; s <= LAST; s += 6) {
+    const lead = (s - T0I) * D.step_min;
+    if (lead % 60 !== 0) continue;
+    const span = el("span", {class:"hr"}, lead === 0 ? "now" : (lead > 0 ? "+" : "") + lead / 60 + "h");
+    span.style.left = `calc(8px + (100% - 16px) * ${s / LAST})`;
+    hl.appendChild(span);
+  }
+}
+function fmtLead(min){ const h = Math.floor(Math.abs(min) / 60), m = Math.abs(min) % 60; return (h ? h + "h " : "") + (m ? m + "m" : (h ? "" : "0m")); }
+function confidence(leadMin){ if (leadMin <= 0) return 1; return Math.max(.05, Math.exp(-leadMin / 110)); }
+function setStep(s){
+  state.step = Math.max(0, Math.min(LAST, s));
+  scrub.value = state.step;
+  const f = frames[state.step], lead = Math.round((f.t - T0) / 60);
+  $("#radarImg").src = f.src;
+  $("#tlTime").textContent = fmtIST(f.t) + " IST";
+  const kind = $("#tlKind");
+  const conf = confidence(lead);
+  if (f.obs) { kind.textContent = lead === 0 ? "latest radar" : "observed radar"; kind.className = "pill obs"; }
+  else { kind.textContent = conf < .35 ? "extrapolated · low skill" : "extrapolated"; kind.className = "pill " + (conf < .35 ? "low" : "fc"); }
+  $("#tlLead").textContent = lead === 0 ? "now" : (lead > 0 ? "+" : "−") + fmtLead(lead);
+  $("#confBar").style.width = (conf * 100).toFixed(0) + "%";
+  $("#confBar").style.background = conf > .6 ? "var(--ok)" : conf > .35 ? "var(--warn)" : "var(--bad)";
+  drawModel(); drawPressure(); drawSnowline(); syncOverlayVisibility();
+}
+scrub.addEventListener("input", () => { stopPlay(); setStep(+scrub.value); });
+let timer = null;
+function stopPlay(){ if (timer) { clearInterval(timer); timer = null; $("#play").textContent = "▶"; $("#play").setAttribute("aria-label","Play"); } }
+$("#play").onclick = () => {
+  if (timer) return stopPlay();
+  $("#play").textContent = "❚❚"; $("#play").setAttribute("aria-label","Pause");
+  if (state.step >= LAST) setStep(0);
+  timer = setInterval(() => { if (state.step >= LAST) { stopPlay(); return; } setStep(state.step + 1); }, 260);
+};
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input,textarea")) return;
+  if (e.key === "ArrowRight") { stopPlay(); setStep(state.step + 1); }
+  if (e.key === "ArrowLeft") { stopPlay(); setStep(state.step - 1); }
+});
+
+/* ---------------- legend ---------------- */
+function grad(stops){ return "linear-gradient(90deg," + stops.map(c => `rgba(${c[0]},${c[1]},${c[2]},${(c[3] / 255).toFixed(2)})`).join(",") + ")"; }
+function renderLegend(){
+  const L = [];
+  if (state.layers.radar) L.push(`<div><div class="row"><span>Radar</span><span class="bar" style="background:${grad(D.radar.dbz_rgba)}"></span></div><div class="ticks"><span>12</span><span>28</span><span>44</span><span>60 dBZ</span></div></div>`);
+  if (state.layers.model) L.push(`<div><div class="row"><span>Model rain</span><span class="bar" style="background:${grad(PRECIP.map(p => p[1]))}"></span></div><div class="ticks"><span>0.2</span><span>1</span><span>3</span><span>8</span><span>20 mm/h</span></div></div>`);
+  const keys = [];
+  if (state.layers.snowline) keys.push(`<span class="k" style="background:#fff;border:2px solid #1d4f73"></span>snow line`);
+  if (state.layers.tree) keys.push(`<span class="k" style="background:#103a1e"></span>tree line <span class="k" style="background:#82461e"></span>shrub line`);
+  if (state.layers.land) keys.push(`<span class="k" style="background:rgb(46,92,54)"></span>forest <span class="k" style="background:rgb(132,104,70)"></span>shrub <span class="k" style="background:rgb(186,160,96)"></span>meadow`);
+  if (state.layers.water) keys.push(`<span class="k" style="background:${gaugeColor(50)}"></span>low <span class="k" style="background:${gaugeColor(100)}"></span>normal <span class="k" style="background:${gaugeColor(150)}"></span>high flow`);
+  if (state.layers.leopard) keys.push(`<span class="k" style="background:repeating-linear-gradient(45deg,#b07828 0 2px,transparent 2px 5px)"></span>snow leopard band, ${MONTHS[state.month]}`);
+  if (state.layers.fruit) keys.push(`fruiting in ${MONTHS[state.month]}: ` + D.fruits.filter(f => f.months.includes(state.month + 1) && !state.fruitsOff.has(f.id)).map(f => `<span class="k" style="background:rgb(${FRUIT_COL[f.id]})"></span>${esc(f.name)}`).join(" ") );
+  keys.forEach(k => L.push(`<div class="row">${k}</div>`));
+  $("#legend").innerHTML = L.join("") || `<div class="muted">No layers on</div>`;
+  $("#legend").hidden = !L.length;
+}
+
+/* ---------------- panels ---------------- */
+function dbzBadge(v){
+  if (!v || v < 12) return `<span class="badge" style="background:var(--chip);color:var(--ink2)">—</span>`;
+  const st = D.radar.dbz_stops, cs = D.radar.dbz_rgba; let k = 0; for (let i = 0; i < st.length; i++) if (v >= st[i]) k = i;
+  const c = cs[k]; return `<span class="badge" style="background:rgb(${c[0]},${c[1]},${c[2]});color:${k >= 2 && k <= 4 ? "#1f2a2e" : "#fff"}">${v}</span>`;
+}
+function sparkLine(vals, w, h, color){
+  const v = vals.filter(x => x != null); if (v.length < 2) return "";
+  const lo = Math.min(...v), hi = Math.max(...v), rng = hi - lo || 1;
+  const pts = vals.map((x, i) => x == null ? null : [(i / (vals.length - 1) * (w - 4) + 2).toFixed(1), (h - 3 - (x - lo) / rng * (h - 6)).toFixed(1)]).filter(Boolean);
+  const last = pts[pts.length - 1];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts.map(p => p.join(",")).join(" ")}" fill="none" stroke="${color}" stroke-width="1.5"/><circle cx="${last[0]}" cy="${last[1]}" r="2.2" fill="${color}"/></svg>`;
+}
+function buildTowns(){
+  const rows = D.towns.map((t, i) => {
+    const onset = t.radar_onset_min === 0 ? `<b>now</b>` : t.radar_onset_min ? "+" + fmtLead(t.radar_onset_min) : `<span class="muted">none</span>`;
+    const tFut = M.times.map((x, k) => x >= T0 - 1800 ? t.snowline[k] : null).filter(v => v != null);
+    const sl0 = tFut[0], sl1 = tFut[tFut.length - 1];
+    return `<tr tabindex="0" data-i="${i}"><td>${esc(t.name)}</td><td>${dbzBadge(t.dbz_now)}</td><td class="num">${onset}</td><td class="num">${t.model_rain_8h.toFixed(1)}</td>` +
+      `<td class="num">${sl0 != null ? sl0.toLocaleString("en-IN") : "–"}${sl1 != null && sl0 != null && Math.abs(sl1 - sl0) >= 100 ? `→${sl1.toLocaleString("en-IN")}` : ""}</td><td>${sparkLine(tFut, 60, 18, "#1d4f73")}</td></tr>`;
+  }).join("");
+  $("#townTable").innerHTML = `<thead><tr><th>Town</th><th>Radar now</th><th class="num">Radar onset</th><th class="num">Model mm, 8 h</th><th class="num">Snow line m</th><th>trend</th></tr></thead><tbody>${rows}</tbody>`;
+  $("#townTable").querySelectorAll("tr[data-i]").forEach(tr => {
+    const go = () => { const t = D.towns[+tr.dataset.i]; focusOn(t.x, t.y); };
+    tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+}
+function buildEvents(){
+  const colors = {radar:"#30aaa0", model:"#4650c0", snow:"#1d4f73", pressure:"#3a3050"};
+  const ul = $("#events");
+  if (!D.events.length) ul.innerHTML = `<li><span></span><span></span><span class="muted">Nothing notable in the next 8 hours.</span></li>`;
+  D.events.forEach(e => {
+    const li = el("li", {tabindex:"0"}, `<span class="mono muted">+${fmtLead(e.t)}</span><span class="dot" style="background:${colors[e.kind]}"></span><span>${esc(e.text)}</span>`);
+    const go = () => { stopPlay(); setStep(Math.min(LAST, T0I + Math.round(e.t / D.step_min))); };
+    li.onclick = go; li.onkeydown = ev => { if (ev.key === "Enter") go(); };
+    ul.appendChild(li);
+  });
+  const mv = D.radar.motion;
+  $("#motion").innerHTML = mv ? `Echo covers about <b>${mv.echo_km2.toLocaleString("en-IN")} km²</b> and is moving toward <b>${compass(mv.heading)}</b> at about <b>${mv.speed_kmh} km/h</b> overall.` : "Almost no radar echo in the region right now.";
+  const cells = D.radar.cells;
+  $("#cellTable").innerHTML = cells.length ? `<thead><tr><th>Strongest cells now</th><th class="num">dBZ</th><th class="num">km²</th><th>moving</th></tr></thead><tbody>` +
+    cells.map((c, i) => `<tr tabindex="0" data-c="${i}"><td>${c.near ? `${c.near_km} km from ${esc(c.near)}` : `${c.lat.toFixed(1)}°N ${c.lon.toFixed(1)}°E`}</td><td class="num">${c.max_dbz.toFixed(0)}</td><td class="num">${c.area_km2}</td><td>${compass(c.heading)} ${c.speed_kmh} km/h</td></tr>`).join("") + "</tbody>" : "";
+  $("#cellTable").querySelectorAll("tr[data-c]").forEach(tr => { tr.onclick = () => { const c = cells[+tr.dataset.c]; stopPlay(); setStep(T0I); focusOn(c.x, c.y, 3); }; });
+}
+function compass(deg){ return ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(deg / 22.5) % 16]; }
+function buildStations_(){
+  const now = D.generated;
+  const rows = D.stations.map(s => `<tr tabindex="0" data-s="${esc(s.id)}"><td><span class="mono">${esc(s.id)}</span> ${esc(s.name)}</td><td class="num">${s.elev != null ? s.elev.toLocaleString("en-IN") : ""}</td><td class="num">${s.t != null ? s.t + "°" : ""}</td><td class="num">${s.wspd != null ? (s.wdir === "VRB" ? "VRB" : compass(+s.wdir)) + " " + s.wspd : ""}</td><td class="num">${s.qnh != null ? Math.round(s.qnh) : ""}</td><td><span style="color:${wxColor(s.wx)};font-weight:700">${esc(s.wx) || "—"}</span></td><td class="num muted">${s.obs ? Math.round((now - s.obs) / 60) + "m" : ""}</td></tr>`).join("");
+  $("#stationTable").innerHTML = `<thead><tr><th>Airport</th><th class="num">m</th><th class="num">temp</th><th class="num">wind kt</th><th class="num">QNH</th><th>weather</th><th class="num">age</th></tr></thead><tbody>${rows}</tbody>`;
+  $("#stationTable").querySelectorAll("tr[data-s]").forEach(tr => { tr.onclick = () => { const s = D.stations.find(x => x.id === tr.dataset.s); focusOn(s.x, s.y, 3); }; });
+}
+function buildGaugesPanel(){
+  const host = $("#gauges");
+  if (!D.water.gauges.length) { host.innerHTML = `<p class="muted">River flow was unavailable when this page was built.</p>`; return; }
+  host.innerHTML = D.water.gauges.map((g, i) => {
+    const w = 120, h = 34, n = g.q.length;
+    const all = g.q.concat(g.band.flat()).filter(v => v != null);
+    const hi = Math.max(...all) * 1.05 || 1;
+    const X = k => (k / (n - 1) * (w - 2) + 1).toFixed(1), Y = v => (h - 2 - v / hi * (h - 4)).toFixed(1);
+    const top = g.band.map((b, k) => b[2] != null ? `${X(k)},${Y(b[2])}` : null).filter(Boolean);
+    const bot = g.band.map((b, k) => b[0] != null ? `${X(k)},${Y(b[0])}` : null).filter(Boolean).reverse();
+    const obs = g.q.map((v, k) => v != null && k <= g.today_index ? `${X(k)},${Y(v)}` : null).filter(Boolean);
+    const fc = g.q.map((v, k) => v != null && k >= g.today_index ? `${X(k)},${Y(v)}` : null).filter(Boolean);
+    const col = gaugeColor(g.pct_of_median);
+    const svgS = `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polygon points="${top.concat(bot).join(" ")}" fill="var(--rule)" opacity=".8"/><polyline points="${obs.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5"/><polyline points="${fc.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="2 2"/><line x1="${X(g.today_index)}" x2="${X(g.today_index)}" y1="0" y2="${h}" stroke="var(--ink2)" stroke-width=".6"/></svg>`;
+    return `<div class="gauge" data-g="${i}" tabindex="0" style="cursor:pointer"><div class="nm"><b>${esc(g.river)}</b> <small>${esc(g.place)} · ${g.q_now != null ? Math.round(g.q_now).toLocaleString("en-IN") + " m³/s" : "n/a"}</small></div>${svgS}<span class="badge" style="background:${col};color:#fff">${g.pct_of_median != null ? g.pct_of_median + "%" : "–"}</span></div>`;
+  }).join("");
+  host.querySelectorAll("[data-g]").forEach(d => { d.onclick = () => { const g = D.water.gauges[+d.dataset.g]; focusOn(g.x, g.y, 3.5); }; });
+}
+function buildMonths(){
+  const m = $("#months");
+  MONTHS.forEach((name, i) => {
+    const b = el("button", {class:"mbtn", "aria-pressed":String(i === state.month)}, name.toLowerCase());
+    b.onclick = () => setMonth(i);
+    m.appendChild(b);
+  });
+}
+function setMonth(i){
+  state.month = i; store.set("month", i);
+  document.querySelectorAll(".mbtn").forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
+  if (!state.layers.snowMonth && !state.layers.leopard && !state.layers.fruit) { state.layers.fruit = true; state.layers.leopard = true; document.querySelectorAll("[data-layer]").forEach(b => b.setAttribute("aria-pressed", String(!!state.layers[b.dataset.layer]))); store.set("layers", state.layers); }
+  drawSnow(); drawSeason(); buildCalendar(); buildSnowChart(); buildLeoChart(); renderLegend();
+}
+const SECTOR_COL = ["#6d3fa0","#2d6fa3","#2f8f7f","#8a5a3b","#c07a1e","#b8324f"];
+function buildSnowChart(){
+  const S = D.land.season_snowline, W = 440, H = 200, pl = 42, pr = 8, pt = 8, pb = 22;
+  const lo = 2000, hi = 6200;
+  const X = m => pl + m / 11 * (W - pl - pr), Y = v => pt + (1 - (v - lo) / (hi - lo)) * (H - pt - pb);
+  let s = "";
+  for (let v = 2000; v <= 6000; v += 1000) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)"/><text x="${pl - 5}" y="${Y(v) + 4}" text-anchor="end" font-size="10.5" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${v / 1000}k</text>`;
+  MONTHS.forEach((mn, i) => s += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" font-size="10.5" fill="${i === state.month ? "var(--ink)" : "var(--ink2)"}" font-weight="${i === state.month ? 700 : 400}">${mn[0]}</text>`);
+  s += `<rect x="${X(state.month) - 9}" y="${pt}" width="18" height="${H - pt - pb}" fill="var(--accent)" opacity=".1"/>`;
+  S.forEach((sec, k) => {
+    let d = "", pen = false;
+    sec.months.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); pen = true; });
+    s += `<path d="${d}" fill="none" stroke="${SECTOR_COL[k]}" stroke-width="1.8"/>`;
+    sec.months.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i)}" cy="${Y(v)}" r="${i === state.month ? 3.4 : 1.8}" fill="${SECTOR_COL[k]}"><title>${esc(sec.sector)}, ${MONTHS[i]}: ${v.toLocaleString("en-IN")} m</title></circle>`; });
+  });
+  $("#snowChart").innerHTML = s;
+  const yrs = D.land.snow_years.filter(Boolean);
+  $("#snowNote").innerHTML = S.map((sec, k) => `<span style="white-space:nowrap"><span class="k" style="display:inline-block;width:10px;height:3px;vertical-align:middle;background:${SECTOR_COL[k]}"></span> ${esc(sec.sector)}</span>`).join(" &nbsp; ") +
+    `<br>Lowest elevation where the MODIS monthly snow index stays at 40 or above, averaged over ${yrs.length ? Math.min(...yrs.map(y => y[0])) + "–" + Math.max(...yrs.map(y => y[1])) : "recent years"}. Gaps mean the sector never reached that snow cover in the month. The hourly snow line on the map is different: it's the model's freezing level minus ${M.snow_offset} m.`;
+}
+function buildCalendar(){
+  const c = $("#cal");
+  let h = `<div></div>` + MONTHS.map((m, i) => `<div class="hd"${i === state.month ? ' style="color:var(--ink);font-weight:700"' : ""}>${m[0]}</div>`).join("");
+  D.fruits.forEach(f => {
+    const col = FRUIT_COL[f.id], off = state.fruitsOff.has(f.id);
+    h += `<div class="lab${off ? " off" : ""}" data-f="${f.id}" role="button" tabindex="0" aria-pressed="${!off}" title="${esc(f.latin)}, ${f.elev[0]}–${f.elev[1]} m"><span class="k" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgb(${col})"></span>${esc(f.name)}</div>`;
+    for (let m = 0; m < 12; m++) {
+      const on = f.months.includes(m + 1);
+      h += `<div class="c${m === state.month ? " cur" : ""}" style="${on ? `background:rgb(${col});opacity:${off ? .35 : 1}` : ""}"></div>`;
+    }
+  });
+  c.innerHTML = h;
+  c.querySelectorAll("[data-f]").forEach(d => {
+    const go = () => { const id = d.dataset.f; state.fruitsOff.has(id) ? state.fruitsOff.delete(id) : state.fruitsOff.add(id); store.set("fruitsOff", [...state.fruitsOff]); if (!state.layers.fruit) toggleLayer("fruit"); drawSeason(); buildCalendar(); renderLegend(); };
+    d.onclick = go; d.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+}
+function buildLeoChart(){
+  const L = D.leopard, W = 440, H = 150, pl = 42, pr = 8, pt = 8, pb = 22, lo = 2000, hi = 6000;
+  const X = m => pl + m / 11 * (W - pl - pr), Y = v => pt + (1 - (v - lo) / (hi - lo)) * (H - pt - pb);
+  let s = "";
+  for (let v = 2000; v <= 6000; v += 1000) s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)"/><text x="${pl - 5}" y="${Y(v) + 4}" text-anchor="end" font-size="10.5" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${v / 1000}k</text>`;
+  const top = L.hi.map((v, i) => `${X(i)},${Y(v)}`), bot = L.lo.map((v, i) => `${X(i)},${Y(v)}`).reverse();
+  s += `<polygon points="${top.concat(bot).join(" ")}" fill="#b07828" opacity=".3"/><polyline points="${top.join(" ")}" fill="none" stroke="#b07828" stroke-width="1.5"/><polyline points="${bot.join(" ")}" fill="none" stroke="#b07828" stroke-width="1.5"/>`;
+  const tree = D.land.tree.map(t => t.elev).filter(Boolean);
+  if (tree.length) { const tm = tree.reduce((a, b) => a + b, 0) / tree.length; s += `<line x1="${pl}" x2="${W - pr}" y1="${Y(tm)}" y2="${Y(tm)}" stroke="var(--forest)" stroke-dasharray="4 3"/><text x="${W - pr}" y="${Y(tm) - 4}" text-anchor="end" font-size="10.5" fill="var(--forest)">mean tree line ${Math.round(tm).toLocaleString("en-IN")} m</text>`; }
+  MONTHS.forEach((mn, i) => s += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" font-size="10.5" fill="${i === state.month ? "var(--ink)" : "var(--ink2)"}" font-weight="${i === state.month ? 700 : 400}">${mn[0]}</text>`);
+  s += `<line x1="${X(state.month)}" x2="${X(state.month)}" y1="${Y(L.hi[state.month])}" y2="${Y(L.lo[state.month])}" stroke="var(--ink)" stroke-width="2.5"/><text x="${Math.min(W - 60, X(state.month) + 6)}" y="${Y(L.hi[state.month]) - 4}" font-size="11" fill="var(--ink)" font-family="IBM Plex Mono, monospace">${L.lo[state.month].toLocaleString("en-IN")}–${L.hi[state.month].toLocaleString("en-IN")} m</text>`;
+  $("#leoChart").innerHTML = s;
+}
+function buildTree(){
+  const T = D.land.tree, S = D.land.shrub;
+  $("#treeTable").innerHTML = `<thead><tr><th>Sector</th><th class="num">Tree line m</th><th class="num">Shrub line m</th></tr></thead><tbody>` +
+    T.map((t, i) => `<tr><td>${esc(t.sector)}</td><td class="num">${t.elev != null ? t.elev.toLocaleString("en-IN") : "–"}</td><td class="num">${S[i].elev != null ? S[i].elev.toLocaleString("en-IN") : "–"}</td></tr>`).join("") + "</tbody>";
+  $("#treeNote").textContent = `From MODIS land cover (${D.land.lc_year}, 500 m): the upper edge of forest and open woodland where it meets higher, natural open ground above 2,400 m. Figures are the 90th percentile of edge elevations in each sector. MODIS maps little alpine scrub in most sectors, so the shrub line is only given where there were enough shrubland edges to measure.`;
+}
+function buildMethod(){
+  const ld = D.land;
+  $("#method").innerHTML = `
+  <div class="kv">
+    <span class="sc">radar</span><span>RainViewer composite (national radars), ${frames.filter(f => f.obs).length} frames at ${D.step_min}-minute spacing, decoded to dBZ with RainViewer's colour table.</span>
+    <span class="sc">extrapolation</span><span>OpenCV DIS optical flow between consecutive frames, smoothed and blended with the model's 500/700 hPa steering wind where there is no echo, then carried forward by semi-Lagrangian advection for 8 hours. Small cells are blurred with lead time. It can't start or end storms, so beyond about two hours treat it as a sketch and compare with model rain.</span>
+    <span class="sc">model</span><span>Open-Meteo best-match forecast on a 0.75° grid: MSL pressure (not drawn above 2,500 m, where it is an extrapolation), hourly rain, and freezing level. Snow line = freezing level − ${M.snow_offset} m.</span>
+    <span class="sc">stations</span><span>NOAA aviationweather.gov METARs.</span>
+    <span class="sc">land</span><span>AWS Terrain Tiles (SRTM-based) for elevation and relief; MODIS MCD12Q1 IGBP land cover ${ld.lc_year}; MODIS Terra snow cover, daily ${ld.snow_dates[0] || ""} to ${ld.snow_dates[1] || ""} and monthly averages (NASA GIBS).</span>
+    <span class="sc">water</span><span>Natural Earth 1:10m rivers and lakes; GloFAS v4 discharge via the Open-Meteo Flood API.</span>
+    <span class="sc">ecology</span><span>Fruiting belts and the snow leopard band are elevation-and-land-cover models from published ranges, not survey records. They show where to expect something, not where it was seen.</span>
+  </div>
+  <p style="margin-top:8px">This page is a snapshot built at ${fmtIST(D.generated, {day:"numeric", month:"short"})} IST. Run <span class="mono">python build.py</span> in <span class="mono">himalaya-nowcast</span> to refresh it.</p>`;
+}
+function buildStamp(){
+  const mv = D.radar.motion;
+  const rainNow = D.stations.filter(s => /RA|DZ|SH|TS|SN/.test(s.wx)).length;
+  $("#stamp").innerHTML = `<span>Built <b>${fmtIST(D.generated, {day:"numeric", month:"short"})}</b> IST</span><span>Latest radar <b>${fmtIST(D.t0)}</b></span>` +
+    `<span>Echo <b>${mv ? mv.echo_km2.toLocaleString("en-IN") + " km²" : "none"}</b></span><span>Airports reporting precipitation <b>${rainNow}/${D.stations.length}</b></span>`;
+}
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  buildControls(); buildTrack(); buildMonths();
+  $("#shadeImg").src = D.images.shade;
+  ctxLand = setupCanvas("#cvLand"); ctxSnow = setupCanvas("#cvSnow"); ctxSeason = setupCanvas("#cvSeason"); ctxModel = setupCanvas("#cvModel"); ctxLines = setupCanvas("#cvLines");
+  // Per-pixel fractional model-grid indices, computed once.
+  fiArr = new Float32Array(N); fjArr = new Float32Array(N);
+  const dLat = ML[1] - ML[0], dLon = MN[1] - MN[0];
+  for (let y = 0; y < GH; y++) { const lat = gridToLonLat(0, y)[1]; for (let x = 0; x < GW; x++) { const i = y * GW + x; fiArr[i] = (lat - ML[0]) / dLat; fjArr[i] = (gridToLonLat(x, 0)[0] - MN[0]) / dLon; } }
+  buildWater(); buildGauges(); buildPlaces(); buildStations(); buildCells();
+  buildTowns(); buildEvents(); buildStations_(); buildGaugesPanel(); buildTree(); buildMethod(); buildStamp();
+  setStep(state.step); applyView(); renderLegend();
+  buildSnowChart(); buildCalendar(); buildLeoChart();
+  const [terr, aux, ...months] = await Promise.all([loadImg(D.images.terrain), loadImg(D.images.aux), ...D.images.snow_month.map(loadImg)]);
+  const t = pixels(terr), a = pixels(aux);
+  for (let i = 0; i < N; i++) { dem[i] = t[i*4] * 256 + t[i*4+1] - 500; lc[i] = t[i*4+2]; slope[i] = a[i*4]; snowRecent[i] = a[i*4+1]; flags[i] = a[i*4+2]; }
+  months.forEach((im, q) => { const p = pixels(im); for (let i = 0; i < N; i++) for (let c = 0; c < 3; c++) snowMonth[q * 3 + c][i] = p[i*4+c]; });
+  drawLand(); drawLines(); drawSnow(); drawSeason();
+}
+boot();
+})();
+</script>

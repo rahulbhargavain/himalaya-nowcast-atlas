@@ -1,0 +1,49 @@
+# Himalaya Nowcast Atlas
+
+A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunachal (72–97°E, 26–37°N).
+
+**Live page:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/ (rebuilt every 2 hours)
+
+## What it shows
+
+**Timeline (−2 h to +8 h, 10-minute steps)**
+- Radar: the last two hours of RainViewer composite radar, then an 8-hour extrapolation using optical flow.
+- Model rain, MSL pressure (isobars, highs and lows) and the hourly snow line from the Open-Meteo forecast.
+- Timeline events: when echo reaches a town, when model rain starts, when pressure centres form, and snow line shifts.
+
+**Surface**
+- Shaded relief, MODIS land cover, and the tree line and shrub line drawn from the land-cover edges.
+- Snow cover over the last 8 days (MODIS).
+- Rivers and lakes (Natural Earth), and 15 river gauges comparing modelled flow (GloFAS) with the same days over the last 15 years.
+- Ground truth: METARs from airports in and near the mountains.
+
+**Seasons (month selector)**
+- Typical snow cover for the month and the seasonal snow line per sector (MODIS monthly averages, last 3 years).
+- Snow leopard habitat band by month (modelled from elevation, slope and land cover).
+- Fruiting belts: kafal, hisalu, timla, apricot, apple, large cardamom, walnut, seabuckthorn, mandarin.
+
+## How it works
+
+`build.py` fetches everything, computes the layers and writes `dist/index.html`, one self-contained page with all data embedded:
+
+| Module | Does |
+| --- | --- |
+| `nowcast/radar.py` | RainViewer frames → dBZ → OpenCV DIS optical flow (blended with 500/700 hPa steering wind where there is no echo) → semi-Lagrangian extrapolation |
+| `nowcast/model.py` | Open-Meteo grid: pressure contours and H/L centres, snow line (freezing level − 300 m) contoured on the terrain, steering wind |
+| `nowcast/land.py` | Terrain tiles, hillshade, MODIS land cover and snow via NASA GIBS, tree line edges, seasonal snow line |
+| `nowcast/water.py` | Natural Earth rivers and lakes, GloFAS gauges, METARs, places |
+
+Radar extrapolation assumes storms keep their motion and strength. It is useful for about the first two hours; after that, compare it with the model rain layer.
+
+## Run locally
+
+```bash
+pip install -r requirements.txt
+python build.py
+```
+
+Open `dist/index.html`. Static layers are cached in `cache/` after the first run (about 1 minute); later builds take about 30 seconds.
+
+## Data sources
+
+All free and keyless: [RainViewer](https://www.rainviewer.com/api.html), [Open-Meteo](https://open-meteo.com/) (forecast and flood APIs, non-commercial use), [NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/) (MODIS), [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/), [Natural Earth](https://www.naturalearthdata.com/), [aviationweather.gov](https://aviationweather.gov/data/api/).
