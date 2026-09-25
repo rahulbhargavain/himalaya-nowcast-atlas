@@ -1,3 +1,4 @@
 build_utc,radar_t0_utc,echo_km2,motion_heading,motion_kmh,cells,stations,gauges,fire_pixels
 2026-09-25T15:54Z,2026-09-25T15:50Z,53409,333,18,7,10,15,2434
 2026-09-25T16:00Z,2026-09-25T16:00Z,53105,338,15,7,8,15,2434
+2026-09-25T20:03Z,2026-09-25T20:00Z,63865,335,23,8,7,15,2434
