@@ -65,7 +65,7 @@ svg text{font-family:var(--f-body)}
 .btn{border:1px solid rgba(0,0,0,.25);background:rgba(250,250,246,.92);color:#1f2a2e;border-radius:3px;min-width:30px;height:30px;padding:0 8px;cursor:pointer;font-size:15px}
 .readout{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12.5px;line-height:1.35;max-width:min(340px,70%);pointer-events:none}
 .readout .mono{font-size:12px}
-.legend{position:absolute;right:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12px;max-width:min(300px,45%);display:flex;flex-direction:column;gap:5px}
+.legend{position:absolute;right:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12px;max-width:min(300px,45%);max-height:62%;overflow:auto;display:flex;flex-direction:column;gap:5px}
 .zoomhint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:4;background:rgba(31,42,46,.88);color:#f7f8f4;border-radius:3px;padding:6px 10px;font-size:13px;pointer-events:none}
 .legend .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .legend .bar{height:8px;flex:1;min-width:80px;border-radius:2px}
@@ -119,6 +119,14 @@ tr[tabindex]:hover td{background:var(--chip)}
 .cal .hd{font:500 11px var(--f-sc);text-align:center;color:var(--ink2)}
 .cal .cur{outline:2px solid var(--ink);outline-offset:-1px}
 .spark{display:block;width:100%;height:auto}
+.hkhrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;width:100%}
+.hkhrow select{font:inherit;font-size:14px;padding:3px 8px;border:1px solid var(--rule);border-radius:3px;background:var(--chip);color:var(--ink);max-width:100%}
+.hkhrow input[type=range]{width:110px}
+.years{display:flex;flex-wrap:wrap;gap:4px}
+.years button{border:1px solid var(--rule);background:var(--chip);border-radius:3px;padding:2px 8px;font:500 13px var(--f-mono);cursor:pointer}
+.years button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sw-img{width:14px;height:14px;object-fit:contain;flex:none}
+.bars{display:block;width:100%;height:auto}
 .gauge{display:grid;grid-template-columns:minmax(0,1fr) 120px 56px;gap:8px;align-items:center;font-size:14px;padding:3px 0;border-bottom:1px solid var(--rule)}
 .gauge .nm{min-width:0}
 .gauge .nm small{color:var(--ink2);display:block;font-size:12px}
@@ -148,8 +156,10 @@ details summary{cursor:pointer;font-weight:500}
     <div class="stage" id="stage">
       <img class="shade" id="shadeImg" alt="Shaded relief of the Himalaya from Kashmir to Arunachal Pradesh">
       <canvas id="cvLand"></canvas>
+      <img id="themeImg" alt="" hidden>
       <canvas id="cvSnow"></canvas>
       <canvas id="cvSeason"></canvas>
+      <img id="fireImg" alt="" hidden>
       <canvas id="cvModel"></canvas>
       <img id="radarImg" alt="">
       <canvas id="cvLines"></canvas>
@@ -232,6 +242,22 @@ details summary{cursor:pointer;font-weight:500}
       <p class="note" id="treeNote"></p>
     </section>
 
+    <section class="card" id="hkhCard">
+      <h2>Hindu Kush Himalaya data (ICIMOD)</h2>
+      <div id="hkhTheme" class="note"></div>
+      <div>
+        <div class="sc muted" style="font-size:13px;margin-bottom:4px">glacial lake outburst floods on record, by decade</div>
+        <svg id="glofChart" class="bars" viewBox="0 0 440 120" role="img" aria-label="GLOF events by decade"></svg>
+      </div>
+      <div>
+        <div class="sc muted" style="font-size:13px;margin-bottom:4px">reported landslides and deaths, by year</div>
+        <svg id="lsChart" class="bars" viewBox="0 0 440 120" role="img" aria-label="Landslides by year"></svg>
+      </div>
+      <div class="scroll"><table id="pdglTable"></table></div>
+      <div class="scroll"><table id="hydroTable"></table></div>
+      <p class="note" id="hkhNote"></p>
+    </section>
+
     <section class="card">
       <h2>Sources and method</h2>
       <div class="note" id="method"></div>
@@ -275,6 +301,8 @@ const state = {
     land:true, tree:true, snowRecent:false, water:true,
     snowMonth:false, leopard:false, fruit:false, places:true}, store.get("layers", {})),
   fruitsOff: new Set(store.get("fruitsOff", [])),
+  hkhTheme: store.get("hkhTheme", ""), hkhYear: store.get("hkhYear", -1), hkhOpacity: store.get("hkhOpacity", .75),
+  hkhPts: Object.assign({pdgl:true, glof:false, hydro:false, landslides:false, met:false, fires:true}, store.get("hkhPts", {})),
   zoom: 1, tx: 0, ty: 0,
 };
 
@@ -421,8 +449,8 @@ function radarDbzAt(gx, gy){
 /* ---------------- SVG overlays ---------------- */
 const svg = $("#svg");
 svg.setAttribute("viewBox", `0 0 ${GW} ${GH}`);
-const gWater = svgEl("g"), gPressure = svgEl("g"), gSnowline = svgEl("g"), gCells = svgEl("g"), gPlaces = svgEl("g"), gGauges = svgEl("g"), gStations = svgEl("g"), gFocus = svgEl("g");
-[gWater, gPressure, gSnowline, gCells, gGauges, gPlaces, gStations, gFocus].forEach(g => svg.appendChild(g));
+const gHKH = svgEl("g"), gWater = svgEl("g"), gPressure = svgEl("g"), gSnowline = svgEl("g"), gCells = svgEl("g"), gPlaces = svgEl("g"), gGauges = svgEl("g"), gStations = svgEl("g"), gFocus = svgEl("g");
+[gWater, gHKH, gPressure, gSnowline, gCells, gGauges, gPlaces, gStations, gFocus].forEach(g => svg.appendChild(g));
 const marker = (x, y) => { const o = svgEl("g", {transform:`translate(${x.toFixed(1)},${y.toFixed(1)})`, class:"mk"}); const inner = svgEl("g", {class:"mki"}); o.appendChild(inner); return [o, inner]; };
 
 function buildWater(){
@@ -698,6 +726,128 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") { stopPlay(); setStep(state.step - 1); }
 });
 
+/* ---------------- ICIMOD / HKH layers ---------------- */
+const H = D.hkh || {};
+const HT = H.themes || [], HS = H.series || {}, HP = H.points || {};
+const GROUP_NAMES = {people:"People & settlement", land:"Land & ecosystems", hazard:"Hazards", water:"Water", climate:"Climate trends"};
+const PT_STYLE = {
+  pdgl:{label:"Dangerous glacial lakes", col:"#0e7fb8"}, glof:{label:"GLOF history", col:"#6d3fa0"},
+  hydro:{label:"Hydropower", col:"#c07a1e"}, landslides:{label:"Landslides", col:"#8a5a3b"},
+  met:{label:"Met station network", col:"#1f2a2e"}, fires:{label:"Fires, last 48 h", col:"#ff5014"},
+};
+function currentTheme(){
+  const k = state.hkhTheme; if (!k) return null;
+  if (k.startsWith("series:")) {
+    const s = HS[k.slice(7)]; if (!s) return null;
+    const i = state.hkhYear < 0 || state.hkhYear >= s.frames.length ? s.frames.length - 1 : state.hkhYear;
+    return {title:`${s.title}, ${s.frames[i].year}`, desc:s.desc, src:s.frames[i].src, legend:s.legend, series:s, idx:i};
+  }
+  return HT.find(t => t.key === k) || null;
+}
+function buildHKHControls(){
+  if (!HT.length && !Object.keys(HS).length && !Object.keys(HP).length) return;
+  const g = el("div", {class:"group hkhrow", role:"group", "aria-label":"ICIMOD layers"});
+  g.appendChild(el("span", {class:"sc"}, "hkh · icimod"));
+  let opts = `<option value="">No thematic layer</option>`;
+  const byGroup = {};
+  HT.forEach(t => (byGroup[t.group] = byGroup[t.group] || []).push(t));
+  Object.keys(GROUP_NAMES).forEach(gk => { if (byGroup[gk]) opts += `<optgroup label="${GROUP_NAMES[gk]}">` + byGroup[gk].map(t => `<option value="${t.key}">${esc(t.title)}</option>`).join("") + `</optgroup>`; });
+  if (Object.keys(HS).length) opts += `<optgroup label="Change over the years">` + Object.entries(HS).map(([k, v]) => `<option value="series:${k}">${esc(v.title)} (${v.frames[0].year}–${v.frames[v.frames.length - 1].year})</option>`).join("") + `</optgroup>`;
+  const sel = el("select", {id:"themeSel", "aria-label":"Thematic layer"}, opts);
+  sel.value = state.hkhTheme;
+  if (sel.value !== state.hkhTheme) state.hkhTheme = "";
+  sel.onchange = () => { state.hkhTheme = sel.value; state.hkhYear = -1; store.set("hkhTheme", sel.value); store.set("hkhYear", -1); applyTheme(); };
+  g.appendChild(sel);
+  const op = el("input", {type:"range", id:"themeOpacity", min:"0.2", max:"1", step:"0.05", value:String(state.hkhOpacity), "aria-label":"Thematic layer opacity"});
+  op.oninput = () => { state.hkhOpacity = +op.value; store.set("hkhOpacity", state.hkhOpacity); $("#themeImg").style.opacity = state.hkhOpacity; };
+  g.appendChild(op);
+  g.appendChild(el("div", {class:"years", id:"years", role:"group", "aria-label":"Year"}));
+  Object.keys(PT_STYLE).forEach(k => {
+    const has = k === "fires" ? H.fires && H.fires.src : HP[k] && HP[k].length;
+    if (!has) return;
+    const n = k === "fires" ? "" : ` <span class="muted mono" style="font-size:12px">${HP[k].length}</span>`;
+    const b = el("button", {class:"chip", "aria-pressed":String(!!state.hkhPts[k]), "data-pt":k}, `<span class="sw" style="background:${PT_STYLE[k].col}"></span>${PT_STYLE[k].label}${n}`);
+    b.onclick = () => { state.hkhPts[k] = !state.hkhPts[k]; b.setAttribute("aria-pressed", String(state.hkhPts[k])); store.set("hkhPts", state.hkhPts); syncHKHPoints(); renderLegend(); };
+    g.appendChild(b);
+  });
+  $("#controls").appendChild(g);
+}
+function applyTheme(){
+  const t = currentTheme(), img = $("#themeImg");
+  if (!t) { img.hidden = true; } else { img.src = t.src; img.hidden = false; img.style.opacity = state.hkhOpacity; }
+  const yrs = $("#years");
+  if (yrs) {
+    yrs.innerHTML = "";
+    if (t && t.series) t.series.frames.forEach((f, i) => {
+      const b = el("button", {"aria-pressed":String(i === t.idx)}, String(f.year));
+      b.onclick = () => { state.hkhYear = i; store.set("hkhYear", i); applyTheme(); };
+      yrs.appendChild(b);
+    });
+  }
+  $("#hkhTheme").innerHTML = t ? `<b>${esc(t.title)}</b>. ${esc(t.desc)}` + (t.legend && t.legend.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px">${t.legend.map(l => `<span style="display:inline-flex;align-items:center;gap:5px"><img class="sw-img" src="${l.img}" alt="">${esc(l.label)}</span>`).join("")}</div>` : "")
+    : `Choose a thematic layer under <span class="sc">hkh · icimod</span> above the map: population, sex ratio, deprivation, built-up surface, land cover by year, glacier extent by decade, climate trends and more.`;
+  renderLegend();
+}
+function buildHKHPoints(){
+  const mk = (kind, p, draw, tip) => { const [o, g] = marker(p.x, p.y); o.dataset.kind = kind; draw(g); const t = svgEl("title"); t.textContent = tip; o.appendChild(t); gHKH.appendChild(o); };
+  (HP.met || []).forEach(p => mk("met", p, g => g.appendChild(svgEl("circle", {r:2.2, fill:"#fff", stroke:"#1f2a2e", "stroke-width":1.2})),
+    `${p.name} (${p.type || "station"}, ${p.country || ""})${p.elev ? ", " + p.elev + " m" : ""}\nSource: ${p.source || "n/a"}${p.access ? ", data " + p.access.toLowerCase() : ""}`));
+  (HP.landslides || []).forEach(p => mk("landslides", p, g => g.appendChild(svgEl("path", {d:"M0,-4 L3.5,3 L-3.5,3 Z", fill:"#8a5a3b", stroke:"#fff", "stroke-width":.8})),
+    `${p.title || "Landslide"}${p.date ? " (" + p.date + ")" : ""}\nTrigger: ${p.trigger || "unknown"}${p.deaths ? ", " + p.deaths + " deaths" : ""}`));
+  (HP.hydro || []).forEach(p => { const r = 2.5 + Math.min(7, Math.sqrt(p.mw || 1) / 4); mk("hydro", p, g => g.appendChild(svgEl("rect", {x:-r / 2, y:-r / 2, width:r, height:r, fill:p.status === "operational" ? "#c07a1e" : "none", stroke:"#c07a1e", "stroke-width":1.4})),
+    `${p.name || "Hydropower plant"}: ${p.mw ? p.mw + " MW" : "capacity n/a"}, ${p.status}\n${p.river || ""} ${p.country ? "(" + p.country + ")" : ""}${p.year ? ", " + p.year : ""}`); });
+  (HP.glof || []).forEach(p => mk("glof", p, g => g.appendChild(svgEl("circle", {r:3.2, fill:"#6d3fa0", "fill-opacity":.75, stroke:"#fff", "stroke-width":.8})),
+    `GLOF ${p.year || "(year unknown)"}: ${p.lake && p.lake !== "Unknown" ? p.lake : (p.glacier || "unnamed")} lake, ${p.type || ""}\n${p.basin || ""}, ${p.country || ""}${p.driver && p.driver !== "Unknown" ? "\nDriver: " + p.driver : ""}`));
+  (HP.pdgl || []).forEach(p => mk("pdgl", p, g => { g.appendChild(svgEl("circle", {r:5.5, fill:"#0e7fb8", stroke:"#fff", "stroke-width":1.5})); g.appendChild(svgEl("circle", {r:9, fill:"none", stroke:"#0e7fb8", "stroke-width":1.2, "stroke-dasharray":"2 2"})); },
+    `Potentially dangerous glacial lake ${p.id}, rank ${p.rank}\n${p.area ? p.area.toFixed(2) + " km², " : ""}${p.elev ? p.elev + " m, " : ""}${p.basin || ""} (${p.country || ""})`));
+  syncHKHPoints();
+}
+function syncHKHPoints(){
+  gHKH.querySelectorAll("[data-kind]").forEach(n => { n.style.display = state.hkhPts[n.dataset.kind] ? "" : "none"; });
+  const f = $("#fireImg");
+  if (H.fires && H.fires.src) { f.src = H.fires.src; f.hidden = !state.hkhPts.fires; }
+}
+function barChart(svgSel, labels, values, values2, color, color2, fmt){
+  const W = 440, Hh = 120, pl = 30, pr = 6, pt = 8, pb = 20, n = labels.length;
+  if (!n) { $(svgSel).innerHTML = ""; return; }
+  const mx = Math.max(1, ...values), bw = (W - pl - pr) / n, mx2 = values2 ? Math.max(1, ...values2) : 1;
+  let s = `<line x1="${pl}" x2="${W - pr}" y1="${Hh - pb}" y2="${Hh - pb}" stroke="var(--rule)"/>`;
+  s += `<text x="${pl - 4}" y="${pt + 8}" text-anchor="end" font-size="10" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${mx}</text>`;
+  const every = Math.ceil(n / 8);
+  values.forEach((v, i) => {
+    const h = v / mx * (Hh - pt - pb - 12), x = pl + i * bw;
+    s += `<rect x="${(x + 1).toFixed(1)}" y="${(Hh - pb - h).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${h.toFixed(1)}" fill="${color}"><title>${labels[i]}: ${fmt(v, values2 ? values2[i] : null)}</title></rect>`;
+    if (values2 && values2[i]) { const r = 1.5 + 4 * Math.sqrt(values2[i] / mx2); s += `<circle cx="${(x + bw / 2).toFixed(1)}" cy="${(Hh - pb - h - r - 2).toFixed(1)}" r="${r.toFixed(1)}" fill="${color2}"><title>${labels[i]}: ${values2[i]} deaths</title></circle>`; }
+    if (i % every === 0) s += `<text x="${(x + bw / 2).toFixed(1)}" y="${Hh - 6}" text-anchor="middle" font-size="10" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${labels[i]}</text>`;
+  });
+  $(svgSel).innerHTML = s;
+}
+function buildHKHPanel(){
+  if (!D.hkh || !Object.keys(D.hkh).length) { $("#hkhCard").hidden = true; return; }
+  const glof = (HP.glof || []).filter(g => g.year && g.year >= 1900);
+  const decades = []; for (let d = 1900; d <= 2020; d += 10) decades.push(d);
+  barChart("#glofChart", decades.map(d => d + "s"), decades.map(d => glof.filter(g => g.year >= d && g.year < d + 10).length), null, "#6d3fa0", null, v => v + " events");
+  const ls = (HP.landslides || []).filter(p => p.date);
+  const years = [];
+  if (ls.length) { const y0 = Math.min(...ls.map(p => +p.date.slice(0, 4))), y1 = Math.max(...ls.map(p => +p.date.slice(0, 4))); for (let y = Math.max(y0, 1990); y <= y1; y++) years.push(y); }
+  barChart("#lsChart", years.map(String), years.map(y => ls.filter(p => +p.date.slice(0, 4) === y).length), years.map(y => ls.filter(p => +p.date.slice(0, 4) === y).reduce((a, p) => a + (p.deaths || 0), 0)), "#8a5a3b", "#b8324f", (v, d) => `${v} landslides${d ? ", " + d + " deaths" : ""}`);
+  const pd = (HP.pdgl || []).slice().sort((a, b) => (a.rank || "").localeCompare(b.rank || "") || (b.area || 0) - (a.area || 0));
+  $("#pdglTable").innerHTML = pd.length ? `<thead><tr><th>Potentially dangerous glacial lakes</th><th>rank</th><th class="num">km²</th><th class="num">m</th></tr></thead><tbody>` +
+    pd.slice(0, 12).map((p, i) => `<tr tabindex="0" data-p="${i}"><td>${esc(p.basin || "")} <span class="muted">${esc(p.country || "")} · ${esc(p.id || "")}</span></td><td>${esc(p.rank || "")}</td><td class="num">${p.area != null ? p.area.toFixed(2) : ""}</td><td class="num">${p.elev != null ? p.elev.toLocaleString("en-IN") : ""}</td></tr>`).join("") +
+    `</tbody>` : "";
+  $("#pdglTable").querySelectorAll("tr[data-p]").forEach(tr => tr.onclick = () => { const p = pd[+tr.dataset.p]; if (!state.hkhPts.pdgl) { state.hkhPts.pdgl = true; syncHKHPoints(); document.querySelector('[data-pt="pdgl"]')?.setAttribute("aria-pressed", "true"); } focusOn(p.x, p.y, 4); });
+  const hy = HP.hydro || [], byC = {};
+  hy.forEach(p => { const c = p.country || "Other"; byC[c] = byC[c] || {operational:0, "under construction":0, planned:0}; byC[c][p.status] += p.mw || 0; });
+  const tot = v => v.operational + v["under construction"] + v.planned;
+  const rows = Object.entries(byC).sort((a, b) => tot(b[1]) - tot(a[1]));
+  $("#hydroTable").innerHTML = rows.length ? `<thead><tr><th>Hydropower (MW) in view</th><th class="num">operating</th><th class="num">building</th><th class="num">planned</th></tr></thead><tbody>` +
+    rows.map(([c, v]) => `<tr><td>${esc(c)}</td><td class="num">${Math.round(v.operational).toLocaleString("en-IN")}</td><td class="num">${Math.round(v["under construction"]).toLocaleString("en-IN")}</td><td class="num">${Math.round(v.planned).toLocaleString("en-IN")}</td></tr>`).join("") + `</tbody>` : "";
+  const fires = H.fires || {};
+  $("#hkhNote").innerHTML = `From ICIMOD's open map services (geoapps.icimod.org): thematic rasters in ICIMOD's own colours, the glacial lake and GLOF inventories, the landslide catalogue (NASA GLC), hydropower plants and the met station network (${(HP.met || []).length} stations in view; locations only, not live readings). ` +
+    `Fires are live VIIRS detections from NASA GIBS${fires.dates && fires.dates.length ? ` for ${fires.dates[0]} to ${fires.dates[fires.dates.length - 1]}` : ""}. ` +
+    `ICIMOD publishes no conflict data. Bhutan's pastoral migration survey is shown only as grazing areas, since the household records include names and ID numbers.`;
+}
+
 /* ---------------- legend ---------------- */
 function grad(stops){ return "linear-gradient(90deg," + stops.map(c => `rgba(${c[0]},${c[1]},${c[2]},${(c[3] / 255).toFixed(2)})`).join(",") + ")"; }
 function renderLegend(){
@@ -711,6 +861,10 @@ function renderLegend(){
   if (state.layers.water) keys.push(`<span class="k" style="background:${gaugeColor(50)}"></span>low <span class="k" style="background:${gaugeColor(100)}"></span>normal <span class="k" style="background:${gaugeColor(150)}"></span>high flow`);
   if (state.layers.leopard) keys.push(`<span class="k" style="background:repeating-linear-gradient(45deg,#b07828 0 2px,transparent 2px 5px)"></span>snow leopard band, ${MONTHS[state.month]}`);
   if (state.layers.fruit) keys.push(`fruiting in ${MONTHS[state.month]}: ` + D.fruits.filter(f => f.months.includes(state.month + 1) && !state.fruitsOff.has(f.id)).map(f => `<span class="k" style="background:rgb(${FRUIT_COL[f.id]})"></span>${esc(f.name)}`).join(" ") );
+  const th = currentTheme();
+  if (th && th.legend && th.legend.length) keys.push(`<b>${esc(th.title)}</b> ` + th.legend.slice(0, 8).map(l => `<img class="sw-img" src="${l.img}" alt="">${esc(l.label)}`).join(" "));
+  const pts = Object.keys(PT_STYLE).filter(k => state.hkhPts[k] && (k === "fires" ? H.fires && H.fires.src : HP[k] && HP[k].length));
+  if (pts.length) keys.push(pts.map(k => `<span class="k" style="background:${PT_STYLE[k].col}"></span>${PT_STYLE[k].label}`).join(" "));
   keys.forEach(k => L.push(`<div class="row">${k}</div>`));
   $("#legend").innerHTML = L.join("") || `<div class="muted">No layers on</div>`;
   $("#legend").hidden = !L.length;
@@ -878,17 +1032,17 @@ function buildStamp(){
 
 /* ---------------- boot ---------------- */
 async function boot(){
-  buildControls(); buildTrack(); buildMonths();
+  buildControls(); buildHKHControls(); buildTrack(); buildMonths();
   $("#shadeImg").src = D.images.shade;
   ctxLand = setupCanvas("#cvLand"); ctxSnow = setupCanvas("#cvSnow"); ctxSeason = setupCanvas("#cvSeason"); ctxModel = setupCanvas("#cvModel"); ctxLines = setupCanvas("#cvLines");
   // Per-pixel fractional model-grid indices, computed once.
   fiArr = new Float32Array(N); fjArr = new Float32Array(N);
   const dLat = ML[1] - ML[0], dLon = MN[1] - MN[0];
   for (let y = 0; y < GH; y++) { const lat = gridToLonLat(0, y)[1]; for (let x = 0; x < GW; x++) { const i = y * GW + x; fiArr[i] = (lat - ML[0]) / dLat; fjArr[i] = (gridToLonLat(x, 0)[0] - MN[0]) / dLon; } }
-  buildWater(); buildGauges(); buildPlaces(); buildStations(); buildCells();
+  buildWater(); buildHKHPoints(); buildGauges(); buildPlaces(); buildStations(); buildCells();
   buildTowns(); buildEvents(); buildStations_(); buildGaugesPanel(); buildTree(); buildMethod(); buildStamp();
   setStep(state.step); applyView(); renderLegend();
-  buildSnowChart(); buildCalendar(); buildLeoChart();
+  buildSnowChart(); buildCalendar(); buildLeoChart(); buildHKHPanel(); applyTheme();
   const [terr, aux, ...months] = await Promise.all([loadImg(D.images.terrain), loadImg(D.images.aux), ...D.images.snow_month.map(loadImg)]);
   const t = pixels(terr), a = pixels(aux);
   for (let i = 0; i < N; i++) { dem[i] = t[i*4] * 256 + t[i*4+1] - 500; lc[i] = t[i*4+2]; slope[i] = a[i*4]; snowRecent[i] = a[i*4+1]; flags[i] = a[i*4+2]; }

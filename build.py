@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import land, model, radar, water
+from nowcast import icimod, land, model, radar, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -215,6 +215,14 @@ def main():
     stations = [st for st in stations
                 if 0 <= int(st["y"]) < FRAME.gh and 0 <= int(st["x"]) < FRAME.gw and near_hi[int(st["y"]), int(st["x"])]]
 
+    log("ICIMOD layers")
+    hkh = {}
+    for key, fn in (("themes", icimod.themes), ("series", icimod.series), ("points", icimod.points), ("fires", icimod.live_fires)):
+        try:
+            hkh[key] = fn()
+        except Exception as e:  # one unavailable service shouldn't sink the page
+            log(f"  ICIMOD {key} failed: {e}")
+
     towns = town_timeline(places, frames_all, t_all, t0_index, g, t0)
     evs = events(towns, pressure, g, t0)
 
@@ -245,7 +253,7 @@ def main():
                  "season_snowline": season_line, "sectors": land.SECTORS},
         "water": {"rivers": rivers, "lakes": lakes, "small_lakes": small_lakes, "gauges": gauges},
         "stations": stations, "places": places, "towns": towns, "events": evs,
-        "fruits": FRUITS, "leopard": LEOPARD,
+        "fruits": FRUITS, "leopard": LEOPARD, "hkh": hkh,
     }
 
     tpl = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
