@@ -139,6 +139,16 @@ details summary{cursor:pointer;font-weight:500}
   .gauge{grid-template-columns:minmax(0,1fr) 90px 50px}
 }
 @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto!important} }
+/* TV mode (?tv): the Android TV dashboard embeds the map in a WebView. */
+body.tv{padding:0;overflow:hidden;background:#1b1f1d;height:100vh}
+body.tv .wrap{max-width:none;gap:0;height:100vh;justify-content:center}
+body.tv header.top,body.tv .controls,body.tv .grid,body.tv .maptools,body.tv .readout,body.tv .track,body.tv #conf,body.tv #play,body.tv .zoomhint{display:none!important}
+body.tv .mapbox{border:0;border-radius:0;box-shadow:none;margin:0 auto;width:min(100vw,calc((100vh - 30px) * var(--ar)))}
+body.tv .timeline{border:0;border-radius:0;background:#1b1f1d;color:#e3e8e2;padding:4px 10px;height:30px;justify-content:center}
+body.tv .tl-head{flex-wrap:nowrap;gap:10px}
+body.tv .tl-time{font-size:15px}
+body.tv .legend{display:flex!important;font-size:10.5px;padding:4px 6px;gap:3px;max-width:34%;opacity:.92}
+body.tv .smalllake{display:none}
 </style>
 
 <div class="wrap">
@@ -293,6 +303,8 @@ function lonLatToGrid(lon, lat){
 }
 
 /* ---------------- state ---------------- */
+const TV = /[?&]tv\b/.test(location.search) || location.hash === "#tv";
+if (TV) document.body.classList.add("tv");
 const nowMonth = new Date(D.generated * 1000).getMonth();
 const state = {
   step: D.radar.t0_index,
@@ -305,6 +317,12 @@ const state = {
   hkhPts: Object.assign({pdgl:true, glof:false, hydro:false, landslides:false, met:false, fires:true}, store.get("hkhPts", {})),
   zoom: 1, tx: 0, ty: 0,
 };
+if (TV) {
+  // A fixed, glanceable set of layers; the viewer's saved choices don't apply on the TV.
+  state.layers = {radar:true, model:false, pressure:true, snowline:true, stations:true, land:false, tree:false,
+    snowRecent:false, water:true, snowMonth:false, leopard:false, fruit:false, places:true};
+  state.hkhTheme = ""; state.hkhPts = {pdgl:false, glof:false, hydro:false, landslides:false, met:false, fires:true};
+}
 
 /* ---------------- decode embedded grids ---------------- */
 function loadImg(src){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
@@ -464,6 +482,7 @@ function buildWater(){
   });
   W.small_lakes.forEach(l => {
     const [o, g] = marker(l.x, l.y);
+    o.classList.add("smalllake");
     g.appendChild(svgEl("circle", {r:3.2, fill:"rgb(120,168,196)", stroke:"rgb(40,90,120)", "stroke-width":1}));
     const t = svgEl("text", {x:5, y:3, "font-size":10.5, fill:"#1f4a66", "font-style":"italic", "paint-order":"stroke", stroke:"rgba(245,246,240,.85)", "stroke-width":2.5}); t.textContent = l.name; g.appendChild(t);
     gWater.appendChild(o);
@@ -558,6 +577,7 @@ function syncOverlayVisibility(){
 /* ---------------- pan / zoom ---------------- */
 const box = $("#mapbox"), stage = $("#stage");
 box.style.aspectRatio = `${F.w} / ${F.h}`;
+box.style.setProperty("--ar", String(F.w / F.h));
 function unitPx(){ return box.clientWidth / GW; }
 function applyView(){
   const w = box.clientWidth, h = box.clientHeight;
@@ -1048,6 +1068,17 @@ async function boot(){
   for (let i = 0; i < N; i++) { dem[i] = t[i*4] * 256 + t[i*4+1] - 500; lc[i] = t[i*4+2]; slope[i] = a[i*4]; snowRecent[i] = a[i*4+1]; flags[i] = a[i*4+2]; }
   months.forEach((im, q) => { const p = pixels(im); for (let i = 0; i < N; i++) for (let c = 0; c < 3; c++) snowMonth[q * 3 + c][i] = p[i*4+c]; });
   drawLand(); drawLines(); drawSnow(); drawSeason();
+  if (TV) tvLoop();
+}
+function tvLoop(){
+  let hold = 0;
+  setStep(0);
+  setInterval(() => {
+    if (state.step >= LAST) { if (++hold < 8) return; hold = 0; setStep(0); return; }
+    // Linger on the latest observed frame so "now" is easy to catch.
+    if (state.step === T0I && hold < 6) { hold++; return; }
+    hold = 0; setStep(state.step + 1);
+  }, 450);
 }
 boot();
 })();
