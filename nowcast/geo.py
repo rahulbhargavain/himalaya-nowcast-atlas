@@ -134,10 +134,21 @@ def get(url, params=None, timeout=60, tries=4, cache_key=None, max_age=None):
     raise RuntimeError(f"GET failed after {tries} tries: {url} ({last})")
 
 
-def get_json(url, params=None, **kw):
+def get_json(url, params=None, tries=3, **kw):
+    """Like get(), but also retries if the upstream returns a
+    truncated/malformed body (seen occasionally from Open-Meteo)."""
     import json
-    body = get(url, params=params, **kw)
-    return None if body is None else json.loads(body)
+    last = None
+    for attempt in range(tries):
+        body = get(url, params=params, **kw)
+        if body is None:
+            return None
+        try:
+            return json.loads(body)
+        except json.JSONDecodeError as e:
+            last = e
+            time.sleep(1.5 * (attempt + 1))
+    raise RuntimeError(f"Malformed JSON after {tries} tries: {url} ({last})")
 
 
 def fetch_many(fn, items, workers=8):
