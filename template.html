@@ -644,7 +644,7 @@ box.addEventListener("wheel", e => {
   e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top);
 }, {passive:false});
 let drag = null;
-box.addEventListener("pointerdown", e => { if (e.target.closest(".maptools")) return; drag = {x:e.clientX, y:e.clientY, tx:state.tx, ty:state.ty}; box.setPointerCapture(e.pointerId); });
+box.addEventListener("pointerdown", e => { if (e.target.closest(".maptools, .legend, .readout")) return; drag = {x:e.clientX, y:e.clientY, tx:state.tx, ty:state.ty}; box.setPointerCapture(e.pointerId); });
 box.addEventListener("pointermove", e => {
   if (drag) { state.tx = drag.tx + e.clientX - drag.x; state.ty = drag.ty + e.clientY - drag.y; applyView(); }
   readout(e);
