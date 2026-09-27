@@ -9,13 +9,19 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 **Timeline (−2 h to +8 h, 10-minute steps)**
 - Radar: the last two hours of RainViewer composite radar, then an 8-hour extrapolation using optical flow.
 - Model rain, MSL pressure (isobars, highs and lows) and the hourly snow line from the Open-Meteo forecast.
+- Satellite rain: NASA/JAXA GPM IMERG near-real-time precipitation, filling in where the ground radar mosaic has no coverage (most of the Himalaya itself).
 - Timeline events: when echo reaches a town, when model rain starts, when pressure centres form, and snow line shifts.
 
 **Surface**
 - Shaded relief, MODIS land cover, and the tree line and shrub line drawn from the land-cover edges.
+- True colour: a daily MODIS Terra satellite photo, for real cloud, snow and haze context.
 - Snow cover over the last 8 days (MODIS).
 - Rivers and lakes (Natural Earth), and 15 river gauges comparing modelled flow (GloFAS) with the same days over the last 15 years.
 - Ground truth: METARs from airports in and near the mountains.
+
+**Hazards**
+- Earthquakes: USGS catalogue, magnitude 3+ in the last 30 days (India's own National Center for Seismology has no public API for this).
+- Flood extent: MODIS's near-real-time Global Flood Mapping product — observed surface water and flood, distinct from the modelled river discharge above.
 
 **Seasons (month selector)**
 - Typical snow cover for the month and the seasonal snow line per sector (MODIS monthly averages, last 3 years).
@@ -39,6 +45,9 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/land.py` | Terrain tiles, hillshade, MODIS land cover and snow via NASA GIBS, tree line edges, seasonal snow line |
 | `nowcast/water.py` | Natural Earth rivers and lakes, GloFAS gauges, METARs, places |
 | `nowcast/icimod.py` | ICIMOD ArcGIS REST layers (export images, legends, feature inventories) and VIIRS fires |
+| `nowcast/seismic.py` | USGS earthquake catalogue, restricted to the atlas's bounding box |
+| `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
+| `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 
 Radar extrapolation assumes storms keep their motion and strength. It is useful for about the first two hours; after that, compare it with the model rain layer.
 
@@ -63,8 +72,20 @@ python build.py
 
 Open `dist/index.html`. Static layers are cached in `cache/` after the first run (about 1 minute); later builds take about 30 seconds.
 
-## Data sources
+## Data sources and credits
 
-All free and keyless: [RainViewer](https://www.rainviewer.com/api.html), [Open-Meteo](https://open-meteo.com/) (forecast and flood APIs, non-commercial use), [NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/) (MODIS), [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/), [Natural Earth](https://www.naturalearthdata.com/), [aviationweather.gov](https://aviationweather.gov/data/api/), [ICIMOD](https://geoapps.icimod.org/icimodarcgis/rest/services) (Regional Database System and SERVIR-HKH).
+All free and keyless. Thanks to these providers, whose open data makes this atlas possible:
+
+- **[RainViewer](https://www.rainviewer.com/api.html)** — composite national radar mosaics.
+- **[Open-Meteo](https://open-meteo.com/)** — best-match forecast (pressure, rain, freezing level) and the Flood API (GloFAS discharge). Non-commercial use.
+- **[NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/)** (Global Imagery Browse Services, part of NASA EOSDIS) — MODIS land cover and snow cover, MODIS Terra true-colour imagery, VIIRS active-fire detections, MODIS Combined Flood extent, and GPM IMERG near-real-time precipitation.
+- **NASA/JAXA GPM mission** — IMERG (Integrated Multi-satellitE Retrievals for GPM) is a joint product of NASA's Global Precipitation Measurement mission and the Japan Aerospace Exploration Agency (JAXA).
+- **[USGS](https://earthquake.usgs.gov/fdsnws/event/1/)** (U.S. Geological Survey) — the earthquake catalogue.
+- **[AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)** — SRTM-based elevation.
+- **[Natural Earth](https://www.naturalearthdata.com/)** — river and lake vectors.
+- **[aviationweather.gov](https://aviationweather.gov/data/api/)** (NOAA) — airport METARs.
+- **[ICIMOD](https://geoapps.icimod.org/icimodarcgis/rest/services)** (International Centre for Integrated Mountain Development) — the Regional Database System and SERVIR-HKH thematic layers, inventories and station network.
 
 ICIMOD's Bhutan pastoral migration survey points include household names and ID numbers, so the atlas uses only the grazing-area maps from that service.
+
+None of the above requires a login. Two candidates were deliberately left out because they'd need one: India's National Center for Seismology (no public API, portal/app only) and JAXA's own GSMaP near-real-time feed (registration-gated; NASA/JAXA's IMERG via GIBS covers the same ground with no login needed).
