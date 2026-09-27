@@ -104,7 +104,7 @@ def make_frame() -> Frame:
 FRAME = make_frame()
 
 
-def get(url, params=None, timeout=60, tries=4, cache_key=None, max_age=None):
+def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None):
     """GET with retries. With cache_key, the body is cached on disk
     (forever, or for max_age seconds)."""
     path = None
@@ -119,7 +119,10 @@ def get(url, params=None, timeout=60, tries=4, cache_key=None, max_age=None):
             r = _session.get(url, params=params, timeout=timeout)
             if r.status_code == 404:
                 return None
-            if r.status_code == 429:
+            if r.status_code == 429 or r.status_code >= 500:
+                # Rate-limited or a transient upstream outage (Open-Meteo has
+                # returned occasional 503s): worth waiting out, not bailing.
+                last = f"{r.status_code} {r.reason}"
                 time.sleep(20 * (attempt + 1))
                 continue
             r.raise_for_status()
