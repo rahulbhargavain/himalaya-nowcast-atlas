@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import archive, icimod, land, model, radar, water
+from nowcast import archive, icimod, land, model, radar, seismic, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -223,6 +223,13 @@ def main():
         except Exception as e:  # one unavailable service shouldn't sink the page
             log(f"  ICIMOD {key} failed: {e}")
 
+    log("earthquakes")
+    try:
+        quakes = seismic.earthquakes()
+    except Exception as e:  # USGS being down shouldn't sink the page
+        log(f"  earthquakes failed: {e}")
+        quakes = []
+
     towns = town_timeline(places, frames_all, t_all, t0_index, g, t0)
     evs = events(towns, pressure, g, t0)
 
@@ -253,7 +260,7 @@ def main():
                  "season_snowline": season_line, "sectors": land.SECTORS},
         "water": {"rivers": rivers, "lakes": lakes, "small_lakes": small_lakes, "gauges": gauges},
         "stations": stations, "places": places, "towns": towns, "events": evs,
-        "fruits": FRUITS, "leopard": LEOPARD, "hkh": hkh,
+        "fruits": FRUITS, "leopard": LEOPARD, "hkh": hkh, "quakes": quakes,
     }
 
     tpl = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
@@ -279,7 +286,7 @@ def main():
     # Point-in-time record of this build, filed into the data branch by the workflow.
     archive.write_snapshot(os.path.join(HERE, "snapshot"), data, frames_all, t_all, t0_index, radar.STEP_MIN)
     log(f"wrote {args.out} ({len(html) / 1e6:.1f} MB): {len(r_times)} observed + {len(fc)} extrapolated frames, "
-        f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events")
+        f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events, {len(quakes)} quakes")
 
 
 if __name__ == "__main__":

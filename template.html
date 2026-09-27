@@ -222,6 +222,11 @@ body.tv .smalllake{display:none}
     </section>
 
     <section class="card">
+      <h2>Earthquakes</h2>
+      <p class="note">USGS earthquake catalogue (earthquake.usgs.gov), magnitude 3 and above in the last 30 days within the map's bounding box. India's own National Center for Seismology (seismo.gov.in) has no public API for this, only its own portal and app, so the global USGS feed is used instead. Circle size scales with magnitude; colour fades from recent (orange) to older (tan). Hover a marker for magnitude, depth and time.</p>
+    </section>
+
+    <section class="card">
       <h2>Rivers: flow against normal</h2>
       <div id="gauges"></div>
       <p class="note">Modelled discharge from GloFAS v4 (via the Open-Meteo Flood API), not a measured river stage. Grey band: 10th–90th percentile of the same calendar days over the last 15 years; line: last 60 days and 7-day forecast. Lake levels have no free live source, so lakes show extent only.</p>
@@ -311,7 +316,7 @@ const state = {
   month: store.get("month", nowMonth),
   layers: Object.assign({radar:true, model:false, pressure:true, snowline:true, stations:true,
     land:true, tree:true, snowRecent:false, water:true,
-    snowMonth:false, leopard:false, fruit:false, places:true}, store.get("layers", {})),
+    snowMonth:false, leopard:false, fruit:false, places:true, quakes:true}, store.get("layers", {})),
   fruitsOff: new Set(store.get("fruitsOff", [])),
   hkhTheme: store.get("hkhTheme", ""), hkhYear: store.get("hkhYear", -1), hkhOpacity: store.get("hkhOpacity", .75),
   hkhPts: Object.assign({pdgl:true, glof:false, hydro:false, landslides:false, met:false, fires:true}, store.get("hkhPts", {})),
@@ -320,7 +325,7 @@ const state = {
 if (TV) {
   // A fixed, glanceable set of layers; the viewer's saved choices don't apply on the TV.
   state.layers = {radar:true, model:false, pressure:true, snowline:true, stations:true, land:false, tree:false,
-    snowRecent:false, water:true, snowMonth:false, leopard:false, fruit:false, places:true};
+    snowRecent:false, water:true, snowMonth:false, leopard:false, fruit:false, places:true, quakes:true};
   state.hkhTheme = ""; state.hkhPts = {pdgl:false, glof:false, hydro:false, landslides:false, met:false, fires:true};
 }
 
@@ -467,8 +472,8 @@ function radarDbzAt(gx, gy){
 /* ---------------- SVG overlays ---------------- */
 const svg = $("#svg");
 svg.setAttribute("viewBox", `0 0 ${GW} ${GH}`);
-const gHKH = svgEl("g"), gWater = svgEl("g"), gPressure = svgEl("g"), gSnowline = svgEl("g"), gCells = svgEl("g"), gPlaces = svgEl("g"), gGauges = svgEl("g"), gStations = svgEl("g"), gFocus = svgEl("g");
-[gWater, gHKH, gPressure, gSnowline, gCells, gGauges, gPlaces, gStations, gFocus].forEach(g => svg.appendChild(g));
+const gHKH = svgEl("g"), gWater = svgEl("g"), gPressure = svgEl("g"), gSnowline = svgEl("g"), gCells = svgEl("g"), gPlaces = svgEl("g"), gGauges = svgEl("g"), gStations = svgEl("g"), gQuakes = svgEl("g"), gFocus = svgEl("g");
+[gWater, gHKH, gPressure, gSnowline, gCells, gGauges, gPlaces, gStations, gQuakes, gFocus].forEach(g => svg.appendChild(g));
 const marker = (x, y) => { const o = svgEl("g", {transform:`translate(${x.toFixed(1)},${y.toFixed(1)})`, class:"mk"}); const inner = svgEl("g", {class:"mki"}); o.appendChild(inner); return [o, inner]; };
 
 function buildWater(){
@@ -521,6 +526,20 @@ function buildPlaces(){
     gPlaces.appendChild(o);
   });
 }
+function buildQuakes(){
+  const now = D.generated;
+  (D.quakes || []).forEach(q => {
+    const [o, g] = marker(q.x, q.y);
+    const r = 3 + Math.max(0, (q.mag || 0) - 2) * 2.2;
+    const ageDays = q.t ? (now - q.t) / 86400 : 99;
+    const col = ageDays <= 1 ? "#d4541e" : ageDays <= 7 ? "#c47a3a" : "#a08a6a";
+    g.appendChild(svgEl("circle", {r:r.toFixed(1), fill:col, "fill-opacity":.28, stroke:col, "stroke-width":1.6}));
+    g.appendChild(svgEl("circle", {r:1.6, fill:col}));
+    const when = q.t ? new Date(q.t * 1000).toISOString().slice(0, 16).replace("T", " ") + "Z" : "?";
+    const t = svgEl("title"); t.textContent = `M${q.mag ?? "?"} · ${q.place || ""}\nDepth ${q.depth_km ?? "?"} km · ${when}`; o.appendChild(t);
+    gQuakes.appendChild(o);
+  });
+}
 function buildCells(){
   D.radar.cells.forEach(c => {
     const [o, g] = marker(c.x, c.y);
@@ -570,6 +589,7 @@ function syncOverlayVisibility(){
   gGauges.style.display = state.layers.water ? "" : "none";
   gStations.style.display = state.layers.stations ? "" : "none";
   gPlaces.style.display = state.layers.places ? "" : "none";
+  gQuakes.style.display = state.layers.quakes ? "" : "none";
   gCells.style.display = state.layers.radar && state.step === D.radar.t0_index ? "" : "none";
   $("#radarImg").style.display = state.layers.radar ? "" : "none";
 }
@@ -658,6 +678,7 @@ const LAYER_GROUPS = [
   ["weather", [["radar","Radar",[48,170,160]],["model","Model rain",[70,90,200]],["pressure","Pressure",[58,48,80]],["snowline","Snow line (hourly)",[29,79,115]],["stations","Airport reports",[31,42,46]]]],
   ["surface", [["land","Land cover",[46,92,54]],["tree","Tree & shrub line",[16,58,30]],["snowRecent","Snow, last 8 days",[200,225,240]],["water","Rivers, lakes, flow",[52,110,150]],["places","Towns",[31,42,46]]]],
   ["seasons", [["snowMonth","Typical snow for month",[200,225,240]],["leopard","Snow leopard band",[176,120,40]],["fruit","Fruiting belts",[196,32,40]]]],
+  ["hazards", [["quakes","Earthquakes (M3+, 30d)",[212,84,30]]]],
 ];
 function buildControls(){
   const c = $("#controls");
@@ -1039,6 +1060,7 @@ function buildMethod(){
     <span class="sc">stations</span><span>NOAA aviationweather.gov METARs.</span>
     <span class="sc">land</span><span>AWS Terrain Tiles (SRTM-based) for elevation and relief; MODIS MCD12Q1 IGBP land cover ${ld.lc_year}; MODIS Terra snow cover, daily ${ld.snow_dates[0] || ""} to ${ld.snow_dates[1] || ""} and monthly averages (NASA GIBS).</span>
     <span class="sc">water</span><span>Natural Earth 1:10m rivers and lakes; GloFAS v4 discharge via the Open-Meteo Flood API.</span>
+    <span class="sc">earthquakes</span><span>USGS earthquake catalogue, magnitude 3+ in the last 30 days. India's National Center for Seismology has no public API for this.</span>
     <span class="sc">ecology</span><span>Fruiting belts and the snow leopard band are elevation-and-land-cover models from published ranges, not survey records. They show where to expect something, not where it was seen.</span>
   </div>
   <p style="margin-top:8px">This page is a snapshot built at ${fmtIST(D.generated, {day:"numeric", month:"short"})} IST. Run <span class="mono">python build.py</span> in <span class="mono">himalaya-nowcast</span> to refresh it.</p>`;
@@ -1059,7 +1081,7 @@ async function boot(){
   fiArr = new Float32Array(N); fjArr = new Float32Array(N);
   const dLat = ML[1] - ML[0], dLon = MN[1] - MN[0];
   for (let y = 0; y < GH; y++) { const lat = gridToLonLat(0, y)[1]; for (let x = 0; x < GW; x++) { const i = y * GW + x; fiArr[i] = (lat - ML[0]) / dLat; fjArr[i] = (gridToLonLat(x, 0)[0] - MN[0]) / dLon; } }
-  buildWater(); buildHKHPoints(); buildGauges(); buildPlaces(); buildStations(); buildCells();
+  buildWater(); buildHKHPoints(); buildGauges(); buildPlaces(); buildStations(); buildCells(); buildQuakes();
   buildTowns(); buildEvents(); buildStations_(); buildGaugesPanel(); buildTree(); buildMethod(); buildStamp();
   setStep(state.step); applyView(); renderLegend();
   buildSnowChart(); buildCalendar(); buildLeoChart(); buildHKHPanel(); applyTheme();
