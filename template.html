@@ -170,11 +170,13 @@ body.tv .smalllake{display:none}
   <div class="mapbox" id="mapbox">
     <div class="stage" id="stage">
       <img class="shade" id="shadeImg" alt="Shaded relief of the Himalaya from Kashmir to Arunachal Pradesh">
+      <img id="trueColorImg" alt="" hidden>
       <canvas id="cvLand"></canvas>
       <img id="themeImg" alt="" hidden>
       <canvas id="cvSnow"></canvas>
       <canvas id="cvSeason"></canvas>
       <img id="fireImg" alt="" hidden>
+      <img id="floodImg" alt="" hidden>
       <canvas id="cvModel"></canvas>
       <img id="imergImg" alt="" hidden>
       <img id="radarImg" alt="">
@@ -230,6 +232,11 @@ body.tv .smalllake{display:none}
     <section class="card">
       <h2>Earthquakes</h2>
       <p class="note">USGS earthquake catalogue (earthquake.usgs.gov), magnitude 3 and above in the last 30 days within the map's bounding box. India's own National Center for Seismology (seismo.gov.in) has no public API for this, only its own portal and app, so the global USGS feed is used instead. Circle size scales with magnitude; colour fades from recent (orange) to older (tan). Hover a marker for magnitude, depth and time.</p>
+    </section>
+
+    <section class="card">
+      <h2>Satellite imagery and flood extent</h2>
+      <p class="note">True colour is a daily MODIS Terra photo (NASA GIBS), for real cloud, snow and haze context that neither the radar nor a precipitation layer can show. Flood extent is MODIS's near-real-time Global Flood Mapping product: observed surface water and flood, not the modelled river discharge shown elsewhere. Most of that product's frame is masked "insufficient data" and is hidden; only surface water, recurring flood and active flood pixels are drawn.</p>
     </section>
 
     <section class="card">
@@ -321,8 +328,8 @@ const state = {
   step: D.radar.t0_index,
   month: store.get("month", nowMonth),
   layers: Object.assign({radar:true, imerg:true, model:false, pressure:true, snowline:true, stations:true,
-    land:true, tree:true, snowRecent:false, water:true,
-    snowMonth:false, leopard:false, fruit:false, places:true, quakes:true}, store.get("layers", {})),
+    land:true, tree:true, snowRecent:false, water:true, truecolor:false,
+    snowMonth:false, leopard:false, fruit:false, places:true, quakes:true, flood:true}, store.get("layers", {})),
   fruitsOff: new Set(store.get("fruitsOff", [])),
   hkhTheme: store.get("hkhTheme", ""), hkhYear: store.get("hkhYear", -1), hkhOpacity: store.get("hkhOpacity", .75),
   legendCollapsed: store.get("legendCollapsed", false),
@@ -332,7 +339,7 @@ const state = {
 if (TV) {
   // A fixed, glanceable set of layers; the viewer's saved choices don't apply on the TV.
   state.layers = {radar:true, imerg:false, model:false, pressure:true, snowline:true, stations:true, land:false, tree:false,
-    snowRecent:false, water:true, snowMonth:false, leopard:false, fruit:false, places:true, quakes:true};
+    snowRecent:false, water:true, truecolor:false, snowMonth:false, leopard:false, fruit:false, places:true, quakes:true, flood:false};
   state.hkhTheme = ""; state.hkhPts = {pdgl:false, glof:false, hydro:false, landslides:false, met:false, fires:true};
 }
 
@@ -598,6 +605,8 @@ function syncOverlayVisibility(){
   gPlaces.style.display = state.layers.places ? "" : "none";
   gQuakes.style.display = state.layers.quakes ? "" : "none";
   $("#imergImg").hidden = !(state.layers.imerg && D.imerg && D.imerg.src);
+  $("#trueColorImg").hidden = !(state.layers.truecolor && D.truecolor && D.truecolor.src);
+  $("#floodImg").hidden = !(state.layers.flood && D.flood && D.flood.src);
   gCells.style.display = state.layers.radar && state.step === D.radar.t0_index ? "" : "none";
   $("#radarImg").style.display = state.layers.radar ? "" : "none";
 }
@@ -684,9 +693,9 @@ function readout(e){
 /* ---------------- controls ---------------- */
 const LAYER_GROUPS = [
   ["weather", [["radar","Radar",[48,170,160]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Model rain",[70,90,200]],["pressure","Pressure",[58,48,80]],["snowline","Snow line (hourly)",[29,79,115]],["stations","Airport reports",[31,42,46]]]],
-  ["surface", [["land","Land cover",[46,92,54]],["tree","Tree & shrub line",[16,58,30]],["snowRecent","Snow, last 8 days",[200,225,240]],["water","Rivers, lakes, flow",[52,110,150]],["places","Towns",[31,42,46]]]],
+  ["surface", [["truecolor","True colour photo",[120,140,100]],["land","Land cover",[46,92,54]],["tree","Tree & shrub line",[16,58,30]],["snowRecent","Snow, last 8 days",[200,225,240]],["water","Rivers, lakes, flow",[52,110,150]],["places","Towns",[31,42,46]]]],
   ["seasons", [["snowMonth","Typical snow for month",[200,225,240]],["leopard","Snow leopard band",[176,120,40]],["fruit","Fruiting belts",[196,32,40]]]],
-  ["hazards", [["quakes","Earthquakes (M3+, 30d)",[212,84,30]]]],
+  ["hazards", [["quakes","Earthquakes (M3+, 30d)",[212,84,30]],["flood","Flood extent (MODIS)",[70,170,220]]]],
 ];
 function buildControls(){
   const c = $("#controls");
@@ -1078,6 +1087,7 @@ function buildMethod(){
     <span class="sc">land</span><span>AWS Terrain Tiles (SRTM-based) for elevation and relief; MODIS MCD12Q1 IGBP land cover ${ld.lc_year}; MODIS Terra snow cover, daily ${ld.snow_dates[0] || ""} to ${ld.snow_dates[1] || ""} and monthly averages (NASA GIBS).</span>
     <span class="sc">water</span><span>Natural Earth 1:10m rivers and lakes; GloFAS v4 discharge via the Open-Meteo Flood API.</span>
     <span class="sc">earthquakes</span><span>USGS earthquake catalogue, magnitude 3+ in the last 30 days. India's National Center for Seismology has no public API for this.</span>
+    <span class="sc">satellite imagery</span><span>MODIS Terra true colour and MODIS Combined Flood (1-day), both via NASA GIBS's public WMS.</span>
     <span class="sc">ecology</span><span>Fruiting belts and the snow leopard band are elevation-and-land-cover models from published ranges, not survey records. They show where to expect something, not where it was seen.</span>
   </div>
   <p style="margin-top:8px">This page is a snapshot built at ${fmtIST(D.generated, {day:"numeric", month:"short"})} IST. Run <span class="mono">python build.py</span> in <span class="mono">himalaya-nowcast</span> to refresh it.</p>`;
@@ -1094,6 +1104,8 @@ async function boot(){
   buildControls(); buildHKHControls(); buildTrack(); buildMonths();
   $("#shadeImg").src = D.images.shade;
   if (D.imerg && D.imerg.src) { $("#imergImg").src = D.imerg.src; $("#imergImg").hidden = !state.layers.imerg; }
+  if (D.truecolor && D.truecolor.src) { $("#trueColorImg").src = D.truecolor.src; $("#trueColorImg").hidden = !state.layers.truecolor; }
+  if (D.flood && D.flood.src) { $("#floodImg").src = D.flood.src; $("#floodImg").hidden = !state.layers.flood; }
   ctxLand = setupCanvas("#cvLand"); ctxSnow = setupCanvas("#cvSnow"); ctxSeason = setupCanvas("#cvSeason"); ctxModel = setupCanvas("#cvModel"); ctxLines = setupCanvas("#cvLines");
   // Per-pixel fractional model-grid indices, computed once.
   fiArr = new Float32Array(N); fjArr = new Float32Array(N);
