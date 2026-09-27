@@ -171,6 +171,7 @@ body.tv .smalllake{display:none}
       <canvas id="cvSeason"></canvas>
       <img id="fireImg" alt="" hidden>
       <canvas id="cvModel"></canvas>
+      <img id="imergImg" alt="" hidden>
       <img id="radarImg" alt="">
       <canvas id="cvLines"></canvas>
       <svg id="svg" preserveAspectRatio="none"></svg>
@@ -314,7 +315,7 @@ const nowMonth = new Date(D.generated * 1000).getMonth();
 const state = {
   step: D.radar.t0_index,
   month: store.get("month", nowMonth),
-  layers: Object.assign({radar:true, model:false, pressure:true, snowline:true, stations:true,
+  layers: Object.assign({radar:true, imerg:true, model:false, pressure:true, snowline:true, stations:true,
     land:true, tree:true, snowRecent:false, water:true,
     snowMonth:false, leopard:false, fruit:false, places:true, quakes:true}, store.get("layers", {})),
   fruitsOff: new Set(store.get("fruitsOff", [])),
@@ -324,7 +325,7 @@ const state = {
 };
 if (TV) {
   // A fixed, glanceable set of layers; the viewer's saved choices don't apply on the TV.
-  state.layers = {radar:true, model:false, pressure:true, snowline:true, stations:true, land:false, tree:false,
+  state.layers = {radar:true, imerg:false, model:false, pressure:true, snowline:true, stations:true, land:false, tree:false,
     snowRecent:false, water:true, snowMonth:false, leopard:false, fruit:false, places:true, quakes:true};
   state.hkhTheme = ""; state.hkhPts = {pdgl:false, glof:false, hydro:false, landslides:false, met:false, fires:true};
 }
@@ -590,6 +591,7 @@ function syncOverlayVisibility(){
   gStations.style.display = state.layers.stations ? "" : "none";
   gPlaces.style.display = state.layers.places ? "" : "none";
   gQuakes.style.display = state.layers.quakes ? "" : "none";
+  $("#imergImg").hidden = !(state.layers.imerg && D.imerg && D.imerg.src);
   gCells.style.display = state.layers.radar && state.step === D.radar.t0_index ? "" : "none";
   $("#radarImg").style.display = state.layers.radar ? "" : "none";
 }
@@ -675,7 +677,7 @@ function readout(e){
 
 /* ---------------- controls ---------------- */
 const LAYER_GROUPS = [
-  ["weather", [["radar","Radar",[48,170,160]],["model","Model rain",[70,90,200]],["pressure","Pressure",[58,48,80]],["snowline","Snow line (hourly)",[29,79,115]],["stations","Airport reports",[31,42,46]]]],
+  ["weather", [["radar","Radar",[48,170,160]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Model rain",[70,90,200]],["pressure","Pressure",[58,48,80]],["snowline","Snow line (hourly)",[29,79,115]],["stations","Airport reports",[31,42,46]]]],
   ["surface", [["land","Land cover",[46,92,54]],["tree","Tree & shrub line",[16,58,30]],["snowRecent","Snow, last 8 days",[200,225,240]],["water","Rivers, lakes, flow",[52,110,150]],["places","Towns",[31,42,46]]]],
   ["seasons", [["snowMonth","Typical snow for month",[200,225,240]],["leopard","Snow leopard band",[176,120,40]],["fruit","Fruiting belts",[196,32,40]]]],
   ["hazards", [["quakes","Earthquakes (M3+, 30d)",[212,84,30]]]],
@@ -1055,6 +1057,7 @@ function buildMethod(){
   $("#method").innerHTML = `
   <div class="kv">
     <span class="sc">radar</span><span>RainViewer composite (national radars), ${frames.filter(f => f.obs).length} frames at ${D.step_min}-minute spacing, decoded to dBZ with RainViewer's colour table.</span>
+    <span class="sc">satellite rain</span><span>NASA/JAXA GPM IMERG near-real-time precipitation rate, via NASA GIBS's public WMS (no login needed).${D.imerg && D.imerg.t ? ` Latest frame: ${new Date(D.imerg.t * 1000).toISOString().slice(0, 16).replace("T", " ")}Z.` : " No frame available for this build."} Fills in where the ground radar mosaic has no coverage (most of the Himalaya itself), at coarser resolution.</span>
     <span class="sc">extrapolation</span><span>OpenCV DIS optical flow between consecutive frames, smoothed and blended with the model's 500/700 hPa steering wind where there is no echo, then carried forward by semi-Lagrangian advection for 8 hours. Small cells are blurred with lead time. It can't start or end storms, so beyond about two hours treat it as a sketch and compare with model rain.</span>
     <span class="sc">model</span><span>Open-Meteo best-match forecast on a 0.75° grid: MSL pressure (not drawn above 2,500 m, where it is an extrapolation), hourly rain, and freezing level. Snow line = freezing level − ${M.snow_offset} m.</span>
     <span class="sc">stations</span><span>NOAA aviationweather.gov METARs.</span>
@@ -1076,6 +1079,7 @@ function buildStamp(){
 async function boot(){
   buildControls(); buildHKHControls(); buildTrack(); buildMonths();
   $("#shadeImg").src = D.images.shade;
+  if (D.imerg && D.imerg.src) { $("#imergImg").src = D.imerg.src; $("#imergImg").hidden = !state.layers.imerg; }
   ctxLand = setupCanvas("#cvLand"); ctxSnow = setupCanvas("#cvSnow"); ctxSeason = setupCanvas("#cvSeason"); ctxModel = setupCanvas("#cvModel"); ctxLines = setupCanvas("#cvLines");
   // Per-pixel fractional model-grid indices, computed once.
   fiArr = new Float32Array(N); fjArr = new Float32Array(N);

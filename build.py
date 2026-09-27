@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import archive, icimod, land, model, radar, seismic, water
+from nowcast import archive, icimod, land, model, radar, satrain, seismic, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -230,6 +230,13 @@ def main():
         log(f"  earthquakes failed: {e}")
         quakes = []
 
+    log("satellite rainfall (IMERG)")
+    try:
+        imerg = satrain.latest()
+    except Exception as e:  # GIBS being down shouldn't sink the page
+        log(f"  IMERG failed: {e}")
+        imerg = {"src": None, "t": None}
+
     towns = town_timeline(places, frames_all, t_all, t0_index, g, t0)
     evs = events(towns, pressure, g, t0)
 
@@ -249,6 +256,7 @@ def main():
         "frame": {"w": FRAME.w, "h": FRAME.h, "gw": FRAME.gw, "gh": FRAME.gh,
                   "x0": FRAME.x0, "y0": FRAME.y0, "bbox": [72, 26, 97, 37]},
         "images": {"shade": jpg_uri(shade), "terrain": terrain_png, "aux": aux_png, "snow_month": month_pngs},
+        "imerg": imerg,
         "radar": {"frames": radar_frames, "t0_index": t0_index, "cells": cells, "motion": motion,
                   "dbz_stops": radar.DBZ_STOPS.tolist(), "dbz_rgba": radar.DBZ_RGBA.tolist()},
         "model": {"times": [int(t) for t in g["times"]], "lats": g["lats"].tolist(), "lons": g["lons"].tolist(),
@@ -286,7 +294,8 @@ def main():
     # Point-in-time record of this build, filed into the data branch by the workflow.
     archive.write_snapshot(os.path.join(HERE, "snapshot"), data, frames_all, t_all, t0_index, radar.STEP_MIN)
     log(f"wrote {args.out} ({len(html) / 1e6:.1f} MB): {len(r_times)} observed + {len(fc)} extrapolated frames, "
-        f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events, {len(quakes)} quakes")
+        f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events, {len(quakes)} quakes, "
+        f"IMERG {'ok' if imerg['src'] else 'unavailable'}")
 
 
 if __name__ == "__main__":
