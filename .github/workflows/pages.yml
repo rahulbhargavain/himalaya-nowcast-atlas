@@ -41,6 +41,10 @@ jobs:
           restore-keys: atlas-cache-
 
       - run: python build.py && rm -f dist/artifact.html
+        env:
+          # NASA Earthdata Login bearer token, for the Sentinel-5P NO2 layer
+          # (GES DISC). The layer is skipped, not fatal, if this is unset.
+          EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}
 
       # Point-in-time archive: file this build's snapshot into the data branch.
       - name: Check out the archive branch

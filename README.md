@@ -22,6 +22,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 **Hazards**
 - Earthquakes: USGS catalogue, magnitude 3+ in the last 30 days (India's own National Center for Seismology has no public API for this).
 - Flood extent: MODIS's near-real-time Global Flood Mapping product — observed surface water and flood, distinct from the modelled river discharge above.
+- Air quality: tropospheric NO2 from Sentinel-5P TROPOMI (ESA/NASA), the most recent one or two orbit segments over the map. Needs a NASA Earthdata Login token (see below); skipped, not fatal, if none is configured.
 
 **Seasons (month selector)**
 - Typical snow cover for the month and the seasonal snow line per sector (MODIS monthly averages, last 3 years).
@@ -48,6 +49,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/seismic.py` | USGS earthquake catalogue, restricted to the atlas's bounding box |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
+| `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2 via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
 
 Radar extrapolation assumes storms keep their motion and strength. It is useful for about the first two hours; after that, compare it with the model rain layer.
 
@@ -72,14 +74,17 @@ python build.py
 
 Open `dist/index.html`. Static layers are cached in `cache/` after the first run (about 1 minute); later builds take about 30 seconds.
 
+The NO2 layer needs a free [NASA Earthdata Login](https://urs.earthdata.nasa.gov/) token, set as the `EARTHDATA_TOKEN` environment variable (a GitHub Actions repository secret for the live build). Without it, the layer is silently skipped. Generate a token from your Earthdata profile page, and approve the GES DISC data-download app once at `https://urs.earthdata.nasa.gov/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ` (a one-time step per account; the token itself doesn't imply that approval).
+
 ## Data sources and credits
 
-All free and keyless. Thanks to these providers, whose open data makes this atlas possible:
+All free; all but one keyless (the NO2 layer needs a free Earthdata login, see above). Thanks to these providers, whose open data makes this atlas possible:
 
 - **[RainViewer](https://www.rainviewer.com/api.html)** — composite national radar mosaics.
 - **[Open-Meteo](https://open-meteo.com/)** — best-match forecast (pressure, rain, freezing level) and the Flood API (GloFAS discharge). Non-commercial use.
 - **[NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/)** (Global Imagery Browse Services, part of NASA EOSDIS) — MODIS land cover and snow cover, MODIS Terra true-colour imagery, VIIRS active-fire detections, MODIS Combined Flood extent, and GPM IMERG near-real-time precipitation.
 - **NASA/JAXA GPM mission** — IMERG (Integrated Multi-satellitE Retrievals for GPM) is a joint product of NASA's Global Precipitation Measurement mission and the Japan Aerospace Exploration Agency (JAXA).
+- **[NASA GES DISC](https://disc.gsfc.nasa.gov/)** and **[Copernicus Sentinel-5P](https://sentinels.copernicus.eu/web/sentinel/copernicus/sentinel-5p)** (ESA) — TROPOMI tropospheric NO2, redistributed by NASA under its agreement with the European Commission/ESA. `Contains modified Copernicus Sentinel data`, per the Sentinel data licence.
 - **[USGS](https://earthquake.usgs.gov/fdsnws/event/1/)** (U.S. Geological Survey) — the earthquake catalogue.
 - **[AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)** — SRTM-based elevation.
 - **[Natural Earth](https://www.naturalearthdata.com/)** — river and lake vectors.

@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import archive, icimod, land, model, radar, satimg, satrain, seismic, water
+from nowcast import airquality, archive, icimod, land, model, radar, satimg, satrain, seismic, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -249,6 +249,13 @@ def main():
         log(f"  flood extent failed: {e}")
         flood = {"src": None, "pixels": 0}
 
+    log("air quality (Sentinel-5P NO2)")
+    try:
+        no2 = airquality.latest()
+    except Exception as e:
+        log(f"  NO2 failed: {e}")
+        no2 = {"src": None, "pixels": 0, "t": None}
+
     towns = town_timeline(places, frames_all, t_all, t0_index, g, t0)
     evs = events(towns, pressure, g, t0)
 
@@ -268,7 +275,7 @@ def main():
         "frame": {"w": FRAME.w, "h": FRAME.h, "gw": FRAME.gw, "gh": FRAME.gh,
                   "x0": FRAME.x0, "y0": FRAME.y0, "bbox": [72, 26, 97, 37]},
         "images": {"shade": jpg_uri(shade), "terrain": terrain_png, "aux": aux_png, "snow_month": month_pngs},
-        "imerg": imerg, "truecolor": truecolor, "flood": flood,
+        "imerg": imerg, "truecolor": truecolor, "flood": flood, "no2": no2,
         "radar": {"frames": radar_frames, "t0_index": t0_index, "cells": cells, "motion": motion,
                   "dbz_stops": radar.DBZ_STOPS.tolist(), "dbz_rgba": radar.DBZ_RGBA.tolist()},
         "model": {"times": [int(t) for t in g["times"]], "lats": g["lats"].tolist(), "lons": g["lons"].tolist(),
@@ -308,7 +315,7 @@ def main():
     log(f"wrote {args.out} ({len(html) / 1e6:.1f} MB): {len(r_times)} observed + {len(fc)} extrapolated frames, "
         f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events, {len(quakes)} quakes, "
         f"IMERG {'ok' if imerg['src'] else 'unavailable'}, true colour {'ok' if truecolor['src'] else 'unavailable'}, "
-        f"flood {flood['pixels']} px")
+        f"flood {flood['pixels']} px, NO2 {no2['pixels']} px")
 
 
 if __name__ == "__main__":

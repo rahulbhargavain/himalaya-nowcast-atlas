@@ -177,6 +177,7 @@ body.tv .smalllake{display:none}
       <canvas id="cvSeason"></canvas>
       <img id="fireImg" alt="" hidden>
       <img id="floodImg" alt="" hidden>
+      <img id="no2Img" alt="" hidden>
       <canvas id="cvModel"></canvas>
       <img id="imergImg" alt="" hidden>
       <img id="radarImg" alt="">
@@ -237,6 +238,11 @@ body.tv .smalllake{display:none}
     <section class="card">
       <h2>Satellite imagery and flood extent</h2>
       <p class="note">True colour is a daily MODIS Terra photo (NASA GIBS), for real cloud, snow and haze context that neither the radar nor a precipitation layer can show. Flood extent is MODIS's near-real-time Global Flood Mapping product: observed surface water and flood, not the modelled river discharge shown elsewhere. Most of that product's frame is masked "insufficient data" and is hidden; only surface water, recurring flood and active flood pixels are drawn.</p>
+    </section>
+
+    <section class="card">
+      <h2>Air quality</h2>
+      <p class="note">Tropospheric NO2 from Sentinel-5P TROPOMI (a joint ESA/NASA instrument), fetched from NASA GES DISC with the most recent one or two orbit segments that crossed the map. Coverage is whatever the satellite happened to see on its last daytime pass, so gaps and stripes are normal, not a bug. Low-quality retrievals (qa_value below 0.5) are dropped before drawing. Colour scales from pale yellow (background) through orange and red (urban/industrial) to deep red (heavy pollution or a large fire's NO2 plume).</p>
     </section>
 
     <section class="card">
@@ -329,7 +335,7 @@ const state = {
   month: store.get("month", nowMonth),
   layers: Object.assign({radar:true, imerg:true, model:false, pressure:true, snowline:true, stations:true,
     land:true, tree:true, snowRecent:false, water:true, truecolor:false,
-    snowMonth:false, leopard:false, fruit:false, places:true, quakes:true, flood:true}, store.get("layers", {})),
+    snowMonth:false, leopard:false, fruit:false, places:true, quakes:true, flood:true, no2:false}, store.get("layers", {})),
   fruitsOff: new Set(store.get("fruitsOff", [])),
   hkhTheme: store.get("hkhTheme", ""), hkhYear: store.get("hkhYear", -1), hkhOpacity: store.get("hkhOpacity", .75),
   legendCollapsed: store.get("legendCollapsed", false),
@@ -339,7 +345,7 @@ const state = {
 if (TV) {
   // A fixed, glanceable set of layers; the viewer's saved choices don't apply on the TV.
   state.layers = {radar:true, imerg:false, model:false, pressure:true, snowline:true, stations:true, land:false, tree:false,
-    snowRecent:false, water:true, truecolor:false, snowMonth:false, leopard:false, fruit:false, places:true, quakes:true, flood:false};
+    snowRecent:false, water:true, truecolor:false, snowMonth:false, leopard:false, fruit:false, places:true, quakes:true, flood:false, no2:false};
   state.hkhTheme = ""; state.hkhPts = {pdgl:false, glof:false, hydro:false, landslides:false, met:false, fires:true};
 }
 
@@ -607,6 +613,7 @@ function syncOverlayVisibility(){
   $("#imergImg").hidden = !(state.layers.imerg && D.imerg && D.imerg.src);
   $("#trueColorImg").hidden = !(state.layers.truecolor && D.truecolor && D.truecolor.src);
   $("#floodImg").hidden = !(state.layers.flood && D.flood && D.flood.src);
+  $("#no2Img").hidden = !(state.layers.no2 && D.no2 && D.no2.src);
   gCells.style.display = state.layers.radar && state.step === D.radar.t0_index ? "" : "none";
   $("#radarImg").style.display = state.layers.radar ? "" : "none";
 }
@@ -695,7 +702,7 @@ const LAYER_GROUPS = [
   ["weather", [["radar","Radar",[48,170,160]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Model rain",[70,90,200]],["pressure","Pressure",[58,48,80]],["snowline","Snow line (hourly)",[29,79,115]],["stations","Airport reports",[31,42,46]]]],
   ["surface", [["truecolor","True colour photo",[120,140,100]],["land","Land cover",[46,92,54]],["tree","Tree & shrub line",[16,58,30]],["snowRecent","Snow, last 8 days",[200,225,240]],["water","Rivers, lakes, flow",[52,110,150]],["places","Towns",[31,42,46]]]],
   ["seasons", [["snowMonth","Typical snow for month",[200,225,240]],["leopard","Snow leopard band",[176,120,40]],["fruit","Fruiting belts",[196,32,40]]]],
-  ["hazards", [["quakes","Earthquakes (M3+, 30d)",[212,84,30]],["flood","Flood extent (MODIS)",[70,170,220]]]],
+  ["hazards", [["quakes","Earthquakes (M3+, 30d)",[212,84,30]],["flood","Flood extent (MODIS)",[70,170,220]],["no2","NO2 air quality (Sentinel-5P)",[240,59,32]]]],
 ];
 function buildControls(){
   const c = $("#controls");
@@ -1088,6 +1095,7 @@ function buildMethod(){
     <span class="sc">water</span><span>Natural Earth 1:10m rivers and lakes; GloFAS v4 discharge via the Open-Meteo Flood API.</span>
     <span class="sc">earthquakes</span><span>USGS earthquake catalogue, magnitude 3+ in the last 30 days. India's National Center for Seismology has no public API for this.</span>
     <span class="sc">satellite imagery</span><span>MODIS Terra true colour and MODIS Combined Flood (1-day), both via NASA GIBS's public WMS.</span>
+    <span class="sc">air quality</span><span>Sentinel-5P TROPOMI tropospheric NO2 (ESA/NASA), via NASA GES DISC.${D.no2 && D.no2.t ? ` Latest orbit segment: ${new Date(D.no2.t * 1000).toISOString().slice(0, 16).replace("T", " ")}Z.` : ""}</span>
     <span class="sc">ecology</span><span>Fruiting belts and the snow leopard band are elevation-and-land-cover models from published ranges, not survey records. They show where to expect something, not where it was seen.</span>
   </div>
   <p style="margin-top:8px">This page is a snapshot built at ${fmtIST(D.generated, {day:"numeric", month:"short"})} IST. Run <span class="mono">python build.py</span> in <span class="mono">himalaya-nowcast</span> to refresh it.</p>`;
@@ -1106,6 +1114,7 @@ async function boot(){
   if (D.imerg && D.imerg.src) { $("#imergImg").src = D.imerg.src; $("#imergImg").hidden = !state.layers.imerg; }
   if (D.truecolor && D.truecolor.src) { $("#trueColorImg").src = D.truecolor.src; $("#trueColorImg").hidden = !state.layers.truecolor; }
   if (D.flood && D.flood.src) { $("#floodImg").src = D.flood.src; $("#floodImg").hidden = !state.layers.flood; }
+  if (D.no2 && D.no2.src) { $("#no2Img").src = D.no2.src; $("#no2Img").hidden = !state.layers.no2; }
   ctxLand = setupCanvas("#cvLand"); ctxSnow = setupCanvas("#cvSnow"); ctxSeason = setupCanvas("#cvSeason"); ctxModel = setupCanvas("#cvModel"); ctxLines = setupCanvas("#cvLines");
   // Per-pixel fractional model-grid indices, computed once.
   fiArr = new Float32Array(N); fjArr = new Float32Array(N);
