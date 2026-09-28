@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import airquality, archive, icimod, land, model, radar, satimg, satrain, seismic, water
+from nowcast import airquality, archive, icimod, imd_nowcast, land, model, radar, satimg, satrain, seismic, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -230,6 +230,14 @@ def main():
         log(f"  earthquakes failed: {e}")
         quakes = []
 
+    log("IMD nowcast (district + station warnings)")
+    try:
+        imd_districts = imd_nowcast.districts()
+        imd_stations = imd_nowcast.stations()
+    except Exception as e:  # IMD's GeoServer being down shouldn't sink the page
+        log(f"  IMD nowcast failed: {e}")
+        imd_districts, imd_stations = [], []
+
     log("satellite rainfall (IMERG)")
     try:
         imerg = satrain.latest()
@@ -288,6 +296,7 @@ def main():
         "water": {"rivers": rivers, "lakes": lakes, "small_lakes": small_lakes, "gauges": gauges},
         "stations": stations, "places": places, "towns": towns, "events": evs,
         "fruits": FRUITS, "leopard": LEOPARD, "hkh": hkh, "quakes": quakes,
+        "imd_nowcast": {"districts": imd_districts, "stations": imd_stations},
     }
 
     tpl = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
@@ -316,7 +325,8 @@ def main():
         f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events, {len(quakes)} quakes, "
         f"IMERG {'ok' if imerg['src'] else 'unavailable'}, true colour {'ok' if truecolor['src'] else 'unavailable'}, "
         f"flood {flood['pixels']} px, "
-        f"NO2 {aq['no2']['pixels']} px, CO {aq['co']['pixels']} px, UVAI {aq['uvai']['pixels']} px")
+        f"NO2 {aq['no2']['pixels']} px, CO {aq['co']['pixels']} px, UVAI {aq['uvai']['pixels']} px, "
+        f"IMD nowcast {len(imd_districts)} districts / {len(imd_stations)} stations")
 
 
 if __name__ == "__main__":

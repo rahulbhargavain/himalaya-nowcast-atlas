@@ -22,6 +22,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 **Hazards**
 - Earthquakes: USGS catalogue, magnitude 3+ in the last 30 days (India's own National Center for Seismology has no public API for this).
 - Flood extent: MODIS's near-real-time Global Flood Mapping product — observed surface water and flood, distinct from the modelled river discharge above.
+- IMD nowcast: India Meteorological Department's own official short-term (~3-hour) severe-weather warnings, by district and station — a green/yellow/orange/red watch-alert-warning colour code plus IMD's own message text when active, from IMD's public GeoServer.
 - Air quality: NO2, CO and UV Aerosol Index from Sentinel-5P TROPOMI (ESA/NASA), the most recent one or two orbit segments over the map. UVAI works through thin cloud, unlike the gas retrievals. Needs a NASA Earthdata Login token (see below); skipped, not fatal, if none is configured.
 
 **Seasons (month selector)**
@@ -47,6 +48,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/water.py` | Natural Earth rivers and lakes, GloFAS gauges, METARs, places |
 | `nowcast/icimod.py` | ICIMOD ArcGIS REST layers (export images, legends, feature inventories) and VIIRS fires |
 | `nowcast/seismic.py` | USGS earthquake catalogue, restricted to the atlas's bounding box |
+| `nowcast/imd_nowcast.py` | IMD's own district and station nowcast warnings, via IMD's public GeoServer WFS |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 | `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2, CO and UV Aerosol Index via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
@@ -86,6 +88,7 @@ All free; all but one keyless (the air-quality layers need a free Earthdata logi
 - **NASA/JAXA GPM mission** — IMERG (Integrated Multi-satellitE Retrievals for GPM) is a joint product of NASA's Global Precipitation Measurement mission and the Japan Aerospace Exploration Agency (JAXA).
 - **[NASA GES DISC](https://disc.gsfc.nasa.gov/)** and **[Copernicus Sentinel-5P](https://sentinels.copernicus.eu/web/sentinel/copernicus/sentinel-5p)** (ESA) — TROPOMI NO2, CO and UV Aerosol Index, redistributed by NASA under its agreement with the European Commission/ESA. `Contains modified Copernicus Sentinel data`, per the Sentinel data licence.
 - **[USGS](https://earthquake.usgs.gov/fdsnws/event/1/)** (U.S. Geological Survey) — the earthquake catalogue.
+- **[India Meteorological Department](https://mausam.imd.gov.in/)** — district and station nowcast severe-weather warnings, via IMD's public GeoServer.
 - **[AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)** — SRTM-based elevation.
 - **[Natural Earth](https://www.naturalearthdata.com/)** — river and lake vectors.
 - **[aviationweather.gov](https://aviationweather.gov/data/api/)** (NOAA) — airport METARs.
