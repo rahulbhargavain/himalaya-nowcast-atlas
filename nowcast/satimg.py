@@ -10,13 +10,16 @@ WMS (the same endpoint the fire and IMERG-rain layers already use):
     "Insufficient Data" grey - that class is dropped so only the
     meaningful classes (surface water, recurring flood, flood) show.
 
-Both layers default to the latest available date automatically when no
-TIME parameter is given, so no fallback stepping is needed (unlike IMERG,
-whose near-real-time granules lag the WMS's advertised default).
+Both are daily composites, explicitly requested for *yesterday* (UTC)
+rather than GIBS's "today" default: today's mosaic is still being
+assembled through the day and is often only half-covered (a large black
+diagonal gap on the not-yet-imaged side for true colour), while
+yesterday is always a complete, final composite.
 """
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import io
 
 import numpy as np
@@ -24,6 +27,8 @@ from PIL import Image
 
 from .geo import FRAME, get
 from .land import GIBS_WMS
+
+DAY_S = 86400
 
 TRUE_COLOR_LAYER = "MODIS_Terra_CorrectedReflectance_TrueColor"
 FLOOD_LAYER = "MODIS_Combined_Flood_1-Day"
@@ -45,12 +50,18 @@ def _png(arr):
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def _yesterday():
+    return (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)).isoformat()
+
+
 def true_color():
     minx, miny, maxx, maxy = FRAME.merc_bbox()
+    day = _yesterday()
     body = get(GIBS_WMS, params=dict(SERVICE="WMS", REQUEST="GetMap", VERSION="1.3.0",
-                                     LAYERS=TRUE_COLOR_LAYER, STYLES="", CRS="EPSG:3857",
+                                     LAYERS=TRUE_COLOR_LAYER, STYLES="", CRS="EPSG:3857", TIME=day,
                                      BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=FRAME.gw, HEIGHT=FRAME.gh,
-                                     FORMAT="image/jpeg", TRANSPARENT="FALSE"), timeout=90)
+                                     FORMAT="image/jpeg", TRANSPARENT="FALSE"), timeout=90,
+              cache_key=f"gibs/truecolor_{day}.jpg", max_age=2 * DAY_S)
     if not body:
         return {"src": None}
     return {"src": "data:image/jpeg;base64," + base64.b64encode(body).decode()}
@@ -58,10 +69,12 @@ def true_color():
 
 def flood_extent():
     minx, miny, maxx, maxy = FRAME.merc_bbox()
+    day = _yesterday()
     body = get(GIBS_WMS, params=dict(SERVICE="WMS", REQUEST="GetMap", VERSION="1.3.0",
-                                     LAYERS=FLOOD_LAYER, STYLES="", CRS="EPSG:3857",
+                                     LAYERS=FLOOD_LAYER, STYLES="", CRS="EPSG:3857", TIME=day,
                                      BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=FRAME.gw, HEIGHT=FRAME.gh,
-                                     FORMAT="image/png", TRANSPARENT="TRUE"), timeout=90)
+                                     FORMAT="image/png", TRANSPARENT="TRUE"), timeout=90,
+              cache_key=f"gibs/flood_{day}.png", max_age=2 * DAY_S)
     if not body:
         return {"src": None, "pixels": 0}
     a = np.asarray(Image.open(io.BytesIO(body)).convert("RGBA")).copy()
