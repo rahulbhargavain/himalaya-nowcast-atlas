@@ -160,7 +160,7 @@ body.tv .smalllake{display:none}
   <header class="top">
     <div>
       <h1>Himalaya Nowcast Atlas</h1>
-      <div class="sub">Radar tracked forward by optical flow for eight hours, the model's pressure, rain and snow line, live airport reports, river flow, and the seasonal shape of the mountains: tree line, snow, snow leopard range and fruiting belts. Kashmir to Arunachal, 72–97°E.</div>
+      <div class="sub">Radar tracked forward by optical flow for eight hours, the model's pressure, rain and snow line, live airport reports, river flow, and the seasonal shape of the mountains: tree line, snow, snow leopard range and fruiting belts. Kashmir to Arunachal, 72–97°E. <a href="kumaon/">Kumaon nowcast →</a></div>
     </div>
     <div class="stamp" id="stamp"></div>
   </header>
@@ -569,6 +569,7 @@ const IMD_LABELS = {1:"No warning", 2:"Watch", 3:"Alert", 4:"Warning"};
 function imdTitle(r, place){
   const when = r.t ? new Date(r.t * 1000).toISOString().slice(0, 16).replace("T", " ") + "Z" : "?";
   let s = `${place} · ${IMD_LABELS[r.color] || "?"}`;
+  if (r.hazards && r.hazards.length) s += `\n${r.hazards.join("; ")}`;
   if (r.message) s += `\n${r.message}`;
   if (r.toi && r.vupto) s += `\nValid ${r.toi.padStart(4,"0")}–${r.vupto.padStart(4,"0")} IST`;
   s += `\n${r.mc ? "MC " + r.mc + " · " : ""}updated ${when}`;

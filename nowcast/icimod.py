@@ -246,19 +246,19 @@ def points():
     return out
 
 
-def live_fires(days=2):
+def live_fires(days=2, frame=FRAME):
     """VIIRS (Suomi NPP + NOAA-20) thermal anomalies for the last `days`
     days, as an RGBA overlay from NASA GIBS, plus the dates used."""
     from .land import GIBS_WMS
-    minx, miny, maxx, maxy = FRAME.merc_bbox()
-    acc = np.zeros((FRAME.gh, FRAME.gw, 4), np.uint8)
+    minx, miny, maxx, maxy = frame.merc_bbox()
+    acc = np.zeros((frame.gh, frame.gw, 4), np.uint8)
     used = []
     today = dt.datetime.now(dt.timezone.utc).date()
     for back in range(0, days + 1):
         d = today - dt.timedelta(days=back)
         for layer in ("VIIRS_SNPP_Thermal_Anomalies_375m_All", "VIIRS_NOAA20_Thermal_Anomalies_375m_All"):
             body = get(GIBS_WMS, params=dict(SERVICE="WMS", REQUEST="GetMap", VERSION="1.3.0", LAYERS=layer, STYLES="",
-                                             CRS="EPSG:3857", BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=FRAME.gw, HEIGHT=FRAME.gh,
+                                             CRS="EPSG:3857", BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=frame.gw, HEIGHT=frame.gh,
                                              FORMAT="image/png", TRANSPARENT="TRUE", TIME=d.isoformat()), timeout=120)
             if not body:
                 continue

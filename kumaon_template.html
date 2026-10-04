@@ -1,0 +1,920 @@
+<title>Kumaon Nowcast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans+SC:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#eef0ea; --panel:#f7f8f4; --ink:#1f2a2e; --ink2:#4d5a5c; --rule:#cfd4cb;
+  --accent:#b8324f; --accent-ink:#fff; --glacier:#4f86a3;
+  --ok:#2f8f7f; --warn:#c07a1e; --bad:#b8324f; --chip:#e3e7df; --chip-on:#1f2a2e; --chip-on-ink:#f7f8f4;
+  --shadow:0 1px 2px rgba(20,30,30,.08);
+  --temp:#c0552a; --rain:#3a64c8; --pop:#9fb5e6; --night:rgba(31,42,46,.07);
+  --f-display:"Alegreya",Georgia,"Times New Roman",serif;
+  --f-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+  --f-sc:"Alegreya Sans SC","Alegreya Sans","Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#11171a; --panel:#182024; --ink:#e3e8e2; --ink2:#a3aea9; --rule:#2c373b;
+    --accent:#e0607a; --accent-ink:#11171a; --glacier:#7fb3cf;
+    --ok:#5cc2b0; --warn:#e3a34a; --bad:#e0607a; --chip:#222c30; --chip-on:#e3e8e2; --chip-on-ink:#11171a;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+    --temp:#e8875e; --rain:#7d9cf0; --pop:#4a5f8e; --night:rgba(255,255,255,.05);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#11171a; --panel:#182024; --ink:#e3e8e2; --ink2:#a3aea9; --rule:#2c373b;
+  --accent:#e0607a; --accent-ink:#11171a; --glacier:#7fb3cf;
+  --ok:#5cc2b0; --warn:#e3a34a; --bad:#e0607a; --chip:#222c30; --chip-on:#e3e8e2; --chip-on-ink:#11171a;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  --temp:#e8875e; --rain:#7d9cf0; --pop:#4a5f8e; --night:rgba(255,255,255,.05);
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.45 var(--f-body);padding-inline:16px;padding-block:14px 40px}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font:700 clamp(26px,3.2vw,38px)/1.05 var(--f-display);letter-spacing:.2px}
+h2{font:700 15px/1.2 var(--f-sc);letter-spacing:.6px;text-transform:lowercase;color:var(--ink2)}
+.sc{font-family:var(--f-sc);letter-spacing:.5px;text-transform:lowercase}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink2)}
+a{color:var(--glacier)}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+header.top .sub{font-size:15px;color:var(--ink2);max-width:72ch}
+header.top .back{font-size:14px}
+.stamp{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.stamp b{font-family:var(--f-mono);font-weight:500}
+
+.alertbar{display:flex;flex-direction:column;gap:4px;border:1px solid var(--rule);border-left:6px solid var(--sev,var(--ok));background:var(--panel);border-radius:3px;padding:9px 12px;font-size:15px}
+.alertbar b{font-weight:700}
+.alertbar .muted{font-size:13.5px}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:flex-start}
+.group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.group > .sc{font-size:13px;color:var(--ink2);margin-right:2px}
+button,select{font:inherit;color:inherit}
+.chip{border:1px solid var(--rule);background:var(--chip);border-radius:999px;padding:3px 11px 4px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);border-color:var(--chip-on)}
+.chip .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.chip:focus-visible,.btn:focus-visible,input[type=range]:focus-visible,tr[tabindex]:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.mapbox{position:relative;border:1px solid var(--rule);background:#c9ccc0;overflow:hidden;border-radius:3px;touch-action:none;box-shadow:var(--shadow)}
+.stage{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;will-change:transform}
+.stage > img,.stage > canvas,.stage > svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.stage > img.crop{width:auto;height:auto}
+svg text{font-family:var(--f-body)}
+.maptools{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
+.btn{border:1px solid rgba(0,0,0,.25);background:rgba(250,250,246,.92);color:#1f2a2e;border-radius:3px;min-width:30px;height:30px;padding:0 8px;cursor:pointer;font-size:15px}
+.readout{position:absolute;right:50px;top:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12.5px;line-height:1.35;max-width:min(340px,70%);pointer-events:none}
+.readout .mono{font-size:12px}
+.legend{position:absolute;right:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12px;max-width:min(300px,45%);max-height:62%;overflow:auto;display:flex;flex-direction:column;gap:5px}
+.legend.collapsed{max-height:none;overflow:visible}
+.legend.collapsed .legend-body{display:none}
+.legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-weight:600;user-select:none}
+.legend-head .car{transition:transform .15s}
+.legend.collapsed .legend-head .car{transform:rotate(-90deg)}
+.legend-body{display:flex;flex-direction:column;gap:5px}
+.legend .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.legend .bar{height:8px;flex:1;min-width:80px;border-radius:2px}
+.legend .ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;color:#4d5a5c}
+.legend .k{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
+.zoomhint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:4;background:rgba(31,42,46,.88);color:#f7f8f4;border-radius:3px;padding:6px 10px;font-size:13px;pointer-events:none}
+
+.timeline{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:10px 12px}
+.tl-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.tl-time{font:500 20px/1 var(--f-mono)}
+.pill{font:700 12px/1 var(--f-sc);letter-spacing:.5px;text-transform:lowercase;padding:4px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.obs{color:var(--ok)} .pill.fc{color:var(--warn)} .pill.low{color:var(--bad)}
+.track{position:relative;height:44px}
+.track input{position:absolute;left:0;right:0;top:16px;width:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;height:22px;z-index:2}
+.track input::-webkit-slider-runnable-track{height:6px;background:transparent}
+.track input::-moz-range-track{height:6px;background:transparent}
+.track input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:22px;margin-top:-8px;border-radius:3px;background:var(--ink);border:2px solid var(--panel)}
+.track input::-moz-range-thumb{width:14px;height:20px;border-radius:3px;background:var(--ink);border:2px solid var(--panel)}
+.track .bg{position:absolute;left:8px;right:8px;top:24px;height:6px;border-radius:3px;overflow:hidden;display:flex}
+.track .ticks{position:absolute;left:8px;right:8px;top:0;height:16px}
+.track .ev{position:absolute;top:2px;width:3px;height:12px;border-radius:1px;transform:translateX(-1px)}
+.track .hr{position:absolute;top:34px;font:10.5px var(--f-mono);color:var(--ink2);transform:translateX(-50%);white-space:nowrap}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:14px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card p{margin:0;max-width:75ch}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:700 12.5px var(--f-sc);letter-spacing:.4px;text-transform:lowercase;color:var(--ink2);text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap;vertical-align:bottom}
+td{padding:4px 6px;border-bottom:1px solid var(--rule);vertical-align:middle}
+td.num,th.num{text-align:right;white-space:nowrap}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+tr[tabindex]{cursor:pointer}
+tr[tabindex]:hover td{background:var(--chip)}
+tr.sel td{background:var(--chip)}
+.badge{display:inline-block;min-width:34px;text-align:center;font:500 12px/1.5 var(--f-mono);border-radius:3px;padding:0 5px;color:#fff}
+.sev{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px;border:1px solid rgba(0,0,0,.15)}
+.wcell{font-size:12.5px;line-height:1.25;border-radius:3px;padding:4px 6px;min-width:84px}
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:220px;overflow:auto}
+.events li{display:grid;grid-template-columns:62px 12px 1fr;gap:8px;align-items:baseline;font-size:14px;padding:3px 4px;border-radius:3px}
+.events .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.spark{display:block;width:100%;height:auto}
+.gauge{display:grid;grid-template-columns:minmax(0,1fr) 120px 56px;gap:8px;align-items:center;font-size:14px;padding:3px 0;border-bottom:1px solid var(--rule)}
+.gauge .nm{min-width:0}
+.gauge .nm small{color:var(--ink2);display:block;font-size:12px}
+.note{font-size:13.5px;color:var(--ink2)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:14px}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px}
+.stats b{font-family:var(--f-mono);font-weight:500}
+.townpick{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.townpick select{font-size:15px;padding:3px 8px;border:1px solid var(--rule);border-radius:3px;background:var(--chip)}
+.mksimg{width:100%;height:auto;border:1px solid var(--rule);border-radius:3px;display:block}
+@media (max-width:640px){
+  .legend{display:none}
+  .readout{max-width:calc(100% - 20px)}
+  .gauge{grid-template-columns:minmax(0,1fr) 90px 50px}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="back"><a href="../">← Himalaya Nowcast Atlas</a></div>
+      <h1>Kumaon Nowcast</h1>
+      <div class="sub">Radar tracked forward for eight hours, IMD's Mukteshwar Doppler radar, IMD's live warnings and stations, town forecasts and air quality, river flow, fires and snow, for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar.</div>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <section class="alertbar" id="alertbar" aria-label="IMD warnings summary"></section>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="mapbox" id="mapbox">
+    <div class="stage" id="stage">
+      <img id="shadeImg" alt="Shaded relief of Kumaon, from the Terai plains to the Panchachuli and Nanda Devi massifs">
+      <img id="trueColorImg" alt="" hidden>
+      <img id="snowImg" alt="" hidden>
+      <img id="fireImg" alt="" hidden>
+      <canvas id="cvModel"></canvas>
+      <img id="imergImg" alt="" hidden>
+      <img id="rvImg" class="crop" alt="">
+      <img id="mksImg" alt="" hidden>
+      <svg id="svg" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="maptools">
+      <button class="btn" id="zin" aria-label="Zoom in">+</button>
+      <button class="btn" id="zout" aria-label="Zoom out">−</button>
+      <button class="btn" id="zreset" aria-label="Reset view">⤢</button>
+    </div>
+    <div class="readout" id="readout">Move over the map for elevation, snow line and rain at that point.</div>
+    <div class="legend" id="legend"></div>
+    <div class="zoomhint" id="zoomHint" hidden>Hold Ctrl (⌘ on Mac) and scroll to zoom, or use + and −</div>
+  </div>
+
+  <section class="timeline" aria-label="Timeline">
+    <div class="tl-head">
+      <button class="btn" id="play" aria-label="Play">▶</button>
+      <span class="tl-time" id="tlTime"></span>
+      <span class="pill" id="tlKind"></span>
+      <span class="muted" id="tlLead"></span>
+    </div>
+    <div class="track">
+      <div class="ticks" id="evTicks"></div>
+      <div class="bg" id="trackBg"></div>
+      <input type="range" id="scrub" min="0" max="60" step="1" value="12" aria-label="Time step">
+      <div id="hourLabels"></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>IMD warnings</h2>
+      <div class="scroll"><table id="nowcastTable"></table></div>
+      <div class="scroll"><table id="warnTable"></table></div>
+      <p class="note" id="warnNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Hour by hour</h2>
+      <div class="townpick"><label for="townSel" class="sc muted" style="font-size:13px">town</label><select id="townSel"></select></div>
+      <div class="stats" id="townStats"></div>
+      <svg id="townChart" class="spark" viewBox="0 0 720 250" role="img" aria-label="Temperature and rain for the next three days"></svg>
+      <div class="note" id="townNote"></div>
+    </section>
+
+    <section class="card wide">
+      <h2>Town by town</h2>
+      <div class="scroll"><table id="townTable"></table></div>
+      <p class="note">Radar now: the strongest echo within about 3 km on IMD's Mukteshwar radar. Echo arrives: first step of the tracked RainViewer radar with 25 dBZ or more within about 7 km. Rain, temperature, gusts, thunder (forecast thunderstorm hours) and snow line are from the Open-Meteo forecast for each town. Air quality is the CAMS model's US AQI; its grid is about 40 km, so hill towns can read high when the cell takes in the plains. Select a town to see it hour by hour and on the map.</p>
+    </section>
+
+    <section class="card">
+      <h2>Observed now: IMD stations</h2>
+      <div class="scroll"><table id="obsTable"></table></div>
+      <div class="scroll"><table id="synopTable"></table></div>
+      <p class="note" id="obsNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>What happens when</h2>
+      <ul class="events" id="events"></ul>
+      <p class="note" id="radarNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Mukteshwar Doppler radar (IMD)</h2>
+      <img class="mksimg" id="mksOrig" alt="IMD's latest maximum-reflectivity image from the Mukteshwar Doppler weather radar">
+      <p class="note" id="mksNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Rivers: flow against normal</h2>
+      <div id="gauges"></div>
+      <p class="note">Modelled discharge from GloFAS v4 (via the Open-Meteo Flood API), not a measured river stage. Each point is the largest GloFAS channel within about 5 km of the named place, so it can sit a little downstream. Grey band: 10th–90th percentile of the same calendar days over the last 15 years; line: last 60 days and 7-day forecast.</p>
+    </section>
+
+    <section class="card">
+      <h2>Fires, snow and earthquakes</h2>
+      <div id="hazards"></div>
+    </section>
+
+    <section class="card">
+      <h2>Sources and method</h2>
+      <div class="note" id="method"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+"use strict";
+const D = DATA, F = D.frame, GW = F.gw, GH = F.gh;
+const $ = s => document.querySelector(s);
+const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
+const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtIST = (t, opt) => new Intl.DateTimeFormat("en-IN", Object.assign({timeZone:"Asia/Kolkata", hour:"2-digit", minute:"2-digit", hour12:false}, opt || {})).format(new Date(t * 1000));
+const fmtDay = t => new Intl.DateTimeFormat("en-IN", {timeZone:"Asia/Kolkata", weekday:"short", day:"numeric", month:"short"}).format(new Date(t * 1000));
+const store = { get(k, d){ try { const v = localStorage.getItem("kna:" + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem("kna:" + k, JSON.stringify(v)); } catch(e){} } };
+const num = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("en-IN", {maximumFractionDigits:d, minimumFractionDigits:d});
+
+/* ---------------- geometry ---------------- */
+const WORLD = 256 * Math.pow(2, F.z);
+function gridToLonLat(gx, gy){
+  const X = F.x0 + (gx + .5) * 2, Y = F.y0 + (gy + .5) * 2;
+  return [X / WORLD * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * Y / WORLD))) * 180 / Math.PI];
+}
+
+/* ---------------- state ---------------- */
+const state = {
+  step: D.radar.t0_index,
+  layers: Object.assign({rv: D.radar.coverage > .2, mks: true, imerg: false, model: false, snowline: true, snow: true,
+    truecolor: false, towns: true, districts: true, stations: true, rivers: true, fires: true, quakes: true}, store.get("layers", {})),
+  town: store.get("town", "Bhimtal"),
+  legendCollapsed: store.get("legendCollapsed", false),
+  zoom: 1, tx: 0, ty: 0,
+};
+if (!D.towns.some(t => t.name === state.town)) state.town = "Bhimtal";
+
+/* ---------------- colours and scales ---------------- */
+const IMD_COLORS = {1:[70,130,90], 2:[196,150,30], 3:[204,102,28], 4:[178,36,36]};
+const IMD_LABELS = {1:"No warning", 2:"Yellow", 3:"Orange", 4:"Red"};
+const PRECIP = [[.2,[150,172,232,90]],[1,[108,136,222,150]],[3,[70,90,200,185]],[8,[58,44,168,205]],[20,[118,34,150,220]]];
+function precipRGBA(v){
+  if (v < PRECIP[0][0]) return null;
+  for (let i = PRECIP.length - 1; i >= 0; i--) if (v >= PRECIP[i][0]) {
+    if (i === PRECIP.length - 1) return PRECIP[i][1];
+    const [a, ca] = PRECIP[i], [b, cb] = PRECIP[i + 1], t = (v - a) / (b - a);
+    return ca.map((c, k) => c + (cb[k] - c) * t);
+  }
+}
+function aqiCat(v){
+  if (v == null) return ["–", "#888"];
+  if (v <= 50) return ["good", "#3f8f4f"]; if (v <= 100) return ["moderate", "#b39016"];
+  if (v <= 150) return ["unhealthy for sensitive groups", "#d0702a"]; if (v <= 200) return ["unhealthy", "#c23b3b"];
+  if (v <= 300) return ["very unhealthy", "#7d3b8c"]; return ["hazardous", "#6b1f2e"];
+}
+function wxText(c){
+  if (c == null) return "";
+  if (c === 0) return "clear"; if (c <= 2) return "partly cloudy"; if (c === 3) return "overcast";
+  if (c === 45 || c === 48) return "fog"; if (c >= 51 && c <= 57) return "drizzle"; if (c >= 61 && c <= 67) return "rain";
+  if (c >= 71 && c <= 77) return "snow"; if (c >= 80 && c <= 82) return "showers"; if (c === 85 || c === 86) return "snow showers";
+  if (c >= 95) return "thunderstorm"; return "";
+}
+// WMO present weather (ww) for IMD SYNOP reports.
+function wwText(w){
+  if (w == null) return "–";
+  const t = [[0,3,"no significant weather"],[4,4,"smoke"],[5,5,"haze"],[6,9,"dust"],[10,10,"mist"],[11,12,"shallow fog"],[13,13,"lightning seen"],
+    [14,16,"rain in sight"],[17,17,"thunder, no rain"],[18,18,"squall"],[19,19,"funnel cloud"],[20,29,"after recent rain/snow/thunder"],[30,39,"dust storm or drifting snow"],
+    [40,49,"fog"],[50,59,"drizzle"],[60,65,"rain"],[66,67,"freezing rain"],[68,69,"rain and snow"],[70,79,"snow"],[80,82,"rain showers"],
+    [83,86,"snow showers"],[87,90,"hail showers"],[91,94,"after thunderstorm"],[95,95,"thunderstorm"],[96,96,"thunderstorm, hail"],[97,97,"heavy thunderstorm"],[98,98,"thunderstorm, dust"],[99,99,"heavy thunderstorm, hail"]];
+  const r = t.find(([a, b]) => w >= a && w <= b); return r ? r[2] : "ww " + w;
+}
+
+/* ---------------- map stage ---------------- */
+const box = $("#mapbox"), stage = $("#stage");
+box.style.aspectRatio = `${F.w} / ${F.h}`;
+function unitPx(){ return box.clientWidth / GW; }
+const svg = $("#svg");
+svg.setAttribute("viewBox", `0 0 ${GW} ${GH}`);
+const groups = {};
+["dist","snowline","range","rivers","quakes","fires","towns","stations","imds","focus"].forEach(k => { groups[k] = svgEl("g"); svg.appendChild(groups[k]); });
+const marker = (x, y) => { const o = svgEl("g", {transform:`translate(${x.toFixed(1)},${y.toFixed(1)})`, class:"mk"}); const inner = svgEl("g", {class:"mki"}); o.appendChild(inner); return [o, inner]; };
+const label = (txt, attrs) => { const t = svgEl("text", Object.assign({"font-size":11, fill:"#1f2a2e", "paint-order":"stroke", stroke:"rgba(248,248,244,.9)", "stroke-width":3}, attrs || {})); t.textContent = txt; return t; };
+
+// The RainViewer crop is coarser and slightly larger than the map; place it in grid units.
+const P = D.radar.place;
+Object.assign($("#rvImg").style, {left:`${P.x / GW * 100}%`, top:`${P.y / GH * 100}%`, width:`${P.w / GW * 100}%`, height:`${P.h / GH * 100}%`});
+
+/* ---------------- embedded grids ---------------- */
+function loadImg(src){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+function pixels(img){ const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const x = c.getContext("2d", {willReadFrequently:true}); x.drawImage(img, 0, 0); return {w:img.width, h:img.height, d:x.getImageData(0, 0, c.width, c.height).data}; }
+let demPix = null, mksPix = null, snowPix = null;
+const rvImgs = D.radar.frames.map(f => { const i = new Image(); i.decoding = "async"; i.src = f.src; return i; });
+const rvPixCache = {};
+
+/* ---------------- model (forecast rain, snow line) ---------------- */
+const M = D.model, ML = M.lats, MN = M.lons;
+function modelIndexFor(t){
+  const ts = M.times;
+  if (t <= ts[0]) return [0, 0, 0];
+  for (let k = 0; k < ts.length - 1; k++) if (t >= ts[k] && t <= ts[k + 1]) return [k, k + 1, (t - ts[k]) / (ts[k + 1] - ts[k])];
+  return [ts.length - 1, ts.length - 1, 0];
+}
+function sampleModel(arr, k, lat, lon){
+  const fi = (lat - ML[0]) / (ML[1] - ML[0]), fj = (lon - MN[0]) / (MN[1] - MN[0]);
+  const i0 = Math.max(0, Math.min(ML.length - 2, Math.floor(fi))), j0 = Math.max(0, Math.min(MN.length - 2, Math.floor(fj)));
+  const di = Math.min(1, Math.max(0, fi - i0)), dj = Math.min(1, Math.max(0, fj - j0)), g = arr[k];
+  return g[i0][j0] * (1 - di) * (1 - dj) + g[i0 + 1][j0] * di * (1 - dj) + g[i0][j0 + 1] * (1 - di) * dj + g[i0 + 1][j0 + 1] * di * dj;
+}
+function modelAt(t, lat, lon){
+  const [ka, kb, w] = modelIndexFor(t);
+  const s = arr => (1 - w) * sampleModel(arr, ka, lat, lon) + w * sampleModel(arr, kb, lat, lon);
+  return {rain: s(M.precip10) / 10, snowline: Math.max(0, s(M.freeze10) * 10 - M.snow_offset)};
+}
+const cvModel = $("#cvModel"); cvModel.width = Math.ceil(GW / 4); cvModel.height = Math.ceil(GH / 4);
+const ctxModel = cvModel.getContext("2d");
+function drawModel(){
+  ctxModel.clearRect(0, 0, cvModel.width, cvModel.height);
+  if (!state.layers.model) return;
+  const t = stepTime(state.step), img = ctxModel.createImageData(cvModel.width, cvModel.height), d = img.data;
+  for (let y = 0; y < cvModel.height; y++) for (let x = 0; x < cvModel.width; x++) {
+    const [lon, lat] = gridToLonLat(x * 4 + 2, y * 4 + 2), c = precipRGBA(modelAt(t, lat, lon).rain);
+    if (!c) continue; const i = (y * cvModel.width + x) * 4;
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = c[3];
+  }
+  ctxModel.putImageData(img, 0, 0);
+}
+function drawSnowline(){
+  groups.snowline.innerHTML = "";
+  if (!state.layers.snowline) return;
+  const [ka, kb, w] = modelIndexFor(stepTime(state.step)), sl = D.snowline[w < .5 ? ka : kb];
+  if (!sl || !sl.d) return;
+  groups.snowline.appendChild(svgEl("path", {d:sl.d, fill:"none", stroke:"#1d4f73", "stroke-width":3.4, "stroke-opacity":.55, "vector-effect":"non-scaling-stroke", "stroke-linejoin":"round"}));
+  groups.snowline.appendChild(svgEl("path", {d:sl.d, fill:"none", stroke:"#ffffff", "stroke-width":1.5, "vector-effect":"non-scaling-stroke", "stroke-linejoin":"round"}));
+}
+
+/* ---------------- radar sampling ---------------- */
+const stops = D.radar.dbz_stops, rgba = D.radar.dbz_rgba;
+function dbzFromPix(p, x, y){
+  if (!p || x < 0 || y < 0 || x >= p.w || y >= p.h) return null;
+  const i = (y * p.w + x) * 4; if (p.d[i + 3] < 20) return 0;
+  let best = 0, bd = 1e9;
+  for (let k = 0; k < stops.length; k++) { const c = rgba[k]; const dd = (c[0] - p.d[i]) ** 2 + (c[1] - p.d[i + 1]) ** 2 + (c[2] - p.d[i + 2]) ** 2; if (dd < bd) { bd = dd; best = stops[k]; } }
+  return best;
+}
+function rvDbzAt(gx, gy){
+  const im = rvImgs[state.step]; if (!im.complete) return null;
+  if (!rvPixCache[state.step]) rvPixCache[state.step] = pixels(im);
+  const p = rvPixCache[state.step];
+  return dbzFromPix(p, Math.floor((gx - P.x) / P.w * p.w), Math.floor((gy - P.y) / P.h * p.h));
+}
+function dist2(a, b){ return (a.x - b.x) ** 2 + (a.y - b.y) ** 2; }
+
+/* ---------------- SVG overlays ---------------- */
+function imdTitle(r, place){
+  let s = `${place} · ${IMD_LABELS[r.color] || "?"}`;
+  if (r.hazards && r.hazards.length) s += "\n" + r.hazards.join("; ");
+  if (r.message) s += `\n${r.message}`;
+  if (r.toi && r.vupto) s += `\nValid ${r.toi.padStart(4, "0")}–${r.vupto.padStart(4, "0")} IST`;
+  if (r.t) s += `\nUpdated ${fmtIST(r.t)} IST${r.mc ? " · MC " + r.mc : ""}`;
+  return s;
+}
+function buildDistricts(){
+  D.imd.districts.forEach(r => {
+    const col = IMD_COLORS[r.color] || IMD_COLORS[1], ours = KUMAON.has(r.district.toUpperCase());
+    const p = svgEl("path", {d:r.d, fill:`rgb(${col})`, "fill-opacity":[.0, .22, .32, .42][r.color - 1] ?? 0, stroke: ours ? "#3a3050" : "#6a6a6a",
+      "stroke-width": ours ? 1.4 : .7, "stroke-opacity": ours ? .7 : .4, "stroke-dasharray": ours ? "" : "3 3", "vector-effect":"non-scaling-stroke"});
+    p.appendChild(svgEl("title")).textContent = imdTitle(r, `${r.district} district`);
+    groups.dist.appendChild(p);
+  });
+}
+const KUMAON = new Set(["NAINITAL","ALMORA","BAGESHWAR","CHAMPAWAT","PITHORAGARH","UDHAM SINGH NAGAR"]);
+function buildTowns(){
+  D.towns.forEach(t => {
+    const [o, g] = marker(t.x, t.y), home = t.name === "Bhimtal";
+    g.appendChild(svgEl("circle", {r: home ? 3.6 : 2.6, fill: home ? "#b8324f" : "#1f2a2e", stroke:"#fff", "stroke-width":1}));
+    g.appendChild(label(t.name, {x:5, y:-4, "font-size": home ? 13 : 11.5, "font-weight": home ? 700 : 500}));
+    o.style.cursor = "pointer"; o.addEventListener("click", () => selectTown(t.name, false));
+    groups.towns.appendChild(o);
+  });
+}
+function buildStations(){
+  D.imd.aws.forEach(s => {
+    const [o, g] = marker(s.x, s.y);
+    g.appendChild(svgEl("rect", {x:-3, y:-3, width:6, height:6, fill:"#2f6f8f", stroke:"#fff", "stroke-width":1}));
+    const txt = s.kind === "ARG" ? (s.rain != null ? `${num(s.rain, 1)} mm` : "") : (s.temp != null ? `${num(s.temp, 1)}°` : "") + (s.rain ? ` · ${num(s.rain, 1)} mm` : "");
+    if (txt) g.appendChild(label(txt, {x:5, y:12, "font-size":10.5, fill:"#1f4a66", "font-family":"IBM Plex Mono, monospace"}));
+    o.appendChild(svgEl("title")).textContent = `IMD ${s.kind} ${s.name}, ${fmtIST(s.t)} IST\n` + [s.temp != null ? `${s.temp} °C` : null, s.rh != null ? `RH ${s.rh}%` : null, s.rain != null ? `rain ${s.rain} mm` : null, s.wspd != null ? `wind ${s.wspd} (IMD gives no unit)` : null].filter(Boolean).join(" · ");
+    groups.stations.appendChild(o);
+  });
+  D.imd.synop.forEach(s => {
+    const [o, g] = marker(s.x, s.y);
+    g.appendChild(svgEl("path", {d:"M0,-5 L5,0 L0,5 L-5,0 Z", fill:"#1f4a66", stroke:"#fff", "stroke-width":1}));
+    o.appendChild(svgEl("title")).textContent = `IMD observatory ${s.name}, ${fmtIST(s.t)} IST\n${s.temp ?? "–"} °C · ${wwText(s.ww)} · visibility ${s.vis != null ? num(s.vis / 1000, 1) + " km" : "–"}`;
+    groups.stations.appendChild(o);
+  });
+  D.imd.stations.forEach(s => {
+    const [o, g] = marker(s.x, s.y), col = IMD_COLORS[s.color] || IMD_COLORS[1];
+    g.appendChild(svgEl("circle", {r: s.color >= 2 ? 4 : 2, fill:`rgb(${col})`, "fill-opacity": s.color >= 2 ? .9 : .5, stroke:"#fff", "stroke-width":.8}));
+    o.appendChild(svgEl("title")).textContent = imdTitle(s, `${s.name} (IMD nowcast station)`);
+    groups.imds.appendChild(o);
+  });
+}
+function gaugeColor(p){ if (p == null) return "#888"; if (p >= 200) return "#b8324f"; if (p >= 130) return "#2d6fa3"; if (p >= 70) return "#2f8f7f"; return "#c07a1e"; }
+function buildRivers(){
+  D.gauges.forEach(gg => {
+    const [o, i] = marker(gg.x, gg.y);
+    i.appendChild(svgEl("path", {d:"M0,-7 L6,4 L-6,4 Z", fill:gaugeColor(gg.pct_of_median), stroke:"#fff", "stroke-width":1.3}));
+    o.appendChild(svgEl("title")).textContent = `${gg.river} at ${gg.place}: ${gg.q_now == null ? "n/a" : Math.round(gg.q_now) + " m³/s"}${gg.pct_of_median != null ? `, ${gg.pct_of_median}% of normal` : ""}`;
+    groups.rivers.appendChild(o);
+  });
+}
+function buildQuakes(){
+  D.quakes.forEach(q => {
+    const [o, g] = marker(q.x, q.y), r = 3 + Math.max(0, (q.mag || 0) - 2) * 2.2, col = "#d4541e";
+    g.appendChild(svgEl("circle", {r:r.toFixed(1), fill:col, "fill-opacity":.28, stroke:col, "stroke-width":1.6}));
+    o.appendChild(svgEl("title")).textContent = `M${q.mag ?? "?"} · ${q.place || ""}\nDepth ${q.depth_km ?? "?"} km · ${q.t ? fmtDay(q.t) + " " + fmtIST(q.t) + " IST" : ""}`;
+    groups.quakes.appendChild(o);
+  });
+}
+function buildFires(){
+  (D.fires.clusters || []).forEach(c => {
+    const [o, g] = marker(c.x, c.y);
+    g.appendChild(svgEl("circle", {r:9, fill:"none", stroke:"#e0501a", "stroke-width":1.6}));
+    o.appendChild(svgEl("title")).textContent = `Fire detections (VIIRS): ${c.px} pixel${c.px > 1 ? "s" : ""}, ${c.near_km} km from ${c.near}`;
+    groups.fires.appendChild(o);
+  });
+}
+function buildRange(){
+  const m = D.mks; if (!m || m.x == null) return;
+  groups.range.appendChild(svgEl("circle", {cx:m.x, cy:m.y, r:m.r_px, fill:"none", stroke:"#3a3050", "stroke-width":1, "stroke-dasharray":"5 4", "stroke-opacity":.6, "vector-effect":"non-scaling-stroke"}));
+  const [o, g] = marker(m.x, m.y);
+  g.appendChild(svgEl("path", {d:"M-5,4 L0,-6 L5,4 Z", fill:"none", stroke:"#3a3050", "stroke-width":1.5}));
+  o.appendChild(svgEl("title")).textContent = "IMD Mukteshwar Doppler weather radar (100 km range)";
+  groups.range.appendChild(o);
+}
+
+function syncOverlayVisibility(){
+  const L = state.layers;
+  groups.dist.style.display = L.districts ? "" : "none";
+  groups.imds.style.display = L.districts ? "" : "none";
+  groups.stations.style.display = L.stations ? "" : "none";
+  groups.towns.style.display = L.towns ? "" : "none";
+  groups.rivers.style.display = L.rivers ? "" : "none";
+  groups.quakes.style.display = L.quakes ? "" : "none";
+  groups.fires.style.display = L.fires ? "" : "none";
+  groups.range.style.display = L.mks ? "" : "none";
+  $("#trueColorImg").hidden = !(L.truecolor && D.truecolor.src);
+  $("#snowImg").hidden = !(L.snow && D.snow.src);
+  $("#fireImg").hidden = !(L.fires && D.fires.src);
+  $("#imergImg").hidden = !(L.imerg && D.imerg.src);
+  $("#mksImg").hidden = !(L.mks && D.mks.src);
+  $("#rvImg").style.display = L.rv ? "" : "none";
+}
+
+/* ---------------- pan and zoom ---------------- */
+function applyView(){
+  const w = box.clientWidth, h = box.clientHeight;
+  state.zoom = Math.max(1, Math.min(10, state.zoom));
+  state.tx = Math.min(0, Math.max(w - w * state.zoom, state.tx));
+  state.ty = Math.min(0, Math.max(h - h * state.zoom, state.ty));
+  stage.style.transform = `translate(${state.tx}px,${state.ty}px) scale(${state.zoom})`;
+  const u = unitPx(); if (!u) return;
+  const s = 1 / (u * state.zoom);
+  svg.querySelectorAll(".mki").forEach(g => g.setAttribute("transform", `scale(${s.toFixed(4)})`));
+}
+function zoomAt(f, cx, cy){
+  const z0 = state.zoom, z1 = Math.max(1, Math.min(10, z0 * f));
+  state.tx = cx - (cx - state.tx) * z1 / z0; state.ty = cy - (cy - state.ty) * z1 / z0; state.zoom = z1; applyView();
+}
+let hintTimer = null;
+box.addEventListener("wheel", e => {
+  if (!(e.ctrlKey || e.metaKey)) { const h = $("#zoomHint"); h.hidden = false; clearTimeout(hintTimer); hintTimer = setTimeout(() => { h.hidden = true; }, 1200); return; }
+  e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top);
+}, {passive:false});
+let drag = null;
+box.addEventListener("pointerdown", e => { if (e.target.closest(".maptools, .legend, .readout")) return; drag = {x:e.clientX, y:e.clientY, tx:state.tx, ty:state.ty, moved:false}; });
+box.addEventListener("pointermove", e => {
+  if (drag && (drag.moved || Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4)) {
+    if (!drag.moved) { drag.moved = true; box.setPointerCapture(e.pointerId); }
+    state.tx = drag.tx + e.clientX - drag.x; state.ty = drag.ty + e.clientY - drag.y; applyView();
+  }
+  readout(e);
+});
+box.addEventListener("pointerup", () => { drag = null; });
+box.addEventListener("pointercancel", () => { drag = null; });
+$("#zin").onclick = () => zoomAt(1.5, box.clientWidth / 2, box.clientHeight / 2);
+$("#zout").onclick = () => zoomAt(1 / 1.5, box.clientWidth / 2, box.clientHeight / 2);
+$("#zreset").onclick = () => { state.zoom = 1; state.tx = 0; state.ty = 0; applyView(); };
+window.addEventListener("resize", applyView);
+function focusOn(gx, gy, z, scroll){
+  state.zoom = z || 3;
+  const u = unitPx();
+  state.tx = box.clientWidth / 2 - gx * u * state.zoom; state.ty = box.clientHeight / 2 - gy * u * state.zoom;
+  groups.focus.innerHTML = "";
+  const [o, g] = marker(gx, gy); g.appendChild(svgEl("circle", {r:14, fill:"none", stroke:"#b8324f", "stroke-width":2.5})); groups.focus.appendChild(o);
+  applyView();
+  if (scroll) box.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"center"});
+}
+
+/* ---------------- hover readout ---------------- */
+function readout(e){
+  const r = box.getBoundingClientRect(), u = unitPx();
+  const gx = Math.floor((e.clientX - r.left - state.tx) / state.zoom / u), gy = Math.floor((e.clientY - r.top - state.ty) / state.zoom / u);
+  if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return;
+  const [lon, lat] = gridToLonLat(gx, gy), t = stepTime(state.step), m = modelAt(t, lat, lon);
+  let elev = null;
+  if (demPix) { const i = (Math.min(demPix.h - 1, gy >> 1) * demPix.w + Math.min(demPix.w - 1, gx >> 1)) * 4; elev = demPix.d[i] * 256 + demPix.d[i + 1] - 500; }
+  const rv = state.layers.rv ? rvDbzAt(gx, gy) : null;
+  const mk = state.layers.mks && mksPix ? dbzFromPix(mksPix, gx, gy) : null;
+  let snow = null; if (snowPix) { const a = snowPix.d[(gy * snowPix.w + gx) * 4 + 3]; snow = a ? "snow seen in the last 8 days" : null; }
+  $("#readout").innerHTML =
+    `<div class="mono">${lat.toFixed(3)}°N ${lon.toFixed(3)}°E${elev != null ? ` · ~${Math.round(elev).toLocaleString("en-IN")} m` : ""}</div>` +
+    `<div>Snow line ${Math.round(m.snowline).toLocaleString("en-IN")} m${elev != null && elev > m.snowline ? " (this point is above it)" : ""}${snow ? " · " + snow : ""}</div>` +
+    `<div>Forecast rain ${m.rain.toFixed(1)} mm/h${rv != null ? ` · tracked radar ${rv ? "~" + rv + " dBZ" : "no echo"}` : ""}</div>` +
+    (mk != null ? `<div>Mukteshwar radar ${mk ? "~" + mk + " dBZ" : "no echo"} at ${D.mks.t ? fmtIST(D.mks.t) + " IST" : "latest scan"}</div>` : "");
+}
+
+/* ---------------- controls ---------------- */
+const LAYER_GROUPS = [
+  ["radar & rain", [["mks","Mukteshwar radar (IMD)",[48,170,160]],["rv","Radar, tracked 8 h",[150,196,70]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Forecast rain",[70,90,200]]]],
+  ["ground", [["districts","IMD nowcast",[204,102,28]],["stations","IMD stations now",[47,111,143]],["towns","Towns",[31,42,46]],["snowline","Snow line",[29,79,115]],["snow","Snow, last 8 days",[200,225,240]],["truecolor","True colour photo",[120,140,100]]]],
+  ["hazards", [["rivers","River flow",[52,110,150]],["fires","Fires, 48 h",[224,80,26]],["quakes","Earthquakes",[212,84,30]]]],
+];
+function buildControls(){
+  const c = $("#controls");
+  LAYER_GROUPS.forEach(([name, items]) => {
+    const g = el("div", {class:"group", role:"group", "aria-label":name});
+    g.appendChild(el("span", {class:"sc"}, name));
+    items.forEach(([key, lab, col]) => {
+      const b = el("button", {class:"chip", "aria-pressed":String(!!state.layers[key]), "data-layer":key}, `<span class="sw" style="background:rgb(${col})"></span>${lab}`);
+      b.onclick = () => toggleLayer(key);
+      g.appendChild(b);
+    });
+    c.appendChild(g);
+  });
+}
+function toggleLayer(key){
+  state.layers[key] = !state.layers[key];
+  document.querySelectorAll("[data-layer]").forEach(b => b.setAttribute("aria-pressed", String(!!state.layers[b.dataset.layer])));
+  store.set("layers", state.layers);
+  if (key === "model") drawModel();
+  if (key === "snowline") drawSnowline();
+  syncOverlayVisibility(); renderLegend();
+}
+
+/* ---------------- legend ---------------- */
+function grad(stopsA){ return "linear-gradient(90deg," + stopsA.map(c => `rgba(${c[0]},${c[1]},${c[2]},${(c[3] / 255).toFixed(2)})`).join(",") + ")"; }
+function renderLegend(){
+  const L = [], ly = state.layers;
+  if (ly.mks || ly.rv) L.push(`<div><div class="row"><span>Radar</span><span class="bar" style="background:${grad(rgba)}"></span></div><div class="ticks"><span>12</span><span>28</span><span>44</span><span>60 dBZ</span></div></div>`);
+  if (ly.model) L.push(`<div><div class="row"><span>Forecast rain</span><span class="bar" style="background:${grad(PRECIP.map(p => p[1]))}"></span></div><div class="ticks"><span>0.2</span><span>1</span><span>3</span><span>8</span><span>20 mm/h</span></div></div>`);
+  const keys = [];
+  if (ly.districts) keys.push([1,2,3,4].map(c => `<span class="k" style="background:rgb(${IMD_COLORS[c]})"></span>${IMD_LABELS[c]}`).join(" ") + " (IMD nowcast)");
+  if (ly.stations) keys.push(`<span class="k" style="background:#2f6f8f"></span>IMD automatic station <span class="k" style="background:#1f4a66;transform:rotate(45deg) scale(.8)"></span>observatory`);
+  if (ly.snowline) keys.push(`<span class="k" style="background:#fff;border:2px solid #1d4f73"></span>snow line (freezing level − ${M.snow_offset} m)`);
+  if (ly.snow) keys.push(`<span class="k" style="background:#eef6ff;border:1px solid #b9c8d6"></span>snow seen, last 8 days`);
+  if (ly.rivers) keys.push(`<span class="k" style="background:${gaugeColor(50)}"></span>low <span class="k" style="background:${gaugeColor(100)}"></span>normal <span class="k" style="background:${gaugeColor(150)}"></span>high flow`);
+  if (ly.fires) keys.push(`<span class="k" style="background:#ff5014"></span>fire detection`);
+  keys.forEach(k => L.push(`<div class="row">${k}</div>`));
+  const leg = $("#legend");
+  leg.innerHTML = `<div class="legend-head" id="legendHead"><span>Legend</span><span class="car">&#9662;</span></div><div class="legend-body">${L.join("")}</div>`;
+  leg.hidden = !L.length;
+  leg.classList.toggle("collapsed", state.legendCollapsed);
+  $("#legendHead").onclick = () => { state.legendCollapsed = !state.legendCollapsed; store.set("legendCollapsed", state.legendCollapsed); leg.classList.toggle("collapsed", state.legendCollapsed); };
+}
+
+/* ---------------- timeline ---------------- */
+const frames = D.radar.frames, T0 = D.t0, T0I = D.radar.t0_index, LAST = frames.length - 1;
+const scrub = $("#scrub"); scrub.max = LAST;
+function stepTime(s){ return frames[s].t; }
+function pctOf(step){ return step / LAST * 100; }
+function fmtLead(min){ const h = Math.floor(Math.abs(min) / 60), m = Math.abs(min) % 60; return (h ? h + "h " : "") + (m ? m + "m" : (h ? "" : "0m")); }
+function buildTrack(){
+  $("#trackBg").innerHTML = `<span style="width:${pctOf(T0I)}%;background:var(--ok);opacity:.55"></span><span style="flex:1;background:linear-gradient(90deg, var(--warn), var(--rule))"></span>`;
+  const colors = {radar:"#30aaa0", model:"#4650c0"};
+  D.events.forEach(e => {
+    const s = el("span", {class:"ev", title:`+${fmtLead(e.t)} ${e.text}`});
+    s.style.left = pctOf(T0I + e.t / D.step_min) + "%"; s.style.background = colors[e.kind] || "#888";
+    $("#evTicks").appendChild(s);
+  });
+  for (let s = 0; s <= LAST; s += 6) {
+    const lead = (s - T0I) * D.step_min; if (lead % 60 !== 0) continue;
+    const span = el("span", {class:"hr"}, lead === 0 ? "now" : (lead > 0 ? "+" : "") + lead / 60 + "h");
+    span.style.left = `calc(8px + (100% - 16px) * ${s / LAST})`;
+    $("#hourLabels").appendChild(span);
+  }
+}
+function setStep(s){
+  state.step = Math.max(0, Math.min(LAST, s));
+  scrub.value = state.step;
+  const f = frames[state.step], lead = Math.round((f.t - T0) / 60);
+  $("#rvImg").src = f.src;
+  $("#tlTime").textContent = fmtIST(f.t) + " IST";
+  const kind = $("#tlKind"), conf = lead <= 0 ? 1 : Math.exp(-lead / 110);
+  if (f.obs) { kind.textContent = lead === 0 ? "latest radar" : "observed radar"; kind.className = "pill obs"; }
+  else { kind.textContent = conf < .35 ? "tracked · low skill" : "tracked forward"; kind.className = "pill " + (conf < .35 ? "low" : "fc"); }
+  $("#tlLead").textContent = lead === 0 ? "now" : (lead > 0 ? "+" : "−") + fmtLead(lead);
+  drawModel(); drawSnowline();
+}
+scrub.addEventListener("input", () => setStep(+scrub.value));
+let playing = null;
+$("#play").onclick = () => {
+  if (playing) { clearInterval(playing); playing = null; $("#play").textContent = "▶"; return; }
+  $("#play").textContent = "❚❚";
+  playing = setInterval(() => setStep(state.step >= LAST ? 0 : state.step + 1), 450);
+};
+
+/* ---------------- IMD panels ---------------- */
+function sevStyle(s){ const c = IMD_COLORS[s] || IMD_COLORS[1]; return s >= 2 ? `background:rgb(${c});color:${s === 2 ? "#1f2a2e" : "#fff"}` : "background:var(--chip);color:var(--ink2)"; }
+function kumaonDistricts(){ return D.imd.districts.filter(r => KUMAON.has(r.district.toUpperCase())).sort((a, b) => a.district.localeCompare(b.district)); }
+function buildIMD(){
+  const nd = kumaonDistricts();
+  $("#nowcastTable").innerHTML = `<thead><tr><th>Now (IMD nowcast)</th><th></th><th>valid (IST)</th></tr></thead><tbody>` +
+    nd.map(r => `<tr><td><span class="sev" style="background:rgb(${IMD_COLORS[r.color]})"></span>${esc(r.district)}</td>` +
+      `<td>${r.hazards.length || r.message ? esc([r.message].concat(r.hazards).filter(Boolean).join("; ")) : `<span class="muted">no warning</span>`}</td>` +
+      `<td class="num">${r.toi && r.vupto ? r.toi.padStart(4, "0") + "–" + r.vupto.padStart(4, "0") : "–"}</td></tr>`).join("") + `</tbody>`;
+  const W = D.imd.warnings;
+  if (W.length) {
+    const dates = W[0].days.map(d => d.date);
+    $("#warnTable").innerHTML = `<thead><tr><th>Next 5 days (IMD)</th>${dates.map(d => `<th>${fmtDay(Date.parse(d + "T06:00:00+05:30") / 1000)}</th>`).join("")}</tr></thead><tbody>` +
+      W.map(w => `<tr><td>${esc(w.district)}</td>${w.days.map(d => `<td><div class="wcell" style="${sevStyle(d.severity)}" title="${esc([d.hazards.join(", "), d.text].filter(Boolean).join(" · ") || "No warning")}">${d.hazards.length ? esc(d.hazards.map(shortHaz).join(", ")) : "–"}</div></td>`).join("")}</tr>`).join("") + `</tbody>`;
+  }
+  const active = D.imd.stations.filter(s => s.color >= 2);
+  const upd = Math.max(0, ...nd.map(r => r.t || 0));
+  $("#warnNote").innerHTML = `IMD's nowcast covers the next three hours and is reissued through the day; ${D.imd.stations.length} IMD nowcast stations sit on this map, ${active.length ? `${active.length} with a warning (${active.map(s => esc(s.name.trim())).join(", ")})` : "none with a warning right now"}. ` +
+    `The 5-day warnings are IMD's district-wise forecasts${W.length ? `, issued ${esc(W[0].issued)}` : ""}. Yellow means be updated, orange be prepared, red take action.${upd ? ` Nowcast last updated ${fmtIST(upd)} IST.` : ""}`;
+}
+function shortHaz(h){ return ({"Thunderstorm & lightning, squall":"Thunderstorm", "Strong surface winds":"Strong wind"})[h] || h; }
+function buildAlertBar(){
+  const nd = kumaonDistricts(), worstNow = Math.max(1, ...nd.map(r => r.color));
+  const parts = [];
+  if (worstNow >= 2) {
+    const by = nd.filter(r => r.color >= 2).map(r => `${r.district} (${IMD_LABELS[r.color].toLowerCase()}${r.hazards.length ? ": " + r.hazards.join(", ").toLowerCase() : ""})`);
+    parts.push(`<div><b>IMD nowcast now:</b> ${esc(by.join("; "))}.</div>`);
+  } else parts.push(`<div><b>IMD nowcast now:</b> no warning in Kumaon's six districts.</div>`);
+  // Group 5-day warnings by severity and hazards, listing districts and date ranges.
+  const groupsW = {};
+  D.imd.warnings.forEach(w => w.days.forEach((d, k) => {
+    if (d.severity < 2) return;
+    const key = d.severity + "|" + d.hazards.join(", ");
+    (groupsW[key] = groupsW[key] || {}); (groupsW[key][w.district] = groupsW[key][w.district] || []).push(d.date);
+  }));
+  let worst = worstNow;
+  const lines = Object.entries(groupsW).sort((a, b) => b[0].localeCompare(a[0])).map(([key, dist]) => {
+    const [sev, haz] = key.split("|"); worst = Math.max(worst, +sev);
+    const byRange = {};
+    Object.entries(dist).forEach(([n, ds]) => { const r = dateRange(ds); (byRange[r] = byRange[r] || []).push(n); });
+    return `${IMD_LABELS[sev]}: ${haz.toLowerCase() || "warning"} — ` + Object.entries(byRange).map(([r, ns]) => `${ns.join(", ")} ${r}`).join("; ");
+  });
+  parts.push(`<div><b>Next 5 days:</b> ${lines.length ? esc(lines.join(". ")) + "." : "no IMD district warnings for Kumaon."}</div>`);
+  const sevCol = IMD_COLORS[worst];
+  $("#alertbar").style.setProperty("--sev", `rgb(${sevCol})`);
+  $("#alertbar").innerHTML = parts.join("") + `<div class="muted">From IMD's own nowcast and district-wise warnings; see the IMD warnings panel for each district and day.</div>`;
+}
+function dateRange(ds){
+  const f = d => new Intl.DateTimeFormat("en-IN", {day:"numeric", month:"short", timeZone:"UTC"}).format(new Date(d + "T00:00:00Z"));
+  ds = ds.slice().sort();
+  return ds.length === 1 ? f(ds[0]) : `${f(ds[0])}–${f(ds[ds.length - 1])}`;
+}
+
+/* ---------------- towns ---------------- */
+const NOW = D.generated;
+function idxFrom(ts, t){ let k = ts.findIndex(x => x >= t - 1800); return k < 0 ? ts.length - 1 : k; }
+function townSummary(t){
+  const f = t.fc, i0 = idxFrom(f.t, NOW), i24 = Math.min(f.t.length, i0 + 24), i8 = Math.min(f.t.length, i0 + 8);
+  const sl = (a, b, arr) => arr.slice(a, b).filter(v => v != null);
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const temps = sl(i0, i24, f.temp);
+  const fz = sl(i0, f.t.length, f.freeze).map(v => v - M.snow_offset);
+  let aqiNow = null, pmNow = null;
+  if (t.aq) { const k = idxFrom(t.aq.t, NOW); aqiNow = t.aq.aqi[k]; pmNow = t.aq.pm25[k]; }
+  return {tempNow: f.temp[i0], tmin: temps.length ? Math.min(...temps) : null, tmax: temps.length ? Math.max(...temps) : null,
+    rain8: sum(sl(i0, i8, f.rain)), rain24: sum(sl(i0, i24, f.rain)), rain72: sum(sl(i0, f.t.length, f.rain)),
+    pop24: Math.max(0, ...sl(i0, i24, f.pop)), gust24: Math.max(0, ...sl(i0, i24, f.gust)),
+    thunder24: sl(i0, i24, f.code).filter(c => c >= 95).length, cape24: Math.max(0, ...sl(i0, i24, f.cape)),
+    snowMin: fz.length ? Math.max(0, Math.min(...fz)) : null, codeNow: f.code[i0], aqiNow, pmNow};
+}
+function districtNow(t){ const r = D.imd.districts.find(x => x.district.toUpperCase() === t.district.toUpperCase()); return r ? r.color : 1; }
+function buildTownTable(){
+  const rows = D.towns.map(t => [t, townSummary(t)]);
+  $("#townTable").innerHTML = `<thead><tr><th>Town</th><th class="num">m</th><th>IMD now</th><th class="num">radar now</th><th class="num">echo arrives</th><th class="num">rain 8 h</th><th class="num">rain 3 days</th><th class="num">chance 24 h</th><th class="num">temp now</th><th class="num">24 h range</th><th class="num">gusts 24 h</th><th>thunder 24 h</th><th class="num">snow line low</th><th>air quality</th></tr></thead><tbody>` +
+    rows.map(([t, s], i) => {
+      const sev = districtNow(t), aq = aqiCat(s.aqiNow);
+      const onset = t.radar_onset_min === 0 ? "now" : t.radar_onset_min ? "+" + fmtLead(t.radar_onset_min) : "–";
+      const thunder = s.thunder24 ? `${s.thunder24} h` : s.cape24 >= 1000 ? `<span class="muted">unstable air</span>` : "–";
+      return `<tr tabindex="0" data-t="${i}" class="${t.name === state.town ? "sel" : ""}"><td><b>${esc(t.name)}</b> <span class="muted" style="font-size:12px">${esc(t.district)}</span></td>` +
+        `<td class="num">${num(t.elev)}</td><td><span class="sev" style="background:rgb(${IMD_COLORS[sev]})"></span>${sev >= 2 ? IMD_LABELS[sev] : ""}</td>` +
+        `<td class="num">${t.mks_dbz ? Math.round(t.mks_dbz) + " dBZ" : "–"}</td><td class="num">${onset}</td>` +
+        `<td class="num">${num(s.rain8, 1)}</td><td class="num">${num(s.rain72, 1)}</td><td class="num">${num(s.pop24)}%</td>` +
+        `<td class="num">${num(s.tempNow, 1)}°</td><td class="num">${num(s.tmin)}–${num(s.tmax)}°</td><td class="num">${num(s.gust24)} km/h</td>` +
+        `<td>${thunder}</td><td class="num">${s.snowMin != null ? num(Math.round(s.snowMin / 50) * 50) + " m" : "–"}</td>` +
+        `<td>${s.aqiNow != null ? `<span class="badge" style="background:${aq[1]}">${Math.round(s.aqiNow)}</span> <span class="muted" style="font-size:12px">${aq[0]}</span>` : "–"}</td></tr>`;
+    }).join("") + `</tbody>`;
+  $("#townTable").querySelectorAll("tr[data-t]").forEach(tr => {
+    const go = () => selectTown(D.towns[+tr.dataset.t].name, true);
+    tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+}
+function selectTown(name, scroll){
+  state.town = name; store.set("town", name);
+  $("#townSel").value = name;
+  document.querySelectorAll("#townTable tr[data-t]").forEach(tr => tr.classList.toggle("sel", D.towns[+tr.dataset.t].name === name));
+  const t = D.towns.find(x => x.name === name);
+  buildTownDetail();
+  if (t) focusOn(t.x, t.y, 3, scroll);
+}
+function nearestStation(t){
+  let best = null;
+  D.imd.aws.concat(D.imd.synop.map(s => Object.assign({kind:"observatory"}, s))).forEach(s => {
+    const km = 111 * Math.hypot(s.lat - t.lat, (s.lon - t.lon) * Math.cos(t.lat * Math.PI / 180));
+    if (km <= 20 && (!best || km < best.km) && (s.temp != null || s.rain != null)) best = Object.assign({km}, s);
+  });
+  return best;
+}
+function buildTownDetail(){
+  const t = D.towns.find(x => x.name === state.town) || D.towns[0], s = townSummary(t), f = t.fc;
+  const aq = aqiCat(s.aqiNow), sunI = idxFrom(t.sun.rise, NOW - 86400);
+  const nst = nearestStation(t);
+  $("#townStats").innerHTML =
+    `<span>Now <b>${num(s.tempNow, 1)} °C</b>${wxText(s.codeNow) ? ", " + wxText(s.codeNow) : ""}</span>` +
+    `<span>Next 24 h <b>${num(s.tmin)}–${num(s.tmax)} °C</b>, rain <b>${num(s.rain24, 1)} mm</b> (up to ${num(s.pop24)}%)</span>` +
+    `<span>Gusts to <b>${num(s.gust24)} km/h</b></span>` +
+    (s.snowMin != null ? `<span>Snow line down to <b>${num(Math.round(s.snowMin / 50) * 50)} m</b></span>` : "") +
+    `<span>Sunrise <b>${fmtIST(t.sun.rise[sunI] || t.sun.rise[0])}</b> · sunset <b>${fmtIST(t.sun.set[sunI] || t.sun.set[0])}</b></span>` +
+    (s.aqiNow != null ? `<span>Air <b style="color:${aq[1]}">AQI ${Math.round(s.aqiNow)}</b> ${aq[0]}, PM2.5 ${num(s.pmNow)} µg/m³</span>` : "");
+  $("#townNote").innerHTML = (nst ? `Nearest live IMD station: <b>${esc(nst.name)}</b>, ${Math.round(nst.km)} km away, ${fmtIST(nst.t)} IST: ` +
+    [nst.temp != null ? `${nst.temp} °C` : null, nst.rh != null ? `RH ${nst.rh}%` : null, nst.rain != null ? `rain ${nst.rain} mm` : null, nst.rain24 != null ? `24 h rain ${nst.rain24} mm` : null].filter(Boolean).join(", ") + ". " :
+    `No live IMD station within 20 km. `) +
+    `Forecast for ${esc(t.name)} (${num(t.elev)} m) from Open-Meteo's best-match models. Shaded columns are night.`;
+  drawTownChart(t);
+}
+function drawTownChart(t){
+  const f = t.fc, W = 720, x0 = 34, x1 = W - 34, tTop = 12, tBot = 120, rTop = 148, rBot = 228;
+  const i0 = idxFrom(f.t, NOW), ts = f.t.slice(i0), n = ts.length;
+  if (n < 2) { $("#townChart").innerHTML = ""; return; }
+  const temp = f.temp.slice(i0), rain = f.rain.slice(i0), pop = f.pop.slice(i0), cloud = f.cloud.slice(i0), gust = f.gust.slice(i0), code = f.code.slice(i0);
+  const X = k => x0 + k / (n - 1) * (x1 - x0), bw = (x1 - x0) / (n - 1);
+  const tv = temp.filter(v => v != null), tmin = Math.floor(Math.min(...tv) - 1), tmax = Math.ceil(Math.max(...tv) + 1);
+  const TY = v => tBot - (v - tmin) / Math.max(1, tmax - tmin) * (tBot - tTop);
+  const rmax = Math.max(2, ...rain.filter(v => v != null));
+  const RY = v => rBot - v / rmax * (rBot - rTop);
+  let s = "";
+  // Night shading from sunrise/sunset.
+  const rise = t.sun.rise, set = t.sun.set;
+  for (let k = 0; k < set.length; k++) {
+    const a = set[k], b = rise[k + 1] != null ? rise[k + 1] : a + 12 * 3600;
+    const xa = x0 + (a - ts[0]) / 3600 / (n - 1) * (x1 - x0), xb = x0 + (b - ts[0]) / 3600 / (n - 1) * (x1 - x0);
+    if (xb < x0 || xa > x1) continue;
+    s += `<rect x="${Math.max(x0, xa).toFixed(1)}" y="${tTop - 8}" width="${(Math.min(x1, xb) - Math.max(x0, xa)).toFixed(1)}" height="${rBot - tTop + 10}" fill="var(--night)"/>`;
+  }
+  if (rise[0] > ts[0]) { const xb = x0 + (rise[0] - ts[0]) / 3600 / (n - 1) * (x1 - x0); if (xb > x0) s += `<rect x="${x0}" y="${tTop - 8}" width="${Math.min(x1, xb) - x0}" height="${rBot - tTop + 10}" fill="var(--night)"/>`; }
+  // Day labels at local midnight.
+  ts.forEach((tt, k) => { const h = +fmtIST(tt, {minute:undefined}).slice(0, 2); if (h === 0) s += `<line x1="${X(k)}" x2="${X(k)}" y1="${tTop - 8}" y2="${rBot + 2}" stroke="var(--rule)"/><text x="${X(k) + 3}" y="${rBot + 16}" font-size="11" fill="var(--ink2)" font-family="var(--f-sc)">${esc(fmtDay(tt))}</text>`;
+    else if (h % 6 === 0) s += `<text x="${X(k)}" y="${rBot + 16}" font-size="10" text-anchor="middle" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${String(h).padStart(2, "0")}</text>`; });
+  // Temperature.
+  for (let v = Math.ceil(tmin / 5) * 5; v <= tmax; v += 5) s += `<line x1="${x0}" x2="${x1}" y1="${TY(v).toFixed(1)}" y2="${TY(v).toFixed(1)}" stroke="var(--rule)" stroke-dasharray="2 3"/><text x="${x0 - 4}" y="${TY(v) + 3.5}" font-size="10" text-anchor="end" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${v}°</text>`;
+  s += `<polyline points="${temp.map((v, k) => v == null ? null : `${X(k).toFixed(1)},${TY(v).toFixed(1)}`).filter(Boolean).join(" ")}" fill="none" stroke="var(--temp)" stroke-width="2"/>`;
+  // Rain: chance as a faint area, amount as bars.
+  s += `<polygon points="${x0},${rBot} ${pop.map((v, k) => `${X(k).toFixed(1)},${(rBot - (v || 0) / 100 * (rBot - rTop)).toFixed(1)}`).join(" ")} ${x1},${rBot}" fill="var(--pop)" opacity=".55"/>`;
+  rain.forEach((v, k) => { if (v > 0) s += `<rect x="${(X(k) - bw * .4).toFixed(1)}" y="${RY(v).toFixed(1)}" width="${(bw * .8).toFixed(1)}" height="${(rBot - RY(v)).toFixed(1)}" fill="var(--rain)"/>`; });
+  code.forEach((c, k) => { if (c >= 95) s += `<text x="${X(k)}" y="${rTop - 3}" font-size="11" text-anchor="middle" fill="#b8324f">ϟ</text>`; });
+  s += `<line x1="${x0}" x2="${x1}" y1="${rBot}" y2="${rBot}" stroke="var(--ink2)" stroke-width=".8"/>`;
+  s += `<text x="${x1 + 4}" y="${rTop + 4}" font-size="10" fill="var(--ink2)" font-family="IBM Plex Mono, monospace">${num(rmax, 1)}</text><text x="${x1 + 4}" y="${rTop + 15}" font-size="9" fill="var(--ink2)">mm/h</text>`;
+  s += `<text x="${x0}" y="${rTop - 4}" font-size="11" fill="var(--ink2)" font-family="var(--f-sc)">rain (bars) and chance of rain (shaded)</text>`;
+  // Hover targets.
+  ts.forEach((tt, k) => { s += `<rect x="${(X(k) - bw / 2).toFixed(1)}" y="${tTop - 8}" width="${bw.toFixed(1)}" height="${rBot - tTop + 10}" fill="transparent"><title>${esc(fmtDay(tt) + " " + fmtIST(tt))} IST · ${num(temp[k], 1)} °C${wxText(code[k]) ? " · " + wxText(code[k]) : ""}\nRain ${num(rain[k], 1)} mm (${num(pop[k])}%) · cloud ${num(cloud[k])}% · gusts ${num(gust[k])} km/h</title></rect>`; });
+  $("#townChart").innerHTML = s;
+}
+function buildTownSelect(){
+  $("#townSel").innerHTML = D.towns.map(t => `<option value="${esc(t.name)}"${t.name === state.town ? " selected" : ""}>${esc(t.name)}</option>`).join("");
+  $("#townSel").onchange = e => selectTown(e.target.value, true);
+}
+
+/* ---------------- observations ---------------- */
+function buildObs(){
+  const A = D.imd.aws;
+  $("#obsTable").innerHTML = A.length ? `<thead><tr><th>IMD automatic stations</th><th class="num">IST</th><th class="num">temp</th><th class="num">RH</th><th class="num">rain</th><th class="num">wind</th></tr></thead><tbody>` +
+    A.map((s, i) => `<tr tabindex="0" data-s="${i}"><td>${esc(s.name)}${s.kind === "ARG" ? ` <span class="muted" style="font-size:12px">rain gauge</span>` : ""}</td><td class="num">${fmtIST(s.t)}</td><td class="num">${s.temp != null ? num(s.temp, 1) + "°" : "–"}</td><td class="num">${s.rh != null ? num(s.rh) + "%" : "–"}</td><td class="num">${s.rain != null ? num(s.rain, 1) + " mm" : "–"}</td><td class="num">${s.wspd != null ? num(s.wspd, 1) : "–"}${s.wdir != null ? " " + compass(s.wdir) : ""}</td></tr>`).join("") + `</tbody>` :
+    `<tbody><tr><td class="muted">No IMD automatic station in Kumaon reported in the last 3 hours.</td></tr></tbody>`;
+  $("#obsTable").querySelectorAll("tr[data-s]").forEach(tr => { tr.onclick = () => { const s = A[+tr.dataset.s]; focusOn(s.x, s.y, 4, true); }; });
+  const S = D.imd.synop;
+  $("#synopTable").innerHTML = S.length ? `<thead><tr><th>IMD observatories</th><th class="num">IST</th><th class="num">temp</th><th>weather</th><th class="num">visibility</th><th class="num">pressure</th><th class="num">rain 24 h</th></tr></thead><tbody>` +
+    S.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${fmtIST(s.t)}</td><td class="num">${s.temp != null ? num(s.temp, 1) + "°" : "–"}</td><td>${esc(wwText(s.ww))}</td><td class="num">${s.vis != null ? num(s.vis / 1000, 1) + " km" : "–"}</td><td class="num">${s.mslp != null ? num(s.mslp) + " hPa" : "–"}${s.dp24 != null ? ` <span class="muted">(${s.dp24 > 0 ? "+" : ""}${num(s.dp24, 1)})</span>` : ""}</td><td class="num">${s.rain24 != null ? num(s.rain24, 1) + " mm" : "–"}</td></tr>`).join("") + `</tbody>` : "";
+  $("#obsNote").innerHTML = `From IMD's public map service. Only stations that reported in the last 3 hours are listed (observatories: 6 hours); ${D.imd.aws_silent} more IMD automatic stations in this area have not. Rain is as IMD reports it for the station's current day. IMD publishes no unit for automatic-station wind speed in this feed, so it is shown as given. There is no public IMD station at Bhimtal itself.`;
+}
+function compass(d){ return ["N","NE","E","SE","S","SW","W","NW"][Math.round(d / 45) % 8]; }
+
+/* ---------------- events, radar notes ---------------- */
+function buildEvents(){
+  const colors = {radar:"#30aaa0", model:"#4650c0"};
+  $("#events").innerHTML = D.events.length ? D.events.map(e => `<li><span class="mono">+${fmtLead(e.t)}</span><span class="dot" style="background:${colors[e.kind]}"></span><span>${esc(e.text)}</span></li>`).join("") :
+    `<li><span></span><span></span><span class="muted">Neither the tracked radar nor the forecast brings rain of 1 mm/h or more to a Kumaon town in the next 8 hours.</span></li>`;
+  const cov = D.radar.coverage;
+  $("#radarNote").innerHTML = `Tracked radar: RainViewer's composite, carried forward by the Himalaya atlas's optical-flow extrapolation (computed for the whole Himalaya, so storms moving in from outside Kumaon are already tracked). It is coarse here (about 2 km pixels) and useful for roughly the first two hours. ${cov < .2 ? "RainViewer has little radar coverage over Kumaon, so this layer starts switched off; use the Mukteshwar radar instead." : ""}`;
+  const m = D.mks;
+  if (m && m.image) {
+    $("#mksOrig").src = m.image;
+    $("#mksNote").innerHTML = `IMD's latest maximum-reflectivity (MAX(Z)) image from the X-band Doppler radar at Mukteshwar${m.t ? `, file updated ${fmtDay(m.t)} ${fmtIST(m.t)} IST` : ""}. The map layer is this image decoded back to dBZ and placed by a fit to the town markers IMD draws on it (accurate to about 1 km); range rings, labels and the snow-white relief in IMD's background are filtered out. It is one scan, not a loop, and is not tracked forward. ${m.echo_px != null ? `Echo in view: about ${num(m.echo_px * F.km_px * F.km_px)} km².` : ""}${m.note ? " " + esc(m.note) + "." : ""}`;
+  } else {
+    $("#mksOrig").hidden = true;
+    $("#mksNote").textContent = "IMD's Mukteshwar radar image was unavailable when this page was built.";
+  }
+}
+
+/* ---------------- rivers ---------------- */
+function buildGaugesPanel(){
+  const host = $("#gauges");
+  if (!D.gauges.length) { host.innerHTML = `<p class="muted">River flow was unavailable when this page was built.</p>`; return; }
+  host.innerHTML = D.gauges.map((g, i) => {
+    const w = 120, h = 34, n = g.q.length;
+    const all = g.q.concat(g.band.flat()).filter(v => v != null);
+    const hi = Math.max(...all) * 1.05 || 1;
+    const X = k => (k / (n - 1) * (w - 2) + 1).toFixed(1), Y = v => (h - 2 - v / hi * (h - 4)).toFixed(1);
+    const top = g.band.map((b, k) => b[2] != null ? `${X(k)},${Y(b[2])}` : null).filter(Boolean);
+    const bot = g.band.map((b, k) => b[0] != null ? `${X(k)},${Y(b[0])}` : null).filter(Boolean).reverse();
+    const obs = g.q.map((v, k) => v != null && k <= g.today_index ? `${X(k)},${Y(v)}` : null).filter(Boolean);
+    const fc = g.q.map((v, k) => v != null && k >= g.today_index ? `${X(k)},${Y(v)}` : null).filter(Boolean);
+    const col = gaugeColor(g.pct_of_median);
+    const svgS = `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polygon points="${top.concat(bot).join(" ")}" fill="var(--rule)" opacity=".8"/><polyline points="${obs.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5"/><polyline points="${fc.join(" ")}" fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="2 2"/><line x1="${X(g.today_index)}" x2="${X(g.today_index)}" y1="0" y2="${h}" stroke="var(--ink2)" stroke-width=".6"/></svg>`;
+    return `<div class="gauge" data-g="${i}" tabindex="0" style="cursor:pointer"><div class="nm"><b>${esc(g.river)}</b> <small>${esc(g.place)} · ${g.q_now != null ? Math.round(g.q_now).toLocaleString("en-IN") + " m³/s" : "n/a"}</small></div>${svgS}<span class="badge" style="background:${col}">${g.pct_of_median != null ? g.pct_of_median + "%" : "–"}</span></div>`;
+  }).join("");
+  host.querySelectorAll("[data-g]").forEach(d => { d.onclick = () => { const g = D.gauges[+d.dataset.g]; focusOn(g.x, g.y, 3.5, true); }; });
+}
+
+/* ---------------- hazards panel ---------------- */
+function buildHazards(){
+  const fc = D.fires.clusters || [], q = D.quakes, sn = D.snow;
+  let h = `<div class="kv">`;
+  h += `<span class="sc">fires</span><span>${fc.length ? `${fc.length} cluster${fc.length > 1 ? "s" : ""} of VIIRS fire detections in the last 48 hours${D.fires.dates && D.fires.dates.length ? ` (${D.fires.dates.join(", ")})` : ""}: ` +
+    fc.slice(0, 8).map((c, i) => `<a href="#" data-f="${i}">${c.near_km} km from ${esc(c.near)}</a>`).join(", ") + (fc.length > 8 ? ", …" : "") + "." : "No VIIRS fire detections in Kumaon in the last 48 hours."}</span>`;
+  h += `<span class="sc">snow</span><span>${sn.km2 ? `About ${num(Math.round(sn.km2 / 100) * 100)} km² seen snow-covered (MODIS, at least 40%)` : "No snow seen"}${sn.dates && sn.dates[0] ? ` between ${esc(sn.dates[0])} and ${esc(sn.dates[1])}` : ""}; cloud hides some passes, so the layer combines the last 8 days.</span>`;
+  h += `<span class="sc">earthquakes</span><span>${q.length ? q.map(x => `M${x.mag} ${esc(x.place)}, ${fmtDay(x.t)}${x.inside ? "" : " (just outside the map)"}`).join("; ") + "." : "None of magnitude 3 or more within about 100 km of Kumaon in the last 30 days (USGS)."}</span>`;
+  h += `</div>`;
+  $("#hazards").innerHTML = h;
+  $("#hazards").querySelectorAll("[data-f]").forEach(a => a.onclick = e => { e.preventDefault(); const c = fc[+a.dataset.f]; focusOn(c.x, c.y, 5, true); });
+}
+
+/* ---------------- stamp, method ---------------- */
+function buildStamp(){
+  const live = D.imd.aws.length + D.imd.synop.length;
+  $("#stamp").innerHTML = `<span>Built <b>${fmtIST(D.generated, {day:"numeric", month:"short"})}</b> IST</span><span>Radar <b>${fmtIST(D.t0)}</b></span>` +
+    (D.mks.t ? `<span>Mukteshwar <b>${fmtIST(D.mks.t)}</b></span>` : "") + `<span>Live IMD stations <b>${live}</b></span>`;
+}
+function buildMethod(){
+  const fail = D.failed && D.failed.length ? `<p style="margin-top:8px">Unavailable in this build: ${esc(D.failed.join(", "))}.</p>` : "";
+  $("#method").innerHTML = `<div class="kv">
+    <span class="sc">IMD</span><span>India Meteorological Department's public map service (reactjs.imd.gov.in): district and station nowcasts, 5-day district-wise warnings, automatic stations and observatories; the Mukteshwar radar image from mausam.imd.gov.in. Category and colour meanings from IMD's API field reference.</span>
+    <span class="sc">tracked radar</span><span>RainViewer composite and the Himalaya Nowcast Atlas's optical-flow extrapolation, cropped to Kumaon.</span>
+    <span class="sc">forecast</span><span>Open-Meteo best-match forecast: per town hourly (temperature, rain and its chance, weather, cloud, gusts, freezing level, CAPE), and the atlas's 0.75° grid for the rain and snow-line layers.${M.snow_offset ? ` Snow line = freezing level − ${M.snow_offset} m.` : ""}</span>
+    <span class="sc">air quality</span><span>Open-Meteo's air-quality API (Copernicus CAMS model): PM2.5, PM10 and US AQI.</span>
+    <span class="sc">satellite</span><span>NASA GIBS: GPM IMERG rain (NASA/JAXA), MODIS Terra true colour and snow cover, VIIRS fire detections.</span>
+    <span class="sc">relief</span><span>AWS Terrain Tiles (SRTM-based), zoom 10.</span>
+    <span class="sc">rivers</span><span>GloFAS v4 via the Open-Meteo Flood API.</span>
+    <span class="sc">earthquakes</span><span>USGS catalogue, magnitude 3+ in 30 days.</span>
+  </div>${fail}
+  <p style="margin-top:8px">This page is a snapshot built at ${fmtIST(D.generated, {day:"numeric", month:"short"})} IST, rebuilt every two hours with the <a href="../">Himalaya Nowcast Atlas</a>.</p>`;
+}
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  buildControls(); buildTrack();
+  $("#shadeImg").src = D.images.shade;
+  if (D.truecolor.src) $("#trueColorImg").src = D.truecolor.src;
+  if (D.snow.src) $("#snowImg").src = D.snow.src;
+  if (D.fires.src) $("#fireImg").src = D.fires.src;
+  if (D.imerg.src) $("#imergImg").src = D.imerg.src;
+  if (D.mks.src) $("#mksImg").src = D.mks.src;
+  buildDistricts(); buildRange(); buildRivers(); buildQuakes(); buildFires(); buildTowns(); buildStations();
+  buildAlertBar(); buildIMD(); buildTownSelect(); buildTownTable(); buildTownDetail(); buildObs(); buildEvents();
+  buildGaugesPanel(); buildHazards(); buildStamp(); buildMethod();
+  syncOverlayVisibility(); setStep(state.step); renderLegend(); applyView();
+  const [dem, mk, sn] = await Promise.all([loadImg(D.images.dem), D.mks.src ? loadImg(D.mks.src) : null, D.snow.src ? loadImg(D.snow.src) : null]);
+  demPix = pixels(dem); if (mk) mksPix = pixels(mk); if (sn) snowPix = pixels(sn);
+}
+boot();
+})();
+</script>

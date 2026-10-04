@@ -33,18 +33,18 @@ def _png(arr):
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-def latest(max_back_hours=6):
+def latest(max_back_hours=6, frame=FRAME):
     """The most recent available IMERG frame within max_back_hours. IMERG
     near-real-time typically lags several hours, so this steps back in
     30-minute slots until it finds one with data."""
-    minx, miny, maxx, maxy = FRAME.merc_bbox()
+    minx, miny, maxx, maxy = frame.merc_bbox()
     now = dt.datetime.now(dt.timezone.utc)
     slot = now.replace(minute=30 if now.minute >= 30 else 0, second=0, microsecond=0)
     for back in range(0, max_back_hours * 2 + 1):
         t = slot - dt.timedelta(minutes=30 * back)
         body = get(GIBS_WMS, params=dict(SERVICE="WMS", REQUEST="GetMap", VERSION="1.3.0",
                                          LAYERS=LAYER, STYLES="", CRS="EPSG:3857",
-                                         BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=FRAME.gw, HEIGHT=FRAME.gh,
+                                         BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=frame.gw, HEIGHT=frame.gh,
                                          FORMAT="image/png", TRANSPARENT="TRUE",
                                          TIME=t.strftime("%Y-%m-%dT%H:%M:00Z")), timeout=60)
         if not body:

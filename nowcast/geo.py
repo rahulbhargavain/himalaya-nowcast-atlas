@@ -59,6 +59,7 @@ class Frame:
     y0: int
     w: int   # FULL-res size
     h: int
+    z: int = ZOOM  # FULL-res zoom level; GRID is one level coarser
 
     @property
     def gw(self):
@@ -68,22 +69,28 @@ class Frame:
     def gh(self):
         return self.h // 2
 
+    @property
+    def km_per_grid_px(self):
+        """Approximate GRID pixel size at the frame's middle latitude."""
+        lat = world_lonlat(self.x0, self.y0 + self.h / 2, self.z)[1]
+        return 2 * 156.54303392 * math.cos(math.radians(float(lat))) / 2 ** self.z
+
     def to_grid(self, lon, lat):
         """Lon/lat -> GRID pixel coords (float)."""
-        x, y = world_px(lon, lat)
+        x, y = world_px(lon, lat, self.z)
         return (np.asarray(x) - self.x0) / 2.0, (np.asarray(y) - self.y0) / 2.0
 
     def grid_lonlat(self):
         """Lon/lat of every GRID pixel centre, shape (gh, gw)."""
         xs = self.x0 + (np.arange(self.gw) + 0.5) * 2.0
         ys = self.y0 + (np.arange(self.gh) + 0.5) * 2.0
-        lon, _ = world_lonlat(xs, np.full_like(xs, ys[0]))
-        _, lat = world_lonlat(np.full_like(ys, xs[0]), ys)
+        lon, _ = world_lonlat(xs, np.full_like(xs, ys[0]), self.z)
+        _, lat = world_lonlat(np.full_like(ys, xs[0]), ys, self.z)
         return np.meshgrid(lon, lat)
 
-    def merc_bbox(self, z=ZOOM):
+    def merc_bbox(self):
         """EPSG:3857 bbox (minx, miny, maxx, maxy) in metres."""
-        n = TILE * 2 ** z
+        n = TILE * 2 ** self.z
         half = math.pi * R_EARTH
         def mx(px):
             return px / n * 2 * half - half
@@ -91,14 +98,18 @@ class Frame:
             return half - py / n * 2 * half
         return mx(self.x0), my(self.y0 + self.h), mx(self.x0 + self.w), my(self.y0)
 
+    def tag(self):
+        """Cache-key suffix: empty for the main frame, so its cache is unchanged."""
+        return "" if self == FRAME else f"_{self.z}_{self.x0}_{self.y0}_{self.w}x{self.h}"
 
-def make_frame() -> Frame:
-    x0, y0 = world_px(W_LON, N_LAT)
-    x1, y1 = world_px(E_LON, S_LAT)
+
+def make_frame(w_lon=W_LON, e_lon=E_LON, s_lat=S_LAT, n_lat=N_LAT, z=ZOOM) -> Frame:
+    x0, y0 = world_px(w_lon, n_lat, z)
+    x1, y1 = world_px(e_lon, s_lat, z)
     x0, y0 = int(math.floor(x0)) // 2 * 2, int(math.floor(y0)) // 2 * 2
     w = (int(math.ceil(x1)) - x0) // 4 * 4
     h = (int(math.ceil(y1)) - y0) // 4 * 4
-    return Frame(x0, y0, w, h)
+    return Frame(x0, y0, w, h, z)
 
 
 FRAME = make_frame()

@@ -51,11 +51,11 @@ SECTORS = [
 # Terrain
 # --------------------------------------------------------------------------
 
-def load_dem():
+def load_dem(frame=FRAME):
     """Elevation (m) at FULL resolution, float32 (h, w)."""
     im = stitch_tiles(
         "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
-        7, (FRAME.x0, FRAME.y0, FRAME.x0 + FRAME.w, FRAME.y0 + FRAME.h),
+        frame.z, (frame.x0, frame.y0, frame.x0 + frame.w, frame.y0 + frame.h),
         cache_prefix="terrarium", mode="RGB",
     )
     a = np.asarray(im).astype(np.float32)
@@ -67,17 +67,17 @@ def _pixel_size_m(lat_rows, z=7):
     return 156543.03392 * np.cos(np.radians(lat_rows)) / 2 ** z
 
 
-def slope_deg(dem, lat_rows, scale=1):
+def slope_deg(dem, lat_rows, scale=1, z=7):
     """Slope in degrees. lat_rows is the latitude of each row; scale is the
-    pixel-size multiple relative to FULL (2 for GRID)."""
-    px = _pixel_size_m(lat_rows)[:, None] * scale
+    pixel-size multiple relative to FULL (2 for GRID) at FULL zoom z."""
+    px = _pixel_size_m(lat_rows, z)[:, None] * scale
     gy, gx = np.gradient(dem)
     return np.degrees(np.arctan(np.hypot(gx / px, gy / px)))
 
 
-def hillshade_image(dem, lat_rows, water_mask_full=None):
+def hillshade_image(dem, lat_rows, water_mask_full=None, z=7):
     """A restrained, print-map style shaded relief as an RGB uint8 array."""
-    px = _pixel_size_m(lat_rows)[:, None]
+    px = _pixel_size_m(lat_rows, z)[:, None]
     z = cv2.GaussianBlur(dem, (0, 0), 0.8)
     gy, gx = np.gradient(z)
     gx /= px
@@ -120,14 +120,14 @@ def _colormap(name):
     return out
 
 
-def gibs_grid(layer, time, colormap, cache=True, nodata=np.nan):
+def gibs_grid(layer, time, colormap, cache=True, nodata=np.nan, frame=FRAME):
     """Fetch a GIBS layer at GRID resolution over the frame and decode its
     colours back to data values. Transparent/unknown pixels -> nodata."""
-    minx, miny, maxx, maxy = FRAME.merc_bbox()
+    minx, miny, maxx, maxy = frame.merc_bbox()
     params = dict(SERVICE="WMS", REQUEST="GetMap", VERSION="1.3.0", LAYERS=layer, STYLES="",
                   CRS="EPSG:3857", BBOX=f"{minx},{miny},{maxx},{maxy}",
-                  WIDTH=FRAME.gw, HEIGHT=FRAME.gh, FORMAT="image/png", TRANSPARENT="TRUE", TIME=time)
-    key = f"gibs/{layer}_{time}.png" if cache else None
+                  WIDTH=frame.gw, HEIGHT=frame.gh, FORMAT="image/png", TRANSPARENT="TRUE", TIME=time)
+    key = f"gibs/{layer}_{time}{frame.tag()}.png" if cache else None
     body = get(GIBS_WMS, params=params, cache_key=key, timeout=120)
     if body is None:
         return None
@@ -156,15 +156,15 @@ def land_cover():
     raise RuntimeError("No MODIS land cover year available from GIBS")
 
 
-def recent_snow(days=8):
+def recent_snow(days=8, frame=FRAME):
     """Max NDSI snow cover (0-100) over the last `days` Terra passes, and the
     date range used. Cloudy pixels simply contribute nothing."""
-    acc = np.full((FRAME.gh, FRAME.gw), np.nan, np.float32)
+    acc = np.full((frame.gh, frame.gw), np.nan, np.float32)
     used = []
     today = dt.datetime.utcnow().date()
     for back in range(1, days + 3):
         d = today - dt.timedelta(days=back)
-        g = gibs_grid("MODIS_Terra_NDSI_Snow_Cover", d.isoformat(), "MODIS_NDSI_Snow_Cover")
+        g = gibs_grid("MODIS_Terra_NDSI_Snow_Cover", d.isoformat(), "MODIS_NDSI_Snow_Cover", frame=frame)
         if g is None:
             continue
         g[g > 100] = np.nan  # classification codes (cloud, night, ...)

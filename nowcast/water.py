@@ -111,14 +111,16 @@ def _flood(lats, lons, **params):
         daily="river_discharge", **params), timeout=180)
 
 
-def _snap_gauges():
-    """Pick the main-channel GloFAS cell for each gauge (cached)."""
-    path = os.path.join(CACHE, "gauges_snapped.json")
+def _snap_gauges(gauge_list=GAUGES, tag="", reach=0.15):
+    """Pick the main-channel GloFAS cell for each gauge (cached). `reach` is
+    the search half-width in degrees: small hill rivers need a tight one, or
+    the search jumps to a bigger river next door."""
+    path = os.path.join(CACHE, f"gauges_snapped{tag}.json")
     if os.path.exists(path):
         return json.load(open(path))
     snapped = []
-    offs = (-0.15, -0.075, 0.0, 0.075, 0.15)
-    for river, place, lat, lon in GAUGES:
+    offs = tuple(reach * k / 2 for k in (-2, -1, 0, 1, 2))
+    for river, place, lat, lon in gauge_list:
         cand = [(lat + a, lon + b) for a in offs for b in offs]
         j = _flood([c[0] for c in cand], [c[1] for c in cand], past_days=30, forecast_days=1)
         j = j if isinstance(j, list) else [j]
@@ -128,14 +130,14 @@ def _snap_gauges():
     return snapped
 
 
-def gauges():
-    g = _snap_gauges()
+def gauges(gauge_list=GAUGES, tag="", reach=0.15, frame=FRAME):
+    g = _snap_gauges(gauge_list, tag, reach)
     lats, lons = [x["lat"] for x in g], [x["lon"] for x in g]
     today = dt.datetime.utcnow().date()
     # Climatology: the same calendar window (60 days back, 10 ahead) in each
     # of the last 15 complete years -- enough for a p10/p50/p90 band without
     # pulling decades of daily data.
-    clim_path = os.path.join(CACHE, f"glofas_clim_{today.isoformat()}.json")
+    clim_path = os.path.join(CACHE, f"glofas_clim{tag}_{today.isoformat()}.json")
     if os.path.exists(clim_path):
         clim_raw = json.load(open(clim_path))
     else:
@@ -171,7 +173,7 @@ def gauges():
         i_today = times.index(today.isoformat()) if today.isoformat() in times else len(times) - 8
         cur = vals[i_today]
         med = band[i_today][1]
-        x, y = FRAME.to_grid(meta["lon"], meta["lat"])
+        x, y = frame.to_grid(meta["lon"], meta["lat"])
         out.append({**meta, "x": float(x), "y": float(y), "times": times, "q": vals, "band": band,
                     "today_index": i_today, "q_now": cur,
                     "pct_of_median": round(100 * cur / med) if cur is not None and med else None})

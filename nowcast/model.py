@@ -130,10 +130,9 @@ def pressure_layers(g, dem_g):
     return hours
 
 
-def snowline_layers(g, dem_g):
+def snowline_layers(g, dem_g, frame=FRAME, q=4):
     """Per hour: snow line altitude field (m) and its contour on the terrain."""
     lats, lons = g["lats"], g["lons"]
-    q = 4
     dem_s = cv2.resize(dem_g, (dem_g.shape[1] // q, dem_g.shape[0] // q), interpolation=cv2.INTER_AREA)
     # Smooth the terrain a little: on the Tibetan plateau the ground sits near
     # the snow line for hundreds of km and a raw contour turns into confetti.
@@ -142,7 +141,7 @@ def snowline_layers(g, dem_g):
     for t in range(len(g["times"])):
         fl = g["freezing_level_height"][t]
         fl = np.where(np.isfinite(fl), fl, np.nanmean(fl))
-        sl = sample_latlon_grid(np.maximum(fl - SNOWLINE_OFFSET_M, 0), lats, lons)
+        sl = sample_latlon_grid(np.maximum(fl - SNOWLINE_OFFSET_M, 0), lats, lons, frame)
         sl_s = cv2.resize(sl, (dem_s.shape[1], dem_s.shape[0]), interpolation=cv2.INTER_AREA)
         diff = np.where(dem_s > 1500, dem_s - sl_s, -9999)
         paths = _contour_paths(diff, [0.0], scale=q, min_len=16)

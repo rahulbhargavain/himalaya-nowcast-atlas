@@ -54,14 +54,14 @@ def _yesterday():
     return (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)).isoformat()
 
 
-def true_color():
-    minx, miny, maxx, maxy = FRAME.merc_bbox()
+def true_color(frame=FRAME):
+    minx, miny, maxx, maxy = frame.merc_bbox()
     day = _yesterday()
     body = get(GIBS_WMS, params=dict(SERVICE="WMS", REQUEST="GetMap", VERSION="1.3.0",
                                      LAYERS=TRUE_COLOR_LAYER, STYLES="", CRS="EPSG:3857", TIME=day,
-                                     BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=FRAME.gw, HEIGHT=FRAME.gh,
+                                     BBOX=f"{minx},{miny},{maxx},{maxy}", WIDTH=frame.gw, HEIGHT=frame.gh,
                                      FORMAT="image/jpeg", TRANSPARENT="FALSE"), timeout=90,
-              cache_key=f"gibs/truecolor_{day}.jpg", max_age=2 * DAY_S)
+              cache_key=f"gibs/truecolor_{day}{frame.tag()}.jpg", max_age=2 * DAY_S)
     if not body:
         return {"src": None}
     return {"src": "data:image/jpeg;base64," + base64.b64encode(body).decode()}
