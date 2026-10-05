@@ -55,7 +55,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/imd_nowcast.py` | IMD's district and station nowcasts and 5-day district warnings, via IMD's public GeoServer WFS |
 | `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and the Mukteshwar radar image, decoded to dBZ |
 | `nowcast/kumaon.py` + `kumaon_template.html` | The Kumaon page (`python -m nowcast.kumaon` re-renders it from the last build's data) |
-| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon; Garhwal in progress), one `Region` config each, built by hand (see below) into `static/<region>/culture/`, which `build.py` copies into `dist/` |
+| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon; Garhwal in progress), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 | `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2, CO and UV Aerosol Index via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
@@ -85,19 +85,23 @@ Open `dist/index.html`. Static layers are cached in `cache/` after the first run
 
 The air-quality layers (NO2, CO, UV Aerosol Index) need a free [NASA Earthdata Login](https://urs.earthdata.nasa.gov/) token, set as the `EARTHDATA_TOKEN` environment variable (a GitHub Actions repository secret for the live build). Without it, they're silently skipped. Generate a token from your Earthdata profile page, and approve the GES DISC data-download app once at `https://urs.earthdata.nasa.gov/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ` (a one-time step per account; the token itself doesn't imply that approval).
 
-### Rebuilding the Kumaon cultural atlas
+### Rebuilding the cultural atlases
 
-Its sources change over months, so it isn't part of the two-hourly run. Rebuild it locally and commit `static/kumaon/culture/index.html`:
+Their sources change over months, so they aren't part of the two-hourly run. The [`culture` workflow](.github/workflows/culture.yml) rebuilds them on the 3rd of each month (or on demand, from the Actions tab, for chosen regions) and publishes each page to the `culture` branch, as a single commit replaced each month; the two-hourly Pages build copies them from there over the copies committed under `static/`. It needs the eBird key as an `EBIRD_API_KEY` repository secret.
+
+Each source is fetched again only once its cached copy expires: OSM sites, stays and places, Wikidata, eBird and GBIF monthly; OSM roads and protected areas, and KMVN's rest houses, every two months; district outlines and the GI registry quarterly; WorldCover never (it's the 2021 map). A source that fails after expiring falls back to its cached copy, with a note in the log, so one site being down doesn't stop the month's pages.
+
+To build locally:
 
 ```bash
-pip install rasterio scipy shapely networkx
-python -m nowcast.culture                  # Kumaon (the default)
-python -m nowcast.culture --region kumaon  # or a comma-separated list of regions
+pip install -r requirements.txt -r requirements-culture.txt
+python -m nowcast.culture                          # Kumaon (the default)
+python -m nowcast.culture --region kumaon,garhwal  # a comma-separated list of regions
 ```
 
-Each region is a `Region` in `nowcast/culture.py` (`REGIONS` at the end of the file): its box, districts, eBird district codes, the state tourism corporation whose rest houses it lists, GI place words, UTDB destinations and suggested circuits. Region-specific fetches are cached under `cache/culture/<region>/` (Kumaon's, which predate regions, directly under `cache/culture/`).
+Each region is a `Region` in `nowcast/culture.py` (`REGIONS` at the end of the file): its box, districts, eBird district codes, the state tourism corporation whose rest houses it lists, GI place words, UTDB destinations and suggested circuits. Region-specific fetches are cached under `cache/culture/<region>/` (Kumaon's, which predate regions, directly under `cache/culture/`); delete a file there to refresh it early.
 
-It needs an eBird API key (free, from https://ebird.org/api/keygen) in the `EBIRD_API_KEY` environment variable or in `../.secrets/ebird_key` (outside the repo; never commit it), and reads UTDB visitor counts from the local Uttarakhand point-in-time database if present (otherwise from `cache/culture/utdb.json`). Fetches are cached under `cache/culture/`; delete a file there to refresh that source. `python -m nowcast.culture --render [--region …]` re-renders from the last build's data after template changes.
+A local build needs an eBird API key (free, from https://ebird.org/api/keygen) in the `EBIRD_API_KEY` environment variable or in `../.secrets/ebird_key` (outside the repo; never commit it). UTDB visitor counts come from the local Uttarakhand point-in-time database when it's present, which rewrites `data/utdb/<region>.json`; commit those after the board's yearly release, since the workflow reads them from there. `python -m nowcast.culture --render [--region …]` re-renders from the last build's data after template changes.
 
 ## Data sources and credits
 

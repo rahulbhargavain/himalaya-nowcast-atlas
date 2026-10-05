@@ -4,10 +4,10 @@ drive-time circuits for planning your own tour. One page per region (see
 REGIONS at the end of this file); Kumaon is the first.
 
 A slow-refresh page: its sources change over months, not hours, so it's
-built locally (python -m nowcast.culture [--region kumaon]) and the output
-is committed under static/<region>/culture/, which build.py copies into the
-published site. That keeps Overpass, Wikidata and eBird out of the
-two-hourly run.
+rebuilt monthly by .github/workflows/culture.yml (or locally: python -m
+nowcast.culture [--region kumaon]) and published to the culture branch,
+which the Pages build copies over static/<region>/culture/. That keeps
+Overpass, Wikidata and eBird out of the two-hourly run.
 
 Places to stay can't be rated on hospitality or food hygiene from open data,
 and review sites forbid scraping, so stays are described by facts that can
@@ -85,8 +85,20 @@ class Region:
         return "/".join(p for p in ("culture", self.cache_dir, name) if p)
 
 
-def _overpass(R, q, key):
-    body = get(OVERPASS, params={"data": q}, timeout=400, cache_key=R.ckey(key))
+# How long each source's cached copy is used before it's fetched again. The
+# workflow rebuilds monthly, so each expires a few days short of its cycle;
+# a source that's down when its copy has expired falls back to that copy.
+DAY = 86400
+MONTHLY, BIMONTHLY, QUARTERLY, YEARLY = 25 * DAY, 55 * DAY, 85 * DAY, 360 * DAY
+
+
+def _expired(key, max_age):
+    p = os.path.join(CACHE, key)
+    return not os.path.exists(p) or time.time() - os.path.getmtime(p) >= max_age
+
+
+def _overpass(R, q, key, max_age):
+    body = get(OVERPASS, params={"data": q}, timeout=400, cache_key=R.ckey(key), max_age=max_age, stale_ok=True)
     return json.loads(body)["elements"]
 
 
@@ -96,7 +108,8 @@ def _bbox_ql(R):
 
 
 # --------------------------------------------------------------------------
-# Fetchers (each cached under cache/culture/; delete a file to refresh it)
+# Fetchers (each cached under cache/culture/ until it expires; delete a
+# file to refresh it sooner)
 # --------------------------------------------------------------------------
 
 def osm_pois(R):
@@ -108,13 +121,13 @@ def osm_pois(R):
          f'nwr["historic"]{b};nwr["natural"~"^(peak|cave_entrance|waterfall)$"]["name"]{b};'
          f'nwr["boundary"~"^(protected_area|national_park)$"]{b};nwr["leisure"="nature_reserve"]{b};'
          f');out center tags qt;')
-    return _overpass(R, q, "osm_poi.json")
+    return _overpass(R, q, "osm_poi.json", MONTHLY)
 
 
 def osm_roads(R):
     q = (f'[out:json][timeout:380];way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|'
          f'trunk_link|primary_link|secondary_link|tertiary_link)$"]{_bbox_ql(R)};out body geom qt;')
-    return _overpass(R, q, "osm_roads.json")
+    return _overpass(R, q, "osm_roads.json", BIMONTHLY)
 
 
 def osm_protected(R):
@@ -123,12 +136,12 @@ def osm_protected(R):
          f'way["boundary"~"^(protected_area|national_park)$"]{b};'
          f'relation["leisure"="nature_reserve"]{b};way["leisure"="nature_reserve"]{b};);'
          f'out body geom qt;')
-    return _overpass(R, q, "osm_protected.json")
+    return _overpass(R, q, "osm_protected.json", BIMONTHLY)
 
 
 def osm_places(R):
     q = f'[out:json][timeout:300];node["place"~"^(city|town|village|hamlet|locality)$"]["name"]{_bbox_ql(R)};out qt;'
-    return _overpass(R, q, "osm_places.json")
+    return _overpass(R, q, "osm_places.json", MONTHLY)
 
 
 def _page_text(html):
@@ -140,13 +153,14 @@ def _page_text(html):
 def kmvn_houses():
     """KMVN's tourist rest houses: name, address line, blurb and room types,
     from kmvn.in (robots.txt allows it; fetched once, a second apart)."""
-    listing = get("https://kmvn.in/hotels", timeout=60, cache_key="culture/kmvn/hotels.html").decode("utf-8", "ignore")
+    listing = get("https://kmvn.in/hotels", timeout=60, cache_key="culture/kmvn/hotels.html", max_age=BIMONTHLY,
+                  stale_ok=True).decode("utf-8", "ignore")
     slugs = sorted(set(re.findall(r"/hotels/([a-z0-9\-]+)", listing)) - {"test-hotel"})
     out = []
     for slug in slugs:
         key = f"culture/kmvn/{slug}.html"
-        fresh = not os.path.exists(os.path.join(CACHE, key))
-        html = get(f"https://kmvn.in/hotels/{slug}", timeout=60, cache_key=key)
+        fresh = _expired(key, BIMONTHLY)
+        html = get(f"https://kmvn.in/hotels/{slug}", timeout=60, cache_key=key, max_age=BIMONTHLY, stale_ok=True)
         if fresh:
             time.sleep(1.0)
         if not html:
@@ -186,16 +200,22 @@ def _ebird_key():
     return k
 
 
-def _ebird(path, key, params=None):
+def _ebird(path, key, params=None, max_age=MONTHLY):
     import requests
     p = os.path.join(CDIR, "ebird", key)
-    if os.path.exists(p):
+    if not _expired(f"culture/ebird/{key}", max_age):
         return json.load(open(p, encoding="utf-8"))
     token = _ebird_key()
-    if not token:
-        raise RuntimeError("no eBird API key (set EBIRD_API_KEY)")
-    r = requests.get(f"{EBIRD}/{path}", params=params or {}, headers={"X-eBirdApiToken": token}, timeout=120)
-    r.raise_for_status()
+    try:
+        if not token:
+            raise RuntimeError("no eBird API key (set EBIRD_API_KEY)")
+        r = requests.get(f"{EBIRD}/{path}", params=params or {}, headers={"X-eBirdApiToken": token}, timeout=120)
+        r.raise_for_status()
+    except (RuntimeError, requests.RequestException) as e:
+        if os.path.exists(p):
+            print(f"  eBird {path} failed, using the cached copy: {e}", flush=True)
+            return json.load(open(p, encoding="utf-8"))
+        raise
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         f.write(r.text)
@@ -206,7 +226,7 @@ def _ebird(path, key, params=None):
 def ebird(R):
     """Hotspots and species lists per district, with English and
     scientific names from eBird's taxonomy."""
-    tax = {t["speciesCode"]: t for t in _ebird("ref/taxonomy/ebird", "taxonomy.json", {"fmt": "json"})}
+    tax = {t["speciesCode"]: t for t in _ebird("ref/taxonomy/ebird", "taxonomy.json", {"fmt": "json"}, YEARLY)}
     out = {"districts": [], "hotspots": []}
     all_species = set()
     for code, name in R.ebird.items():
@@ -287,8 +307,8 @@ def gi_products():
     out = []
     for app in GI_APPS:
         key = f"culture/gi/{app}.html"
-        fresh = not os.path.exists(os.path.join(CACHE, key))
-        html = get(f"{GIR}Application/Details/{app}", timeout=90, cache_key=key)
+        fresh = _expired(key, QUARTERLY)
+        html = get(f"{GIR}Application/Details/{app}", timeout=90, cache_key=key, max_age=QUARTERLY, stale_ok=True)
         if fresh:
             time.sleep(1.0)
         if not html:
@@ -323,7 +343,7 @@ def districts_shapes(R):
     q = (f'[out:json][timeout:300];relation["boundary"="administrative"]["admin_level"="5"]{_bbox_ql(R)};'
          f'out body geom;')
     out = {}
-    for r in _overpass(R, q, "osm_districts.json"):
+    for r in _overpass(R, q, "osm_districts.json", QUARTERLY):
         name = re.sub(r"\s+district$", "", r.get("tags", {}).get("name:en") or r.get("tags", {}).get("name") or "",
                       flags=re.I)
         if name not in R.districts:
@@ -474,7 +494,7 @@ def wikidata_sites(R):
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,hi" . }}
 }}"""
     body = get("https://query.wikidata.org/sparql", params={"query": q, "format": "json"}, timeout=300,
-               cache_key=R.ckey("wikidata.json"))
+               cache_key=R.ckey("wikidata.json"), max_age=MONTHLY, stale_ok=True)
     return json.loads(body)["results"]["bindings"]
 
 
@@ -496,7 +516,7 @@ def gbif_birds(frame):
     for ty in range(ty0, ty1 + 1):
         for tx in range(tx0, tx1 + 1):
             body = get(GBIF_TILE.format(z=z, x=tx, y=ty), params={"taxonKey": 212, "style": "classic.point"},
-                       timeout=60, cache_key=f"culture/gbif/aves_{z}_{tx}_{ty}.png")
+                       timeout=60, cache_key=f"culture/gbif/aves_{z}_{tx}_{ty}.png", max_age=MONTHLY, stale_ok=True)
             if body:
                 canvas.paste(Image.open(io.BytesIO(body)).convert("RGBA"), ((tx - tx0) * 512, (ty - ty0) * 512))
     ox, oy = gx0 - tx0 * 512, gy0 - ty0 * 512
@@ -836,9 +856,12 @@ PIT = os.environ.get("UTTARAKHAND_PIT", r"E:\weather\uttarakhand-atlas\pit.sqlit
 
 def visitors(R):
     """Uttarakhand Tourism Development Board's published yearly visitor
-    counts for the region's destinations (public PDFs, as filed in pit.sqlite)."""
+    counts for the region's destinations (public PDFs, as filed in pit.sqlite).
+    Without pit.sqlite (the monthly workflow), from data/utdb/<region>.json,
+    which a local build with pit.sqlite rewrites: commit it after the board's
+    yearly release."""
     import sqlite3
-    p = os.path.join(CACHE, R.ckey("utdb.json"))
+    p = os.path.join(HERE, "data", "utdb", f"{R.id}.json")
     if not os.path.exists(PIT):
         return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else []
     con = sqlite3.connect(PIT)
@@ -857,7 +880,7 @@ def visitors(R):
     res = sorted(out.values(), key=lambda r: -max(v["total"] for v in r["years"].values()))
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
-        json.dump(res, f)
+        json.dump(res, f, indent=1)
     return res
 
 
@@ -1328,6 +1351,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Build a regional cultural atlas into static/<region>/culture/.")
     ap.add_argument("--region", default="kumaon", help=f"comma-separated: {', '.join(REGIONS)}")
     ap.add_argument("--render", action="store_true", help="re-render from the last build's data (template work)")
+    ap.add_argument("--publish", metavar="DIR", help="also copy each page and its data to DIR/<region>/culture/")
     args = ap.parse_args()
     for rid in args.region.split(","):
         R = REGIONS[rid.strip()]
@@ -1337,3 +1361,9 @@ if __name__ == "__main__":
             print(f"wrote {out_path(R)} ({n / 1e6:.1f} MB)")
         else:
             print(build(R, out_path(R), TEMPLATE))
+        if args.publish:
+            import shutil
+            dst = os.path.join(args.publish, R.id, "culture")
+            os.makedirs(dst, exist_ok=True)
+            shutil.copy(out_path(R), os.path.join(dst, "index.html"))
+            shutil.copy(os.path.join(CACHE, R.ckey("culture_last.json")), os.path.join(dst, "data.json"))

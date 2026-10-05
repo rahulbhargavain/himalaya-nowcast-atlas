@@ -40,6 +40,24 @@ jobs:
           key: atlas-cache-${{ github.run_id }}
           restore-keys: atlas-cache-
 
+      # The cultural atlases, rebuilt monthly by culture.yml onto the culture
+      # branch; they replace the copies committed under static/.
+      - name: Check out the cultural atlases
+        continue-on-error: true   # until culture.yml has run once
+        uses: actions/checkout@v4
+        with:
+          ref: culture
+          path: culture-pages
+
+      - name: Use the latest cultural atlases
+        run: |
+          [ -d culture-pages ] || exit 0
+          for f in culture-pages/*/culture/index.html; do
+            [ -e "$f" ] || continue
+            dst="static/${f#culture-pages/}"
+            mkdir -p "$(dirname "$dst")" && cp "$f" "$dst"
+          done
+
       - run: python build.py && rm -f dist/artifact.html
         env:
           # NASA Earthdata Login bearer token, for the Sentinel-5P NO2 layer

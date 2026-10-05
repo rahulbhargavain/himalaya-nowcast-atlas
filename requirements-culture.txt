@@ -1,0 +1,5 @@
+# The cultural atlases (python -m nowcast.culture), on top of requirements.txt
+rasterio>=1.3
+scipy>=1.11
+shapely>=2.0
+networkx>=3.2

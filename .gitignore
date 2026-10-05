@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 snapshot/
 archive/
+culture-pages/
+published/
