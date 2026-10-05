@@ -1025,6 +1025,10 @@ def build(R, out_path, template_path, log=print):
                           else "Wildlife sanctuary or reserve"})
     gi = [dict(g, local=bool(R.gi_words.search(g["name"] + " " + g["area"]))) for g in gi_products()]
     vis = visitors(R)
+    if os.path.exists(PIT):
+        missing = sorted(set(R.utdb) - {e for e, (n, _) in R.utdb.items() if n in {v["name"] for v in vis}})
+        if missing:
+            log(f"  UTDB entities not in pit.sqlite: {missing}")
 
     log("culture: destinations and circuits")
     dest = {}
@@ -1205,7 +1209,60 @@ KUMAON = Region(
     wd_bad_coords=frozenset({"Patal Bhuvaneshwar", "Khaptad Lake"}),
     store="kca:", back=(("../", "Kumaon nowcast"), ("../../", "Himalaya Nowcast Atlas")), nowcast="../")
 
-REGIONS = {R.id: R for R in (KUMAON,)}
+# Always-routable towns, at their OSM place nodes.
+GARHWAL_TOWNS = [
+    ("Dehradun", 30.326, 78.044, "Dehradun"), ("Mussoorie", 30.457, 78.078, "Dehradun"),
+    ("Vikasnagar", 30.469, 77.771, "Dehradun"), ("Chakrata", 30.701, 77.870, "Dehradun"),
+    ("Rishikesh", 30.109, 78.292, "Dehradun"), ("Haridwar", 29.938, 78.145, "Haridwar"),
+    ("Roorkee", 29.869, 77.890, "Haridwar"), ("Kotdwar", 29.746, 78.520, "Pauri Garhwal"),
+    ("Lansdowne", 29.838, 78.682, "Pauri Garhwal"), ("Pauri", 30.148, 78.776, "Pauri Garhwal"),
+    ("Srinagar", 30.223, 78.790, "Pauri Garhwal"), ("Devprayag", 30.146, 78.599, "Tehri Garhwal"),
+    ("New Tehri", 30.374, 78.433, "Tehri Garhwal"), ("Chamba", 30.346, 78.394, "Tehri Garhwal"),
+    ("Dhanaulti", 30.425, 78.246, "Tehri Garhwal"), ("Uttarkashi", 30.729, 78.440, "Uttarkashi"),
+    ("Barkot", 30.809, 78.206, "Uttarkashi"), ("Purola", 30.879, 78.083, "Uttarkashi"),
+    ("Harsil", 31.037, 78.751, "Uttarkashi"), ("Gangotri", 30.994, 78.940, "Uttarkashi"),
+    ("Rudraprayag", 30.287, 78.981, "Rudraprayag"), ("Ukhimath", 30.514, 79.095, "Rudraprayag"),
+    ("Gaurikund", 30.653, 79.027, "Rudraprayag"), ("Gopeshwar", 30.409, 79.319, "Chamoli"),
+    ("Karnaprayag", 30.260, 79.217, "Chamoli"), ("Gauchar", 30.289, 79.157, "Chamoli"),
+    ("Joshimath", 30.556, 79.561, "Chamoli"), ("Badrinath", 30.742, 79.493, "Chamoli"),
+]
+
+# GMVN's rest houses aren't fetched yet: gmvnonline.com refuses scripted
+# requests, so its scraper and place table are still to come.
+GMVN = Corp(
+    abbr="GMVN", name="Garhwal Mandal Vikas Nigam", site="gmvnonline.com", fetch=list,
+    url=lambda slug: f"https://gmvnonline.com/{slug}", place={})
+
+GARHWAL = Region(
+    id="garhwal", name="Garhwal",
+    box=(77.5, 29.35, 80.2, 31.55),  # OSM's district outlines span 77.57-80.10 E, 29.43-31.46 N
+    districts=["Uttarkashi", "Chamoli", "Rudraprayag", "Tehri Garhwal", "Pauri Garhwal", "Dehradun", "Haridwar"],
+    ebird={"IN-UL-UT": "Uttarkashi", "IN-UL-CL": "Chamoli", "IN-UL-RP": "Rudraprayag", "IN-UL-TG": "Tehri Garhwal",
+           "IN-UL-PG": "Pauri Garhwal", "IN-UL-DD": "Dehradun", "IN-UL-HA": "Haridwar"},
+    towns=lambda: GARHWAL_TOWNS, corp=GMVN,
+    gi_words=re.compile(r"garhwal|uttarkashi|chamoli|rudraprayag|tehri|pauri|dehradun|haridwar|mussoorie|"
+                        r"rishikesh|jaunsar|chakrata|purola|harsil|joshimath|badrinath|kedarnath|gangotri", re.I),
+    # Entity names follow the Kumaon ones' pattern (UTDB's own spellings,
+    # lower-cased); build() logs any that pit.sqlite doesn't have.
+    utdb={"dehradun": ("Dehradun", "Dehradun"), "mussoorie": ("Mussoorie", "Dehradun"),
+          "rishikesh": ("Rishikesh", "Dehradun"), "haridwar": ("Haridwar", "Haridwar"),
+          "badrinath": ("Badrinath", "Chamoli"), "kedarnath": ("Kedarnath", "Rudraprayag"),
+          "gangotri": ("Gangotri", "Uttarkashi"), "yamunotri": ("Yamunotri", "Uttarkashi"),
+          "hemkund_sahib": ("Hemkund Sahib", "Chamoli"), "auli": ("Auli", "Chamoli"),
+          "tehri": ("Tehri", "Tehri Garhwal"), "lansdowne": ("Lansdowne", "Pauri Garhwal"),
+          "pauri": ("Pauri", "Pauri Garhwal"), "uttarkashi": ("Uttarkashi", "Uttarkashi"),
+          "chamoli": ("Chamoli", "Chamoli"), "rudraprayag": ("Rudraprayag", "Rudraprayag")},
+    circuits=[],
+    shade_alt="Shaded relief of Garhwal, from the Doon valley and the Haridwar plains to Bandarpunch, "
+              "the Gangotri peaks and Nanda Devi",
+    gi_note="many (Ringal craft, Bichhu Buti nettle fabric, Thulma and Bhotia dann; Jhangora, Mandua and "
+            "Purola's Lal Chawal) are long part of Garhwal's crafts and hill farming",
+    # Hastinapur sanctuary is in Uttar Pradesh; its OSM outline overlaps
+    # Haridwar's along the state border.
+    pa_skip=frozenset({"Hastinapur WLS"}),
+    cache_dir="garhwal", store="gca:", back=(("../../", "Himalaya Nowcast Atlas"),))
+
+REGIONS = {R.id: R for R in (KUMAON, GARHWAL)}
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE = os.path.join(HERE, "culture_template.html")
