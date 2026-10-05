@@ -1,4 +1,4 @@
-<title>Kumaon Nowcast</title>
+<title>Regional Nowcast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans+SC:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -139,9 +139,9 @@ tr.sel td{background:var(--chip)}
 <div class="wrap">
   <header class="top">
     <div>
-      <div class="back"><a href="../">← Himalaya Nowcast Atlas</a> · <a href="culture/">Kumaon cultural atlas →</a></div>
-      <h1>Kumaon Nowcast</h1>
-      <div class="sub">Radar tracked forward for eight hours, IMD's Mukteshwar Doppler radar, IMD's live warnings and stations, town forecasts and air quality, river flow, fires and snow, for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar.</div>
+      <div class="back" id="backLinks"><a href="../">← Himalaya Nowcast Atlas</a></div>
+      <h1 id="pageTitle"></h1>
+      <div class="sub" id="pageSub"></div>
     </div>
     <div class="stamp" id="stamp"></div>
   </header>
@@ -152,7 +152,7 @@ tr.sel td{background:var(--chip)}
 
   <div class="mapbox" id="mapbox">
     <div class="stage" id="stage">
-      <img id="shadeImg" alt="Shaded relief of Kumaon, from the Terai plains to the Panchachuli and Nanda Devi massifs">
+      <img id="shadeImg" alt="">
       <img id="trueColorImg" alt="" hidden>
       <img id="snowImg" alt="" hidden>
       <img id="fireImg" alt="" hidden>
@@ -206,7 +206,7 @@ tr.sel td{background:var(--chip)}
     <section class="card wide">
       <h2>Town by town</h2>
       <div class="scroll"><table id="townTable"></table></div>
-      <p class="note">Radar now: the strongest echo within about 3 km on IMD's Mukteshwar radar. Echo arrives: first step of the tracked RainViewer radar with 25 dBZ or more within about 7 km. Rain, temperature, gusts, thunder (forecast thunderstorm hours) and snow line are from the Open-Meteo forecast for each town. Air quality is the CAMS model's US AQI; its grid is about 40 km, so hill towns can read high when the cell takes in the plains. Select a town to see it hour by hour and on the map.</p>
+      <p class="note">Radar now: the strongest echo within about 3 km on IMD's Doppler radar layer. Echo arrives: first step of the tracked RainViewer radar with 25 dBZ or more within about 7 km. Rain, temperature, gusts, thunder (forecast thunderstorm hours) and snow line are from the Open-Meteo forecast for each town. Air quality is the CAMS model's US AQI; its grid is about 40 km, so hill towns can read high when the cell takes in the plains. Select a town to see it hour by hour and on the map.</p>
     </section>
 
     <section class="card">
@@ -223,8 +223,8 @@ tr.sel td{background:var(--chip)}
     </section>
 
     <section class="card">
-      <h2>Mukteshwar Doppler radar (IMD)</h2>
-      <img class="mksimg" id="mksOrig" alt="IMD's latest maximum-reflectivity image from the Mukteshwar Doppler weather radar">
+      <h2>IMD Doppler radar</h2>
+      <div id="radarCards" style="display:flex;flex-direction:column;gap:10px"></div>
       <p class="note" id="mksNote"></p>
     </section>
 
@@ -251,13 +251,17 @@ const DATA = /*__DATA__*/null;
 (function(){
 "use strict";
 const D = DATA, F = D.frame, GW = F.gw, GH = F.gh;
+const RG = D.region;
+const RADAR_NAMES = RG.radars.length > 1 ? RG.radars.slice(0, -1).join(", ") + " and " + RG.radars[RG.radars.length - 1] : RG.radars[0];
+const RADAR_LABEL = RG.radars.length > 1 ? "IMD Doppler radars" : `${RG.radars[0]} radar (IMD)`;
+const COUNT_WORD = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"][RG.districts.length] || String(RG.districts.length);
 const $ = s => document.querySelector(s);
 const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
 const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtIST = (t, opt) => new Intl.DateTimeFormat("en-IN", Object.assign({timeZone:"Asia/Kolkata", hour:"2-digit", minute:"2-digit", hour12:false}, opt || {})).format(new Date(t * 1000));
 const fmtDay = t => new Intl.DateTimeFormat("en-IN", {timeZone:"Asia/Kolkata", weekday:"short", day:"numeric", month:"short"}).format(new Date(t * 1000));
-const store = { get(k, d){ try { const v = localStorage.getItem("kna:" + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem("kna:" + k, JSON.stringify(v)); } catch(e){} } };
+const store = { get(k, d){ try { const v = localStorage.getItem(RG.store + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem(RG.store + k, JSON.stringify(v)); } catch(e){} } };
 const num = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("en-IN", {maximumFractionDigits:d, minimumFractionDigits:d});
 
 /* ---------------- geometry ---------------- */
@@ -272,11 +276,11 @@ const state = {
   step: D.radar.t0_index,
   layers: Object.assign({rv: D.radar.coverage > .2, mks: true, imerg: false, model: false, snowline: true, snow: true,
     truecolor: false, towns: true, districts: true, stations: true, rivers: true, fires: true, quakes: true}, store.get("layers", {})),
-  town: store.get("town", "Bhimtal"),
+  town: store.get("town", RG.home),
   legendCollapsed: store.get("legendCollapsed", false),
   zoom: 1, tx: 0, ty: 0,
 };
-if (!D.towns.some(t => t.name === state.town)) state.town = "Bhimtal";
+if (!D.towns.some(t => t.name === state.town)) state.town = RG.home;
 
 /* ---------------- colours and scales ---------------- */
 const IMD_COLORS = {1:[70,130,90], 2:[196,150,30], 3:[204,102,28], 4:[178,36,36]};
@@ -404,17 +408,17 @@ function imdTitle(r, place){
 }
 function buildDistricts(){
   D.imd.districts.forEach(r => {
-    const col = IMD_COLORS[r.color] || IMD_COLORS[1], ours = KUMAON.has(r.district.toUpperCase());
+    const col = IMD_COLORS[r.color] || IMD_COLORS[1], ours = HOME_DISTRICTS.has(r.district.toUpperCase());
     const p = svgEl("path", {d:r.d, fill:`rgb(${col})`, "fill-opacity":[.0, .22, .32, .42][r.color - 1] ?? 0, stroke: ours ? "#3a3050" : "#6a6a6a",
       "stroke-width": ours ? 1.4 : .7, "stroke-opacity": ours ? .7 : .4, "stroke-dasharray": ours ? "" : "3 3", "vector-effect":"non-scaling-stroke"});
     p.appendChild(svgEl("title")).textContent = imdTitle(r, `${r.district} district`);
     groups.dist.appendChild(p);
   });
 }
-const KUMAON = new Set(["NAINITAL","ALMORA","BAGESHWAR","CHAMPAWAT","PITHORAGARH","UDHAM SINGH NAGAR"]);
+const HOME_DISTRICTS = new Set(RG.imd_districts);
 function buildTowns(){
   D.towns.forEach(t => {
-    const [o, g] = marker(t.x, t.y), home = t.name === "Bhimtal";
+    const [o, g] = marker(t.x, t.y), home = t.name === RG.home;
     g.appendChild(svgEl("circle", {r: home ? 3.6 : 2.6, fill: home ? "#b8324f" : "#1f2a2e", stroke:"#fff", "stroke-width":1}));
     g.appendChild(label(t.name, {x:5, y:-4, "font-size": home ? 13 : 11.5, "font-weight": home ? 700 : 500}));
     o.style.cursor = "pointer"; o.addEventListener("click", () => selectTown(t.name, false));
@@ -469,12 +473,14 @@ function buildFires(){
   });
 }
 function buildRange(){
-  const m = D.mks; if (!m || m.x == null) return;
-  groups.range.appendChild(svgEl("circle", {cx:m.x, cy:m.y, r:m.r_px, fill:"none", stroke:"#3a3050", "stroke-width":1, "stroke-dasharray":"5 4", "stroke-opacity":.6, "vector-effect":"non-scaling-stroke"}));
-  const [o, g] = marker(m.x, m.y);
-  g.appendChild(svgEl("path", {d:"M-5,4 L0,-6 L5,4 Z", fill:"none", stroke:"#3a3050", "stroke-width":1.5}));
-  o.appendChild(svgEl("title")).textContent = "IMD Mukteshwar Doppler weather radar (100 km range)";
-  groups.range.appendChild(o);
+  (D.radars || []).forEach(m => {
+    if (m.x == null) return;
+    groups.range.appendChild(svgEl("circle", {cx:m.x, cy:m.y, r:m.r_px, fill:"none", stroke:"#3a3050", "stroke-width":1, "stroke-dasharray":"5 4", "stroke-opacity":.6, "vector-effect":"non-scaling-stroke"}));
+    const [o, g] = marker(m.x, m.y);
+    g.appendChild(svgEl("path", {d:"M-5,4 L0,-6 L5,4 Z", fill:"none", stroke:"#3a3050", "stroke-width":1.5}));
+    o.appendChild(svgEl("title")).textContent = `IMD ${m.name} Doppler weather radar (${m.range_km || 100} km range)`;
+    groups.range.appendChild(o);
+  });
 }
 
 function syncOverlayVisibility(){
@@ -555,12 +561,12 @@ function readout(e){
     `<div class="mono">${lat.toFixed(3)}°N ${lon.toFixed(3)}°E${elev != null ? ` · ~${Math.round(elev).toLocaleString("en-IN")} m` : ""}</div>` +
     `<div>Snow line ${Math.round(m.snowline).toLocaleString("en-IN")} m${elev != null && elev > m.snowline ? " (this point is above it)" : ""}${snow ? " · " + snow : ""}</div>` +
     `<div>Forecast rain ${m.rain.toFixed(1)} mm/h${rv != null ? ` · tracked radar ${rv ? "~" + rv + " dBZ" : "no echo"}` : ""}</div>` +
-    (mk != null ? `<div>Mukteshwar radar ${mk ? "~" + mk + " dBZ" : "no echo"} at ${D.mks.t ? fmtIST(D.mks.t) + " IST" : "latest scan"}</div>` : "");
+    (mk != null ? `<div>IMD Doppler radar ${mk ? "~" + mk + " dBZ" : "no echo"} at ${D.mks.t ? fmtIST(D.mks.t) + " IST" : "latest scan"}</div>` : "");
 }
 
 /* ---------------- controls ---------------- */
 const LAYER_GROUPS = [
-  ["radar & rain", [["mks","Mukteshwar radar (IMD)",[48,170,160]],["rv","Radar, tracked 8 h",[150,196,70]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Forecast rain",[70,90,200]]]],
+  ["radar & rain", [["mks",RADAR_LABEL,[48,170,160]],["rv","Radar, tracked 8 h",[150,196,70]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Forecast rain",[70,90,200]]]],
   ["ground", [["districts","IMD nowcast",[204,102,28]],["stations","IMD stations now",[47,111,143]],["towns","Towns",[31,42,46]],["snowline","Snow line",[29,79,115]],["snow","Snow, last 8 days",[200,225,240]],["truecolor","True colour photo",[120,140,100]]]],
   ["hazards", [["rivers","River flow",[52,110,150]],["fires","Fires, 48 h",[224,80,26]],["quakes","Earthquakes",[212,84,30]]]],
 ];
@@ -650,9 +656,9 @@ $("#play").onclick = () => {
 
 /* ---------------- IMD panels ---------------- */
 function sevStyle(s){ const c = IMD_COLORS[s] || IMD_COLORS[1]; return s >= 2 ? `background:rgb(${c});color:${s === 2 ? "#1f2a2e" : "#fff"}` : "background:var(--chip);color:var(--ink2)"; }
-function kumaonDistricts(){ return D.imd.districts.filter(r => KUMAON.has(r.district.toUpperCase())).sort((a, b) => a.district.localeCompare(b.district)); }
+function homeDistricts(){ return D.imd.districts.filter(r => HOME_DISTRICTS.has(r.district.toUpperCase())).sort((a, b) => a.district.localeCompare(b.district)); }
 function buildIMD(){
-  const nd = kumaonDistricts();
+  const nd = homeDistricts();
   $("#nowcastTable").innerHTML = `<thead><tr><th>Now (IMD nowcast)</th><th></th><th>valid (IST)</th></tr></thead><tbody>` +
     nd.map(r => `<tr><td><span class="sev" style="background:rgb(${IMD_COLORS[r.color]})"></span>${esc(r.district)}</td>` +
       `<td>${r.hazards.length || r.message ? esc([r.message].concat(r.hazards).filter(Boolean).join("; ")) : `<span class="muted">no warning</span>`}</td>` +
@@ -670,12 +676,12 @@ function buildIMD(){
 }
 function shortHaz(h){ return ({"Thunderstorm & lightning, squall":"Thunderstorm", "Strong surface winds":"Strong wind"})[h] || h; }
 function buildAlertBar(){
-  const nd = kumaonDistricts(), worstNow = Math.max(1, ...nd.map(r => r.color));
+  const nd = homeDistricts(), worstNow = Math.max(1, ...nd.map(r => r.color));
   const parts = [];
   if (worstNow >= 2) {
     const by = nd.filter(r => r.color >= 2).map(r => `${r.district} (${IMD_LABELS[r.color].toLowerCase()}${r.hazards.length ? ": " + r.hazards.join(", ").toLowerCase() : ""})`);
     parts.push(`<div><b>IMD nowcast now:</b> ${esc(by.join("; "))}.</div>`);
-  } else parts.push(`<div><b>IMD nowcast now:</b> no warning in Kumaon's six districts.</div>`);
+  } else parts.push(`<div><b>IMD nowcast now:</b> no warning in ${esc(RG.name)}'s ${COUNT_WORD} districts.</div>`);
   // Group 5-day warnings by severity and hazards, listing districts and date ranges.
   const groupsW = {};
   D.imd.warnings.forEach(w => w.days.forEach((d, k) => {
@@ -690,7 +696,7 @@ function buildAlertBar(){
     Object.entries(dist).forEach(([n, ds]) => { const r = dateRange(ds); (byRange[r] = byRange[r] || []).push(n); });
     return `${IMD_LABELS[sev]}: ${haz.toLowerCase() || "warning"} — ` + Object.entries(byRange).map(([r, ns]) => `${ns.join(", ")} ${r}`).join("; ");
   });
-  parts.push(`<div><b>Next 5 days:</b> ${lines.length ? esc(lines.join(". ")) + "." : "no IMD district warnings for Kumaon."}</div>`);
+  parts.push(`<div><b>Next 5 days:</b> ${lines.length ? esc(lines.join(". ")) + "." : "no IMD district warnings for " + esc(RG.name) + "."}</div>`);
   const sevCol = IMD_COLORS[worst];
   $("#alertbar").style.setProperty("--sev", `rgb(${sevCol})`);
   $("#alertbar").innerHTML = parts.join("") + `<div class="muted">From IMD's own nowcast and district-wise warnings; see the IMD warnings panel for each district and day.</div>`;
@@ -819,12 +825,12 @@ function buildObs(){
   const A = D.imd.aws;
   $("#obsTable").innerHTML = A.length ? `<thead><tr><th>IMD automatic stations</th><th class="num">IST</th><th class="num">temp</th><th class="num">RH</th><th class="num">rain</th><th class="num">wind</th></tr></thead><tbody>` +
     A.map((s, i) => `<tr tabindex="0" data-s="${i}"><td>${esc(s.name)}${s.kind === "ARG" ? ` <span class="muted" style="font-size:12px">rain gauge</span>` : ""}</td><td class="num">${fmtIST(s.t)}</td><td class="num">${s.temp != null ? num(s.temp, 1) + "°" : "–"}</td><td class="num">${s.rh != null ? num(s.rh) + "%" : "–"}</td><td class="num">${s.rain != null ? num(s.rain, 1) + " mm" : "–"}</td><td class="num">${s.wspd != null ? num(s.wspd, 1) : "–"}${s.wdir != null ? " " + compass(s.wdir) : ""}</td></tr>`).join("") + `</tbody>` :
-    `<tbody><tr><td class="muted">No IMD automatic station in Kumaon reported in the last 3 hours.</td></tr></tbody>`;
+    `<tbody><tr><td class="muted">No IMD automatic station in ${esc(RG.name)} reported in the last 3 hours.</td></tr></tbody>`;
   $("#obsTable").querySelectorAll("tr[data-s]").forEach(tr => { tr.onclick = () => { const s = A[+tr.dataset.s]; focusOn(s.x, s.y, 4, true); }; });
   const S = D.imd.synop;
   $("#synopTable").innerHTML = S.length ? `<thead><tr><th>IMD observatories</th><th class="num">IST</th><th class="num">temp</th><th>weather</th><th class="num">visibility</th><th class="num">pressure</th><th class="num">rain 24 h</th></tr></thead><tbody>` +
     S.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${fmtIST(s.t)}</td><td class="num">${s.temp != null ? num(s.temp, 1) + "°" : "–"}</td><td>${esc(wwText(s.ww))}</td><td class="num">${s.vis != null ? num(s.vis / 1000, 1) + " km" : "–"}</td><td class="num">${s.mslp != null ? num(s.mslp) + " hPa" : "–"}${s.dp24 != null ? ` <span class="muted">(${s.dp24 > 0 ? "+" : ""}${num(s.dp24, 1)})</span>` : ""}</td><td class="num">${s.rain24 != null ? num(s.rain24, 1) + " mm" : "–"}</td></tr>`).join("") + `</tbody>` : "";
-  $("#obsNote").innerHTML = `From IMD's public map service. Only stations that reported in the last 3 hours are listed (observatories: 6 hours); ${D.imd.aws_silent} more IMD automatic stations in this area have not. Rain is as IMD reports it for the station's current day. IMD publishes no unit for automatic-station wind speed in this feed, so it is shown as given. There is no public IMD station at Bhimtal itself.`;
+  $("#obsNote").innerHTML = `From IMD's public map service. Only stations that reported in the last 3 hours are listed (observatories: 6 hours); ${D.imd.aws_silent} more IMD automatic stations in this area have not. Rain is as IMD reports it for the station's current day. IMD publishes no unit for automatic-station wind speed in this feed, so it is shown as given.${RG.station_note ? " " + esc(RG.station_note) : ""}`;
 }
 function compass(d){ return ["N","NE","E","SE","S","SW","W","NW"][Math.round(d / 45) % 8]; }
 
@@ -832,17 +838,14 @@ function compass(d){ return ["N","NE","E","SE","S","SW","W","NW"][Math.round(d /
 function buildEvents(){
   const colors = {radar:"#30aaa0", model:"#4650c0"};
   $("#events").innerHTML = D.events.length ? D.events.map(e => `<li><span class="mono">+${fmtLead(e.t)}</span><span class="dot" style="background:${colors[e.kind]}"></span><span>${esc(e.text)}</span></li>`).join("") :
-    `<li><span></span><span></span><span class="muted">Neither the tracked radar nor the forecast brings rain of 1 mm/h or more to a Kumaon town in the next 8 hours.</span></li>`;
+    `<li><span></span><span></span><span class="muted">Neither the tracked radar nor the forecast brings rain of 1 mm/h or more to a ${esc(RG.name)} town in the next 8 hours.</span></li>`;
   const cov = D.radar.coverage;
-  $("#radarNote").innerHTML = `Tracked radar: RainViewer's composite, carried forward by the Himalaya atlas's optical-flow extrapolation (computed for the whole Himalaya, so storms moving in from outside Kumaon are already tracked). It is coarse here (about 2 km pixels) and useful for roughly the first two hours. ${cov < .2 ? "RainViewer has little radar coverage over Kumaon, so this layer starts switched off; use the Mukteshwar radar instead." : ""}`;
-  const m = D.mks;
-  if (m && m.image) {
-    $("#mksOrig").src = m.image;
-    $("#mksNote").innerHTML = `IMD's latest maximum-reflectivity (MAX(Z)) image from the X-band Doppler radar at Mukteshwar${m.t ? `, file updated ${fmtDay(m.t)} ${fmtIST(m.t)} IST` : ""}. The map layer is this image decoded back to dBZ and placed by a fit to the town markers IMD draws on it (accurate to about 1 km); range rings, labels and the snow-white relief in IMD's background are filtered out. It is one scan, not a loop, and is not tracked forward. ${m.echo_px != null ? `Echo in view: about ${num(m.echo_px * F.km_px * F.km_px)} km².` : ""}${m.note ? " " + esc(m.note) + "." : ""}`;
-  } else {
-    $("#mksOrig").hidden = true;
-    $("#mksNote").textContent = "IMD's Mukteshwar radar image was unavailable when this page was built.";
-  }
+  $("#radarNote").innerHTML = `Tracked radar: RainViewer's composite, carried forward by the Himalaya atlas's optical-flow extrapolation (computed for the whole Himalaya, so storms moving in from outside ${esc(RG.name)} are already tracked). It is coarse here (about 2 km pixels) and useful for roughly the first two hours. ${cov < .2 ? `RainViewer has little radar coverage over ${esc(RG.name)}, so this layer starts switched off; use IMD's ${esc(RADAR_NAMES)} radar instead.` : ""}`;
+  const rs = (D.radars || []).filter(m => m.image);
+  $("#radarCards").innerHTML = rs.map(m => `<figure style="margin:0"><img class="mksimg" src="${m.image}" alt="IMD's latest maximum-reflectivity image from the ${esc(m.name)} Doppler weather radar"><figcaption class="note">${esc(m.name)}${m.t ? `, file updated ${fmtDay(m.t)} ${fmtIST(m.t)} IST` : ""}${m.echo_px != null ? ` · echo about ${num(m.echo_px * F.km_px * F.km_px)} km²` : ""}${m.note ? " · " + esc(m.note) : ""}</figcaption></figure>`).join("");
+  const missing = RG.radars.filter(n => !rs.some(m => m.name === n));
+  $("#mksNote").innerHTML = rs.length ? `IMD's latest maximum-reflectivity (MAX(Z)) image${rs.length > 1 ? "s" : ""} from its X-band Doppler radar${rs.length > 1 ? "s" : ""} in the hills. The map layer is ${rs.length > 1 ? "these images" : "this image"} decoded back to dBZ and placed on the map${rs.length > 1 ? " (where two overlap, the stronger echo shows)" : ""}: Mukteshwar's by a fit to the town markers IMD draws on it (about 1 km), others by the same plan-view geometry, checked against their own markers (about 1–2 km). Range rings, labels and the snow-white relief in IMD's background are filtered out. Each is one scan, not a loop, and is not tracked forward.${missing.length ? ` Unavailable in this build: ${esc(missing.join(", "))}.` : ""}` :
+    `IMD's ${esc(RADAR_NAMES)} radar image${RG.radars.length > 1 ? "s were" : " was"} unavailable when this page was built.`;
 }
 
 /* ---------------- rivers ---------------- */
@@ -870,9 +873,9 @@ function buildHazards(){
   const fc = D.fires.clusters || [], q = D.quakes, sn = D.snow;
   let h = `<div class="kv">`;
   h += `<span class="sc">fires</span><span>${fc.length ? `${fc.length} cluster${fc.length > 1 ? "s" : ""} of VIIRS fire detections in the last 48 hours${D.fires.dates && D.fires.dates.length ? ` (${D.fires.dates.join(", ")})` : ""}: ` +
-    fc.slice(0, 8).map((c, i) => `<a href="#" data-f="${i}">${c.near_km} km from ${esc(c.near)}</a>`).join(", ") + (fc.length > 8 ? ", …" : "") + "." : "No VIIRS fire detections in Kumaon in the last 48 hours."}</span>`;
+    fc.slice(0, 8).map((c, i) => `<a href="#" data-f="${i}">${c.near_km} km from ${esc(c.near)}</a>`).join(", ") + (fc.length > 8 ? ", …" : "") + "." : `No VIIRS fire detections in ${esc(RG.name)} in the last 48 hours.`}</span>`;
   h += `<span class="sc">snow</span><span>${sn.km2 ? `About ${num(Math.round(sn.km2 / 100) * 100)} km² seen snow-covered (MODIS, at least 40%)` : "No snow seen"}${sn.dates && sn.dates[0] ? ` between ${esc(sn.dates[0])} and ${esc(sn.dates[1])}` : ""}; cloud hides some passes, so the layer combines the last 8 days.</span>`;
-  h += `<span class="sc">earthquakes</span><span>${q.length ? q.map(x => `M${x.mag} ${esc(x.place)}, ${fmtDay(x.t)}${x.inside ? "" : " (just outside the map)"}`).join("; ") + "." : "None of magnitude 3 or more within about 100 km of Kumaon in the last 30 days (USGS)."}</span>`;
+  h += `<span class="sc">earthquakes</span><span>${q.length ? q.map(x => `M${x.mag} ${esc(x.place)}, ${fmtDay(x.t)}${x.inside ? "" : " (just outside the map)"}`).join("; ") + "." : `None of magnitude 3 or more within about 100 km of ${esc(RG.name)} in the last 30 days (USGS).`}</span>`;
   h += `</div>`;
   $("#hazards").innerHTML = h;
   $("#hazards").querySelectorAll("[data-f]").forEach(a => a.onclick = e => { e.preventDefault(); const c = fc[+a.dataset.f]; focusOn(c.x, c.y, 5, true); });
@@ -882,13 +885,13 @@ function buildHazards(){
 function buildStamp(){
   const live = D.imd.aws.length + D.imd.synop.length;
   $("#stamp").innerHTML = `<span>Built <b>${fmtIST(D.generated, {day:"numeric", month:"short"})}</b> IST</span><span>Radar <b>${fmtIST(D.t0)}</b></span>` +
-    (D.mks.t ? `<span>Mukteshwar <b>${fmtIST(D.mks.t)}</b></span>` : "") + `<span>Live IMD stations <b>${live}</b></span>`;
+    (D.radars || []).filter(m => m.t).map(m => `<span>${esc(m.name)} <b>${fmtIST(m.t)}</b></span>`).join("") + `<span>Live IMD stations <b>${live}</b></span>`;
 }
 function buildMethod(){
   const fail = D.failed && D.failed.length ? `<p style="margin-top:8px">Unavailable in this build: ${esc(D.failed.join(", "))}.</p>` : "";
   $("#method").innerHTML = `<div class="kv">
-    <span class="sc">IMD</span><span>India Meteorological Department's public map service (reactjs.imd.gov.in): district and station nowcasts, 5-day district-wise warnings, automatic stations and observatories; the Mukteshwar radar image from mausam.imd.gov.in. Category and colour meanings from IMD's API field reference.</span>
-    <span class="sc">tracked radar</span><span>RainViewer composite and the Himalaya Nowcast Atlas's optical-flow extrapolation, cropped to Kumaon.</span>
+    <span class="sc">IMD</span><span>India Meteorological Department's public map service (reactjs.imd.gov.in): district and station nowcasts, 5-day district-wise warnings, automatic stations and observatories; the ${esc(RADAR_NAMES)} radar images from mausam.imd.gov.in. Category and colour meanings from IMD's API field reference.</span>
+    <span class="sc">tracked radar</span><span>RainViewer composite and the Himalaya Nowcast Atlas's optical-flow extrapolation, cropped to ${esc(RG.name)}.</span>
     <span class="sc">forecast</span><span>Open-Meteo best-match forecast: per town hourly (temperature, rain and its chance, weather, cloud, gusts, freezing level, CAPE), and the atlas's 0.75° grid for the rain and snow-line layers.${M.snow_offset ? ` Snow line = freezing level − ${M.snow_offset} m.` : ""}</span>
     <span class="sc">air quality</span><span>Open-Meteo's air-quality API (Copernicus CAMS model): PM2.5, PM10 and US AQI.</span>
     <span class="sc">satellite</span><span>NASA GIBS: GPM IMERG rain (NASA/JAXA), MODIS Terra true colour and snow cover, VIIRS fire detections.</span>
@@ -900,8 +903,15 @@ function buildMethod(){
 }
 
 /* ---------------- boot ---------------- */
+function buildHeader(){
+  $("#pageTitle").textContent = `${RG.name} Nowcast`;
+  $("#pageSub").textContent = `Radar tracked forward for eight hours, IMD's ${RADAR_NAMES} Doppler radar${RG.radars.length > 1 ? "s" : ""}, IMD's live warnings and stations, town forecasts and air quality, river flow, fires and snow, for ${RG.district_list}.`;
+  $("#shadeImg").alt = RG.shade_alt;
+  $("#backLinks").innerHTML = `<a href="../">← Himalaya Nowcast Atlas</a> · <a href="culture/">${esc(RG.name)} cultural atlas →</a>` +
+    RG.others.map(o => ` · <a href="${esc(o.href)}">${esc(o.name)} nowcast →</a>`).join("");
+}
 async function boot(){
-  buildControls(); buildTrack();
+  buildHeader(); buildControls(); buildTrack();
   $("#shadeImg").src = D.images.shade;
   if (D.truecolor.src) $("#trueColorImg").src = D.truecolor.src;
   if (D.snow.src) $("#snowImg").src = D.snow.src;

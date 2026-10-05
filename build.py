@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nowcast import airquality, archive, icimod, imd_nowcast, kumaon, land, model, radar, satimg, satrain, seismic, water
+from nowcast import airquality, archive, icimod, imd_nowcast, land, regional, model, radar, satimg, satrain, seismic, water
 from nowcast.geo import FRAME, world_lonlat
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -329,15 +329,16 @@ def main():
     # Point-in-time record of this build, filed into the data branch by the workflow.
     archive.write_snapshot(os.path.join(HERE, "snapshot"), data, frames_all, t_all, t0_index, radar.STEP_MIN)
 
-    log("Kumaon page")
-    try:
-        summary = kumaon.build(
-            {"g": g, "frames_all": frames_all, "t_all": t_all, "t0_index": t0_index, "t0": t0,
-             "covered": covered, "quakes": quakes, "step_min": radar.STEP_MIN},
-            os.path.join(out_dir, "kumaon", "index.html"), os.path.join(HERE, "kumaon_template.html"), log)
-        log(f"wrote kumaon/index.html: {summary}")
-    except Exception as e:  # the regional page is extra; never lose the atlas over it
-        log(f"  Kumaon page failed: {e}")
+    # Regional pages (Kumaon, Garhwal): extra; never lose the atlas over them.
+    ctx = {"g": g, "frames_all": frames_all, "t_all": t_all, "t0_index": t0_index, "t0": t0,
+           "covered": covered, "quakes": quakes, "step_min": radar.STEP_MIN}
+    for R in regional.REGIONS.values():
+        log(f"{R.name} page")
+        try:
+            summary = regional.build(R, ctx, os.path.join(out_dir, R.id, "index.html"), log=log)
+            log(f"wrote {R.id}/index.html: {summary}")
+        except Exception as e:
+            log(f"  {R.name} page failed: {e}")
     log(f"wrote {args.out} ({len(html) / 1e6:.1f} MB): {len(r_times)} observed + {len(fc)} extrapolated frames, "
         f"{len(stations)} stations, {len(gauges)} gauges, {len(evs)} events, {len(quakes)} quakes, "
         f"IMERG {'ok' if imerg['src'] else 'unavailable'}, true colour {'ok' if truecolor['src'] else 'unavailable'}, "

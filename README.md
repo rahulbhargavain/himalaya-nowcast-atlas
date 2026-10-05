@@ -10,15 +10,18 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | TV mode (kiosk view) | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/?tv | every 2 hours |
 | Kumaon nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/ | every 2 hours |
 | Kumaon cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ | monthly |
+| Garhwal nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/ | every 2 hours |
 | Garhwal cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ | monthly |
 | Winter chill in the apple belts, 1990–2026 | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/chill_report.html | static analysis |
 | Point-in-time archive | [`data` branch](https://github.com/rahulbhargavain/himalaya-nowcast-atlas/tree/data) | every 2 hours |
 
 **Kumaon nowcast:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/ — a standalone page for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar, built in the same run: zoom-10 relief, IMD's Mukteshwar Doppler radar (decoded and placed on the map), the atlas's tracked radar cropped to Kumaon, IMD nowcasts and 5-day district warnings, IMD's live automatic stations and observatories, hour-by-hour forecasts and air quality for 22 towns, GloFAS flow on Kumaon's rivers, VIIRS fires, MODIS snow and earthquakes.
 
+**Garhwal nowcast:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/ — the same page for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with IMD's Surkanda Devi and Lansdowne Doppler radars (and Mukteshwar's, which reaches eastern Chamoli and Pauri) merged into one layer, 28 towns and GloFAS flow on the Yamuna, Tons, Bhagirathi, Alaknanda, Pindar and Ganga.
+
 **Kumaon cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ — temples, forts, peaks, forests, birds, registered GI products and visitor numbers for the same six districts, with places to stay and a circuit planner that routes on OpenStreetMap's roads in the browser. Stays are described by checkable facts (state-run KMVN rest house, the road that reaches them, food on site or within 1 km), not ratings: open data can't judge hospitality or food hygiene. Only business names and localities are shown.
 
-**Garhwal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ — the same atlas for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with GMVN rest houses in place of KMVN's (only those mapped on OpenStreetMap: GMVN's own site turns away scripted requests, so the list is partial). There is no Garhwal nowcast page, so `/garhwal/` itself is not a page.
+**Garhwal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ — the same atlas for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with GMVN rest houses in place of KMVN's (only those mapped on OpenStreetMap: GMVN's own site turns away scripted requests, so the list is partial).
 
 ## What it shows
 
@@ -65,8 +68,8 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/icimod.py` | ICIMOD ArcGIS REST layers (export images, legends, feature inventories) and VIIRS fires |
 | `nowcast/seismic.py` | USGS earthquake catalogue, restricted to the atlas's bounding box |
 | `nowcast/imd_nowcast.py` | IMD's district and station nowcasts and 5-day district warnings, via IMD's public GeoServer WFS |
-| `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and the Mukteshwar radar image, decoded to dBZ |
-| `nowcast/kumaon.py` + `kumaon_template.html` | The Kumaon page (`python -m nowcast.kumaon` re-renders it from the last build's data) |
+| `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and IMD's hill Doppler radar images (Mukteshwar, Lansdowne, Surkanda Devi), decoded to dBZ |
+| `nowcast/regional.py` + `regional_template.html` | The regional nowcast pages (Kumaon, Garhwal), one `Region` each (`python -m nowcast.regional` re-renders them from the last build's data) |
 | `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon and Garhwal), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
@@ -125,8 +128,8 @@ All free; all but one keyless (the air-quality layers need a free Earthdata logi
 - **NASA/JAXA GPM mission** — IMERG (Integrated Multi-satellitE Retrievals for GPM) is a joint product of NASA's Global Precipitation Measurement mission and the Japan Aerospace Exploration Agency (JAXA).
 - **[NASA GES DISC](https://disc.gsfc.nasa.gov/)** and **[Copernicus Sentinel-5P](https://sentinels.copernicus.eu/web/sentinel/copernicus/sentinel-5p)** (ESA) — TROPOMI NO2, CO and UV Aerosol Index, redistributed by NASA under its agreement with the European Commission/ESA. `Contains modified Copernicus Sentinel data`, per the Sentinel data licence.
 - **[USGS](https://earthquake.usgs.gov/fdsnws/event/1/)** (U.S. Geological Survey) — the earthquake catalogue.
-- **[India Meteorological Department](https://mausam.imd.gov.in/)** — district and station nowcasts, 5-day district warnings, automatic stations and observatories (IMD's public GeoServer), and the Mukteshwar Doppler radar image.
-- **[Open-Meteo](https://open-meteo.com/) air-quality API** (Copernicus CAMS) — PM2.5, PM10 and AQI for the Kumaon towns.
+- **[India Meteorological Department](https://mausam.imd.gov.in/)** — district and station nowcasts, 5-day district warnings, automatic stations and observatories (IMD's public GeoServer), and the Mukteshwar, Lansdowne and Surkanda Devi Doppler radar image.
+- **[Open-Meteo](https://open-meteo.com/) air-quality API** (Copernicus CAMS) — PM2.5, PM10 and AQI for the Kumaon and Garhwal towns.
 - **[AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)** — SRTM-based elevation.
 - **[Natural Earth](https://www.naturalearthdata.com/)** — river and lake vectors.
 - **[aviationweather.gov](https://aviationweather.gov/data/api/)** (NOAA) — airport METARs.

@@ -5,15 +5,19 @@ login, no key):
     WFS layer imd:aws_data_layer. Many stations stop reporting for months,
     so only reports newer than `max_age_h` are kept.
   * SYNOP: the staffed observatories (3-hourly), imd:synop_data_layer.
-  * Mukteshwar Doppler weather radar: IMD's latest MAX(Z) product image
-    (mausam.imd.gov.in/Radar/caz_mks.gif), decoded back to dBZ and
+  * IMD's Doppler weather radars in the Uttarakhand hills (Mukteshwar,
+    Lansdowne, Surkanda Devi): each one's latest MAX(Z) product image
+    (mausam.imd.gov.in/Radar/caz_<code>.gif), decoded back to dBZ and
     georeferenced so it can sit on the map under the other layers.
 
-The radar image has no georeferencing of its own. The fit below maps
-lon/lat to image pixels; it was made from 16 town markers IMD draws on the
-image (RMS error about 0.8 km) and places the radar at 29.459N 79.660E. If
-IMD changes the image layout the size check fails and only the original
-image is shown.
+The radar images have no georeferencing of their own. Mukteshwar's fit was
+made from 16 town markers IMD draws on the image (RMS error about 0.8 km)
+and places the radar at 29.459N 79.660E. The fit shows the plan view is a
+plain local projection: the radar at the centre of the plan view, 100 km to
+its edge, north up. The other radars are placed by that geometry from their
+sites and plan-view boxes, checked against their own town markers (see
+RADARS). If IMD changes an image's layout the size check fails and only the
+original image is shown.
 """
 from __future__ import annotations
 
@@ -29,17 +33,40 @@ from PIL import Image
 from .geo import _session, get_json
 
 WFS = "https://reactjs.imd.gov.in/geoserver/imd/wfs"
-MKS_URL = "https://mausam.imd.gov.in/Radar/caz_mks.gif"
 MKS_SITE = (29.459, 79.660)
-MKS_RANGE_KM = 100
-MKS_SIZE = (1017, 787)
-MKS_PLAN = (0, 187, 600, 787)  # x0, y0, x1, y1 of the plan view in the image
 # lon, lat, 1 -> image x, y (least squares on IMD's own town markers).
 MKS_AFFINE = np.array([[2.89784983e+02, 6.95062116e-01],
                        [-1.97551599e-01, -3.34207955e+02],
                        [-2.27770625e+04, 1.02781044e+04]])
+
+
+def _geometric_affine(site, plan, range_km=100):
+    """lon, lat, 1 -> image x, y for a plan view centred on the radar with
+    `range_km` from centre to edge (Mukteshwar's fit agrees to 0.4%)."""
+    lat0, lon0 = site
+    x0, y0, x1, y1 = plan
+    k = (x1 - x0) / 2 / range_km  # px per km
+    kx = k * 111.32 * np.cos(np.radians(lat0))
+    ky = k * 110.95
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    return np.array([[kx, 0.0], [0.0, -ky], [cx - kx * lon0, cy + ky * lat0]])
+
+
+# code -> name, site (lat, lon), image size, plan view box (x0, y0, x1, y1),
+# and the lon/lat -> pixel fit. Sites are IMD's own (its radar page's map).
+RADARS = {
+    "mks": {"name": "Mukteshwar", "site": MKS_SITE, "size": (1017, 787), "plan": (0, 187, 600, 787),
+            "affine": MKS_AFFINE},
+    "ldn": {"name": "Lansdowne", "site": (29.85, 78.6767), "size": (1017, 787), "plan": (0, 187, 600, 787)},
+    "sur": {"name": "Surkanda Devi", "site": (30.4117, 78.2883), "size": (1272, 1042), "plan": (0, 242, 800, 1042)},
+}
+for _r in RADARS.values():
+    _r.setdefault("affine", _geometric_affine(_r["site"], _r["plan"]))
+RANGE_KM = 100
+RADAR_URL = "https://mausam.imd.gov.in/Radar/caz_{code}.gif"
+
 # IMD's MAX(Z) legend: lower bound of each bin (dBZ) and its colour.
-MKS_LEGEND = [(20.0, (0, 0, 127)), (22.7, (0, 0, 160)), (25.3, (0, 0, 199)), (28.0, (0, 52, 255)),
+LEGEND = [(20.0, (0, 0, 127)), (22.7, (0, 0, 160)), (25.3, (0, 0, 199)), (28.0, (0, 52, 255)),
               (30.7, (0, 121, 255)), (33.3, (26, 162, 255)), (36.0, (83, 208, 255)), (38.7, (135, 240, 255)),
               (41.3, (255, 255, 255)), (44.0, (255, 248, 196)), (46.7, (255, 229, 1)), (49.3, (254, 188, 0)),
               (52.0, (250, 111, 4)), (54.7, (255, 63, 0)), (57.3, (199, 1, 0))]
@@ -127,7 +154,7 @@ def synop(box, frame, max_age_h=6):
     return sorted(out, key=lambda s: s["name"])
 
 
-def _decode_mks(a):
+def _decode(a, plan):
     """IMD MAX(Z) plan view -> dBZ (float32, NaN where no echo).
 
     IMD also draws range rings, labels and town dots in some of the legend's
@@ -138,13 +165,13 @@ def _decode_mks(a):
          straight from background to white or red;
       2. every blob must hold some low-reflectivity blues, which the
          background never contains."""
-    x0, y0, x1, y1 = MKS_PLAN
+    x0, y0, x1, y1 = plan
     pv = a[y0:y1, x0:x1].astype(np.int32)
     packed = (pv[..., 0] << 16) | (pv[..., 1] << 8) | pv[..., 2]
     dbz = np.full(packed.shape, np.nan, np.float32)
     bins = np.full(packed.shape, -1, np.int16)
     low = np.zeros(packed.shape, bool)
-    for k, (v, (r, g, b)) in enumerate(MKS_LEGEND):
+    for k, (v, (r, g, b)) in enumerate(LEGEND):
         m = packed == ((r << 16) | (g << 8) | b)
         dbz[m] = v
         bins[m] = k
@@ -153,7 +180,7 @@ def _decode_mks(a):
     ok = bins.copy()
     ok[bins >= 8] = -1
     k5 = np.ones((5, 5), np.uint8)
-    for k in range(8, len(MKS_LEGEND)):
+    for k in range(8, len(LEGEND)):
         lower = ((ok == k - 1) | (ok == k - 2)).astype(np.uint8)
         grow = (bins == k) & cv2.dilate(lower, k5).astype(bool)
         # Let a core spread within its own bin once it has a foothold.
@@ -186,29 +213,32 @@ def _decode_mks(a):
     return dbz
 
 
-def mukteshwar(frame):
-    """Latest Mukteshwar MAX(Z): original image (data URI), the image time
-    (HTTP Last-Modified), and the decoded dBZ resampled onto `frame`'s grid."""
-    r = _session.get(MKS_URL, timeout=60)
+def radar(code, frame):
+    """Latest MAX(Z) from IMD radar `code` (see RADARS): original image (data
+    URI), the image time (HTTP Last-Modified), and the decoded dBZ resampled
+    onto `frame`'s grid."""
+    R = RADARS[code]
+    r = _session.get(RADAR_URL.format(code=code), timeout=60)
     r.raise_for_status()
     t = None
     if r.headers.get("Last-Modified"):
         t = int(email.utils.parsedate_to_datetime(r.headers["Last-Modified"]).timestamp())
     im = Image.open(io.BytesIO(r.content))
-    out = {"t": t, "image": "data:image/gif;base64," + base64.b64encode(r.content).decode(),
-           "dbz": None, "site": MKS_SITE, "range_km": MKS_RANGE_KM}
-    if im.size != MKS_SIZE:
+    cx, cy = frame.to_grid(R["site"][1], R["site"][0])
+    out = {"code": code, "name": R["name"], "t": t, "site": R["site"], "range_km": RANGE_KM,
+           "image": "data:image/gif;base64," + base64.b64encode(r.content).decode(), "dbz": None,
+           "x": float(cx), "y": float(cy), "r_px": RANGE_KM / frame.km_per_grid_px}
+    if im.size != R["size"]:
         out["note"] = f"image size {im.size} differs from the layout this decoder was fitted to"
         return out
-    pv = _decode_mks(np.asarray(im.convert("RGB")))
+    plan = R["plan"]
+    pv = _decode(np.asarray(im.convert("RGB")), plan)
     lon, lat = frame.grid_lonlat()
-    px = lon * MKS_AFFINE[0, 0] + lat * MKS_AFFINE[1, 0] + MKS_AFFINE[2, 0] - MKS_PLAN[0]
-    py = lon * MKS_AFFINE[0, 1] + lat * MKS_AFFINE[1, 1] + MKS_AFFINE[2, 1] - MKS_PLAN[1]
+    A = R["affine"]
+    px = lon * A[0, 0] + lat * A[1, 0] + A[2, 0] - plan[0]
+    py = lon * A[0, 1] + lat * A[1, 1] + A[2, 1] - plan[1]
     grid = cv2.remap(np.nan_to_num(pv, nan=-1).astype(np.float32), px.astype(np.float32), py.astype(np.float32),
                      cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=-1)
     out["dbz"] = np.where(grid > 0, grid, 0).astype(np.float32)
-    cx, cy = frame.to_grid(MKS_SITE[1], MKS_SITE[0])
-    out["x"], out["y"] = float(cx), float(cy)
-    out["r_px"] = MKS_RANGE_KM / frame.km_per_grid_px
     out["echo_px"] = int((out["dbz"] > 0).sum())
     return out

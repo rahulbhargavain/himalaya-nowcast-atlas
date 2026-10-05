@@ -1045,12 +1045,12 @@ def build(R, out_path, template_path, log=print, prev=None):
     import cv2
     import networkx as nx
     from scipy.spatial import cKDTree
-    from . import kumaon
-    from .kumaon import _jpg, _png
+    from . import regional
+    from .regional import _jpg, _png
 
     KF = R.frame
     log(f"culture ({R.name}): terrain")
-    dem_g, shade = kumaon._terrain(KF)
+    dem_g, shade = regional._terrain(KF)
 
     def elev_at(lon, lat):
         x, y = KF.to_grid(lon, lat)
@@ -1215,7 +1215,7 @@ def build(R, out_path, template_path, log=print, prev=None):
         "region": _region_info(R),
         "frame": {"w": KF.w, "h": KF.h, "gw": KF.gw, "gh": KF.gh, "x0": KF.x0, "y0": KF.y0, "z": KF.z,
                   "box": list(R.box), "km_px": KF.km_per_grid_px},
-        "images": {"shade": _jpg(shade, 78), "dem": kumaon._dem_png(dem_g), "outside": _png(outside, quantize=4),
+        "images": {"shade": _jpg(shade, 78), "dem": regional._dem_png(dem_g), "outside": _png(outside, quantize=4),
                    "forest": _png(forest, quantize=64), "birds": _png(birds, quantize=32)},
         "districts": [{"name": k, "d": _svg_path(v, KF, 0.002)} for k, v in loc.shapes.items()],
         "protected": protected,
@@ -1296,8 +1296,8 @@ def render(data, out_path, template_path):
 # --------------------------------------------------------------------------
 
 def _kumaon_towns():
-    from .kumaon import TOWNS
-    return TOWNS
+    from .regional import KUMAON as nowcast_region
+    return nowcast_region.towns
 
 
 KMVN = Corp(
@@ -1330,23 +1330,10 @@ KUMAON = Region(
     wd_bad_coords=frozenset({"Patal Bhuvaneshwar", "Khaptad Lake"}),
     store="kca:", back=(("../", "Kumaon nowcast"), ("../../", "Himalaya Nowcast Atlas")), nowcast="../")
 
-# Always-routable towns, at their OSM place nodes.
-GARHWAL_TOWNS = [
-    ("Dehradun", 30.326, 78.044, "Dehradun"), ("Mussoorie", 30.457, 78.078, "Dehradun"),
-    ("Vikasnagar", 30.469, 77.771, "Dehradun"), ("Chakrata", 30.701, 77.870, "Dehradun"),
-    ("Rishikesh", 30.109, 78.292, "Dehradun"), ("Haridwar", 29.938, 78.145, "Haridwar"),
-    ("Roorkee", 29.869, 77.890, "Haridwar"), ("Kotdwar", 29.746, 78.520, "Pauri Garhwal"),
-    ("Lansdowne", 29.838, 78.682, "Pauri Garhwal"), ("Pauri", 30.148, 78.776, "Pauri Garhwal"),
-    ("Srinagar", 30.223, 78.790, "Pauri Garhwal"), ("Devprayag", 30.146, 78.599, "Tehri Garhwal"),
-    ("New Tehri", 30.374, 78.433, "Tehri Garhwal"), ("Chamba", 30.346, 78.394, "Tehri Garhwal"),
-    ("Dhanaulti", 30.425, 78.246, "Tehri Garhwal"), ("Uttarkashi", 30.729, 78.440, "Uttarkashi"),
-    ("Barkot", 30.809, 78.206, "Uttarkashi"), ("Purola", 30.879, 78.083, "Uttarkashi"),
-    ("Harsil", 31.037, 78.751, "Uttarkashi"), ("Gangotri", 30.994, 78.940, "Uttarkashi"),
-    ("Rudraprayag", 30.287, 78.981, "Rudraprayag"), ("Ukhimath", 30.514, 79.095, "Rudraprayag"),
-    ("Gaurikund", 30.653, 79.027, "Rudraprayag"), ("Gopeshwar", 30.409, 79.319, "Chamoli"),
-    ("Karnaprayag", 30.260, 79.217, "Chamoli"), ("Gauchar", 30.289, 79.157, "Chamoli"),
-    ("Joshimath", 30.556, 79.561, "Chamoli"), ("Badrinath", 30.742, 79.493, "Chamoli"),
-]
+def _garhwal_towns():
+    """Always-routable towns, at their OSM place nodes (the nowcast's list)."""
+    from .regional import GARHWAL as nowcast_region
+    return nowcast_region.towns
 
 GARHWAL_CIRCUITS = [
     ("Doon, Mussoorie and Tehri", "Up from the Doon valley to Mussoorie's ridge, along the Dhanaulti deodars to Chamba and the Tehri lake, and down to Rishikesh.",
@@ -1377,7 +1364,7 @@ GARHWAL = Region(
     districts=["Uttarkashi", "Chamoli", "Rudraprayag", "Tehri Garhwal", "Pauri Garhwal", "Dehradun", "Haridwar"],
     ebird={"IN-UL-UT": "Uttarkashi", "IN-UL-CL": "Chamoli", "IN-UL-RP": "Rudraprayag", "IN-UL-TG": "Tehri Garhwal",
            "IN-UL-PG": "Pauri Garhwal", "IN-UL-DD": "Dehradun", "IN-UL-HA": "Haridwar"},
-    towns=lambda: GARHWAL_TOWNS, corp=GMVN,
+    towns=_garhwal_towns, corp=GMVN,
     gi_words=re.compile(r"garhwal|uttarkashi|chamoli|rudraprayag|tehri|pauri|dehradun|haridwar|mussoorie|"
                         r"rishikesh|jaunsar|chakrata|purola|harsil|joshimath|badrinath|kedarnath|gangotri", re.I),
     # UTDB's 19 Garhwal destinations (python -m nowcast.utdb). Some are wider
@@ -1407,7 +1394,8 @@ GARHWAL = Region(
     pa_skip=frozenset({"Hastinapur WLS"}),
     # Amangarh Tiger Reserve is across the line in Uttar Pradesh.
     wd_bad_coords=frozenset({"Amangarh Tiger Reserve"}),
-    cache_dir="garhwal", store="gca:", back=(("../../", "Himalaya Nowcast Atlas"),))
+    cache_dir="garhwal", store="gca:", back=(("../", "Garhwal nowcast"), ("../../", "Himalaya Nowcast Atlas")),
+    nowcast="../")
 
 REGIONS = {R.id: R for R in (KUMAON, GARHWAL)}
 
