@@ -1,0 +1,839 @@
+<title>Kumaon Cultural Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans+SC:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#eef0ea; --panel:#f7f8f4; --ink:#1f2a2e; --ink2:#4d5a5c; --rule:#cfd4cb;
+  --accent:#b8324f; --accent-ink:#fff; --glacier:#4f86a3;
+  --ok:#2f8f7f; --warn:#c07a1e; --bad:#b8324f; --chip:#e3e7df; --chip-on:#1f2a2e; --chip-on-ink:#f7f8f4;
+  --shadow:0 1px 2px rgba(20,30,30,.08);
+  --temple:#d0782a; --heritage:#8a5a2b; --nature:#2f8f7f; --attraction:#7a5aa6; --peak:#3d4a52;
+  --kmvn:#b8324f; --stay:#3a64a8; --bird:#4f8f2f; --route:#c2185b;
+  --f-display:"Alegreya",Georgia,"Times New Roman",serif;
+  --f-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+  --f-sc:"Alegreya Sans SC","Alegreya Sans","Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#11171a; --panel:#182024; --ink:#e3e8e2; --ink2:#a3aea9; --rule:#2c373b;
+    --accent:#e0607a; --accent-ink:#11171a; --glacier:#7fb3cf;
+    --ok:#5cc2b0; --warn:#e3a34a; --bad:#e0607a; --chip:#222c30; --chip-on:#e3e8e2; --chip-on-ink:#11171a;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#11171a; --panel:#182024; --ink:#e3e8e2; --ink2:#a3aea9; --rule:#2c373b;
+  --accent:#e0607a; --accent-ink:#11171a; --glacier:#7fb3cf;
+  --ok:#5cc2b0; --warn:#e3a34a; --bad:#e0607a; --chip:#222c30; --chip-on:#e3e8e2; --chip-on-ink:#11171a;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.45 var(--f-body);padding-inline:16px;padding-block:14px 40px}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font:700 clamp(26px,3.2vw,38px)/1.05 var(--f-display);letter-spacing:.2px}
+h2{font:700 15px/1.2 var(--f-sc);letter-spacing:.6px;text-transform:lowercase;color:var(--ink2)}
+h3{font:700 17px/1.2 var(--f-display)}
+.sc{font-family:var(--f-sc);letter-spacing:.5px;text-transform:lowercase}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink2)}
+a{color:var(--glacier)}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+header.top .sub{font-size:15px;color:var(--ink2);max-width:76ch}
+header.top .back{font-size:14px;display:flex;gap:14px;flex-wrap:wrap}
+.stamp{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.stamp b{font-family:var(--f-mono);font-weight:500}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:flex-start}
+.group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.group > .sc{font-size:13px;color:var(--ink2);margin-right:2px}
+button,select,input{font:inherit;color:inherit}
+.chip{border:1px solid var(--rule);background:var(--chip);border-radius:999px;padding:3px 11px 4px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink);border-color:var(--chip-on)}
+.chip .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.chip:focus-visible,.btn:focus-visible,tr[tabindex]:focus-visible,select:focus-visible,input:focus-visible,.tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.mapbox{position:relative;border:1px solid var(--rule);background:#c9ccc0;overflow:hidden;border-radius:3px;touch-action:none;box-shadow:var(--shadow)}
+.stage{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;will-change:transform}
+.stage > img,.stage > svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.stage > img.px{image-rendering:pixelated}
+svg text{font-family:var(--f-body)}
+svg .hit{cursor:pointer}
+.maptools{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
+.btn{border:1px solid rgba(0,0,0,.25);background:rgba(250,250,246,.92);color:#1f2a2e;border-radius:3px;min-width:30px;height:30px;padding:0 8px;cursor:pointer;font-size:15px}
+.readout{position:absolute;right:50px;top:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12.5px;line-height:1.35;max-width:min(320px,60%);pointer-events:none}
+.info{position:absolute;left:10px;bottom:10px;z-index:4;background:rgba(250,250,246,.97);color:#1f2a2e;border:1px solid rgba(0,0,0,.2);border-radius:3px;padding:9px 11px 10px;font-size:14px;line-height:1.35;width:min(330px,calc(100% - 20px));max-height:72%;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.info a{color:#2d6f93}
+.info h3{font-size:17px;margin:0 22px 2px 0}
+.info .x{position:absolute;right:6px;top:4px;border:0;background:none;font-size:20px;cursor:pointer;color:#4d5a5c;line-height:1}
+.info img{width:100%;height:auto;border-radius:2px;margin:6px 0 2px;display:block;background:#ddd}
+.info .kv{grid-template-columns:auto 1fr;font-size:13px}
+.info .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+.info .tbtn{border:1px solid #1f2a2e;background:#1f2a2e;color:#f7f8f4;border-radius:3px;padding:3px 9px;font-size:13.5px;cursor:pointer}
+.legend{position:absolute;right:10px;bottom:10px;z-index:3;background:rgba(250,250,246,.93);color:#1f2a2e;border:1px solid rgba(0,0,0,.18);border-radius:3px;padding:6px 9px;font-size:12px;max-width:min(290px,42%);max-height:62%;overflow:auto;display:flex;flex-direction:column;gap:5px}
+.legend.collapsed .legend-body{display:none}
+.legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-weight:600;user-select:none}
+.legend-head .car{transition:transform .15s}
+.legend.collapsed .legend-head .car{transform:rotate(-90deg)}
+.legend-body{display:flex;flex-direction:column;gap:4px}
+.legend .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.legend .k{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
+.zoomhint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:4;background:rgba(31,42,46,.88);color:#f7f8f4;border-radius:3px;padding:6px 10px;font-size:13px;pointer-events:none}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:14px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card p{margin:0;max-width:78ch}
+.scroll{overflow-x:auto}
+.tall{max-height:460px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:700 12.5px var(--f-sc);letter-spacing:.4px;text-transform:lowercase;color:var(--ink2);text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap;vertical-align:bottom;position:sticky;top:0;background:var(--panel)}
+td{padding:4px 6px;border-bottom:1px solid var(--rule);vertical-align:top}
+td.num,th.num{text-align:right;white-space:nowrap}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+tr[tabindex]{cursor:pointer}
+tr[tabindex]:hover td{background:var(--chip)}
+.note{font-size:13.5px;color:var(--ink2)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:14px}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px}
+.stats b{font-family:var(--f-mono);font-weight:500}
+.filters{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:14px}
+.filters select,.planner select,.planner input[type=number]{font-size:15px;padding:3px 8px;border:1px solid var(--rule);border-radius:3px;background:var(--chip)}
+.filters label{display:inline-flex;gap:5px;align-items:center}
+.ck{display:inline-block;min-width:18px;font-weight:700}
+.ck.y{color:var(--ok)} .ck.n{color:var(--ink2);opacity:.6}
+.tag{display:inline-block;font:700 11.5px/1.5 var(--f-sc);letter-spacing:.4px;text-transform:lowercase;border-radius:3px;padding:0 6px;border:1px solid currentColor}
+.tag.kmvn{color:var(--kmvn)} .tag.kum{color:var(--ok)} .tag.pend{color:var(--warn)}
+
+.planner{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:16px}
+@media (max-width:860px){ .planner{grid-template-columns:1fr} }
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;counter-reset:s}
+.stops li{display:grid;grid-template-columns:24px 1fr auto;gap:6px;align-items:center;background:var(--chip);border-radius:3px;padding:3px 6px;font-size:14.5px}
+.stops li::before{counter-increment:s;content:counter(s);font:500 12px var(--f-mono);color:var(--ink2);text-align:center}
+.stops .ops{display:flex;gap:2px}
+.stops .ops button{border:0;background:none;cursor:pointer;padding:0 4px;font-size:15px;color:var(--ink2)}
+.stops .ops button:hover{color:var(--ink)}
+.addrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.addrow select{flex:1;min-width:0}
+.pbtn{border:1px solid var(--ink);background:var(--ink);color:var(--panel);border-radius:3px;padding:3px 10px;font-size:14px;cursor:pointer}
+.pbtn.ghost{background:none;color:var(--ink)}
+.legs{display:flex;flex-direction:column;gap:10px}
+.leg{border-left:4px solid var(--route);padding:2px 0 2px 10px}
+.leg.over{border-left-color:var(--warn)}
+.leg .hd{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.leg .hd b{font:700 16px var(--f-display)}
+.leg .t{font-family:var(--f-mono);font-size:13.5px}
+.leg ul{margin:3px 0 0;padding-left:18px;font-size:14px}
+.night{background:var(--chip);border-radius:3px;padding:6px 9px;font-size:14px}
+.night b{font-family:var(--f-display);font-size:15.5px}
+.night ol{margin:3px 0 0;padding-left:20px}
+.bars{display:flex;flex-direction:column;gap:5px}
+.lcrow{display:grid;grid-template-columns:130px 1fr;gap:8px;align-items:center;font-size:13.5px}
+.lcbar{display:flex;height:14px;border-radius:2px;overflow:hidden;border:1px solid var(--rule)}
+.vrow{display:grid;grid-template-columns:minmax(0,170px) 1fr 86px;gap:10px;align-items:center;font-size:14px;padding:3px 0;border-bottom:1px solid var(--rule)}
+.vrow svg{width:100%;height:30px;display:block}
+@media (max-width:640px){
+  .legend{display:none}
+  .readout{max-width:calc(100% - 60px)}
+  .vrow{grid-template-columns:minmax(0,110px) 1fr 70px}
+  .lcrow{grid-template-columns:96px 1fr}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="back"><a href="../">← Kumaon nowcast</a><a href="../../">← Himalaya Nowcast Atlas</a></div>
+      <h1>Kumaon Cultural Atlas</h1>
+      <div class="sub">Temples, forts, peaks, forests, birds, the region's registered GI products and visitor numbers, and places to stay along road circuits you can plan yourself, for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar.</div>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="controls" id="controls"></div>
+
+  <div class="mapbox" id="mapbox">
+    <div class="stage" id="stage">
+      <img id="shadeImg" alt="Shaded relief of Kumaon, from the terai plains to the Panchachuli and Nanda Kot">
+      <img id="forestImg" alt="" hidden>
+      <img id="birdsImg" class="px" alt="" hidden>
+      <img id="outsideImg" alt="">
+      <svg id="svg" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="maptools">
+      <button class="btn" id="zin" aria-label="Zoom in">+</button>
+      <button class="btn" id="zout" aria-label="Zoom out">−</button>
+      <button class="btn" id="zreset" aria-label="Reset view">⤢</button>
+    </div>
+    <div class="readout" id="readout">Move over the map for elevation and district. Select a marker for details.</div>
+    <div class="info" id="info" hidden></div>
+    <div class="legend" id="legend"></div>
+    <div class="zoomhint" id="zoomHint" hidden>Hold Ctrl (⌘ on Mac) and scroll to zoom, or use + and −</div>
+  </div>
+
+  <div class="grid">
+    <section class="card wide" id="planCard">
+      <h2>Plan a circuit</h2>
+      <div class="planner">
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div class="filters"><label for="circSel" class="sc muted" style="font-size:13px">start from</label>
+            <select id="circSel"></select></div>
+          <ol class="stops" id="stops"></ol>
+          <div class="addrow"><select id="addSel" aria-label="Add a stop"></select><button class="pbtn" id="addBtn">Add stop</button></div>
+          <div class="filters">
+            <label>Most driving in a day <input type="number" id="maxH" min="2" max="10" step="0.5" style="width:66px"> h</label>
+            <button class="pbtn ghost" id="clearBtn">Clear</button>
+            <button class="pbtn ghost" id="shareBtn">Copy link</button>
+          </div>
+          <p class="note">Each stop is a night's base. Add any marker from the map with its <b>Add to trip</b> button. Drive times come from OpenStreetMap's road network at rough hill-road speeds; they leave out breaks, traffic and the monsoon landslides that close roads most years from July to September.</p>
+        </div>
+        <div>
+          <div class="stats" id="tripStats"></div>
+          <div class="legs" id="legs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card wide">
+      <h2>Places to stay</h2>
+      <div class="filters">
+        <label>District <select id="stDist"></select></label>
+        <label><input type="checkbox" id="stKmvn"> KMVN rest houses only</label>
+        <label><input type="checkbox" id="stChecks"> On a good road, with food nearby</label>
+        <span class="muted" id="stCount"></span>
+      </div>
+      <div class="scroll tall"><table id="stayTable"></table></div>
+      <p class="note" id="stayNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Sites</h2>
+      <div class="filters">
+        <label>Kind <select id="siKind"></select></label>
+        <label>District <select id="siDist"></select></label>
+      </div>
+      <div class="scroll tall"><table id="siteTable"></table></div>
+      <p class="note">From OpenStreetMap and Wikidata, merged where they name the same place. Ranked by how widely each is written about: the number of Wikipedia language editions, with an English article and a photo counting extra. Small village shrines are on the map but rarely make the top of this list.</p>
+    </section>
+
+    <section class="card">
+      <h2>Birds</h2>
+      <div class="stats" id="birdStats"></div>
+      <div class="scroll"><table id="birdDist"></table></div>
+      <div class="scroll tall"><table id="hotspotTable"></table></div>
+      <p class="note">Species and hotspots from eBird (Cornell Lab of Ornithology), counting full species only. Hotspots named for a private home are left off. The map's bird-record layer is GBIF's count of all bird occurrence records, which mostly come from eBird too: it shows where people watch birds as much as where birds are.</p>
+    </section>
+
+    <section class="card">
+      <h2>Forest and land cover</h2>
+      <div class="bars" id="landcover"></div>
+      <div id="lcKey" class="stats" style="font-size:12.5px"></div>
+      <div class="scroll"><table id="paTable"></table></div>
+      <p class="note">ESA WorldCover 2021 (10 m, read here at about 100 m), share of each district's area. Forest on this map is WorldCover's tree cover; it doesn't separate oak, pine and sal, or natural forest from plantation. Protected-area outlines are OpenStreetMap's.</p>
+    </section>
+
+    <section class="card">
+      <h2>GI products</h2>
+      <div class="scroll"><table id="giTable"></table></div>
+      <p class="note" id="giNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Visitors by destination</h2>
+      <div id="visitors"></div>
+      <p class="note">Yearly visitor counts published by the Uttarakhand Tourism Development Board, 2021–2025. 2021 was a Covid year. Counts are the board's own, from hotel and site registers; they aren't comparable to census-style surveys.</p>
+    </section>
+
+    <section class="card">
+      <h2>What this page can't tell you</h2>
+      <div class="note" id="limits"></div>
+    </section>
+
+    <section class="card">
+      <h2>Sources and method</h2>
+      <div class="note" id="method"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+"use strict";
+const D = DATA, F = D.frame, GW = F.gw, GH = F.gh, KM = F.km_px;
+const $ = s => document.querySelector(s);
+const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
+const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store = { get(k, d){ try { const v = localStorage.getItem("kca:" + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem("kca:" + k, JSON.stringify(v)); } catch(e){} } };
+const num = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("en-IN", {maximumFractionDigits:d, minimumFractionDigits:d});
+const fmtDur = m => { m = Math.round(m); const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h ${String(r).padStart(2, "0")} m` : `${r} m`; };
+const DISTRICTS = ["Nainital","Almora","Bageshwar","Champawat","Pithoragarh","Udham Singh Nagar"];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------------- geometry ---------------- */
+const WORLD = 256 * Math.pow(2, F.z);
+function gridToLonLat(gx, gy){
+  const X = F.x0 + (gx + .5) * 2, Y = F.y0 + (gy + .5) * 2;
+  return [X / WORLD * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * Y / WORLD))) * 180 / Math.PI];
+}
+const pxKm = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) * KM;
+
+/* ---------------- state ---------------- */
+const state = {
+  layers: Object.assign({temple:true, heritage:true, nature:true, attraction:false, peak:true, kmvn:true, stays:false,
+    forest:true, protected:true, roads:true, hotspots:false, birds:false}, store.get("layers", {})),
+  legendCollapsed: store.get("legendCollapsed", false),
+  maxH: store.get("maxH", 5),
+  zoom: 1, tx: 0, ty: 0,
+};
+
+/* ---------------- map stage ---------------- */
+const box = $("#mapbox"), stage = $("#stage");
+box.style.aspectRatio = `${F.w} / ${F.h}`;
+function unitPx(){ return box.clientWidth / GW; }
+const svg = $("#svg");
+svg.setAttribute("viewBox", `0 0 ${GW} ${GH}`);
+const groups = {};
+["protected","dist","roads","route","hotspots","peak","temple","heritage","nature","attraction","stays","kmvn","labels","stopmk","focus"].forEach(k => { groups[k] = svgEl("g"); svg.appendChild(groups[k]); });
+const marker = (x, y) => { const o = svgEl("g", {transform:`translate(${x.toFixed(1)},${y.toFixed(1)})`}); const inner = svgEl("g", {class:"mki"}); o.appendChild(inner); return [o, inner]; };
+const label = (txt, attrs) => { const t = svgEl("text", Object.assign({"font-size":11.5, fill:"#1f2a2e", "paint-order":"stroke", stroke:"rgba(248,248,244,.92)", "stroke-width":3}, attrs || {})); t.textContent = txt; return t; };
+
+/* ---------------- roads: graph and routing ---------------- */
+const R = D.roads, NN = R.nodes.length / 2, NE = R.edges.length / 5;
+const nodeX = i => R.nodes[2 * i] / 10, nodeY = i => R.nodes[2 * i + 1] / 10;
+const adj = Array.from({length:NN}, () => []);
+for (let k = 0; k < NE; k++) { const a = R.edges[5 * k], b = R.edges[5 * k + 1]; adj[a].push(k); adj[b].push(k); }
+function edgePts(k, from){
+  const pts = []; let x = 0, y = 0;
+  for (let j = R.off[k]; j < R.off[k + 1]; j++) { x += R.geom[2 * j]; y += R.geom[2 * j + 1]; pts.push([x / 2, y / 2]); }
+  return from === R.edges[5 * k] ? pts : pts.reverse();
+}
+let roadPts = null;
+function nearestNode(x, y){
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < NN; i++) { const d = (nodeX(i) - x) ** 2 + (nodeY(i) - y) ** 2; if (d < bd) { bd = d; best = i; } }
+  // Distance to the road itself, not just to the nearest junction.
+  if (!roadPts) { roadPts = []; for (let k = 0; k < NE; k++) edgePts(k, R.edges[5 * k]).forEach(p => roadPts.push(p)); }
+  let rd = Infinity; for (const p of roadPts) { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < rd) rd = d; }
+  return [best, Math.sqrt(rd) * KM];
+}
+function route(src, dst){
+  if (src === dst) return {min:0, km:0, pts:[[nodeX(src), nodeY(src)]], cum:[0]};
+  const dist = new Float64Array(NN).fill(Infinity), via = new Int32Array(NN).fill(-1);
+  const heap = [[0, src]]; dist[src] = 0;
+  const push = (d, n) => { heap.push([d, n]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  while (heap.length) {
+    const [d, n] = pop();
+    if (d > dist[n]) continue;
+    if (n === dst) break;
+    for (const k of adj[n]) {
+      const a = R.edges[5 * k], b = R.edges[5 * k + 1], m = n === a ? b : a, nd = d + R.edges[5 * k + 2] / 10;
+      if (nd < dist[m]) { dist[m] = nd; via[m] = k; push(nd, m); }
+    }
+  }
+  if (!isFinite(dist[dst])) return null;
+  const ks = []; let n = dst;
+  while (n !== src) { const k = via[n]; ks.push(k); const a = R.edges[5 * k]; n = n === a ? R.edges[5 * k + 1] : a; }
+  ks.reverse();
+  const pts = [], cum = []; let km = 0, t = 0; n = src;
+  for (const k of ks) {
+    const p = edgePts(k, n), a = R.edges[5 * k];
+    p.forEach((q, j) => { if (j || !pts.length) { pts.push(q); cum.push(t); } });
+    t += R.edges[5 * k + 2] / 10; km += R.edges[5 * k + 3] / 10;
+    cum[cum.length - 1] = t;
+    n = n === a ? R.edges[5 * k + 1] : a;
+  }
+  return {min:dist[dst], km, pts, cum};
+}
+
+/* ---------------- static layers ---------------- */
+const KIND_COL = {temple:"--temple", heritage:"--heritage", nature:"--nature", attraction:"--attraction", peak:"--peak"};
+function buildBase(){
+  D.districts.forEach(d => groups.dist.appendChild(svgEl("path", {d:d.d, fill:"none", stroke:"#2c373b", "stroke-width":1.3, "stroke-dasharray":"5 3", "data-sw":"1", opacity:.75})));
+  D.protected.forEach(p => {
+    const path = svgEl("path", {d:p.d, fill:"rgba(47,143,90,.13)", stroke:"#2f7f4f", "stroke-width":1.4, "data-sw":"1"});
+    const t = svgEl("title"); t.textContent = `${p.name} (${p.kind}, about ${p.km2} km² in Kumaon)`; path.appendChild(t);
+    groups.protected.appendChild(path);
+  });
+  const widths = [2.2, 1.8, 1.4, 1.0, .55], cols = ["#7a2d1e", "#9a4a24", "#a8682c", "#8b7a5a", "#8b8478"];
+  const ds = [[], [], [], [], []];
+  for (let k = 0; k < NE; k++) {
+    const p = edgePts(k, R.edges[5 * k]);
+    ds[R.edges[5 * k + 4]].push("M" + p.map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join("L"));
+  }
+  for (let c = 4; c >= 0; c--) groups.roads.appendChild(svgEl("path", {d:ds[c].join(""), fill:"none", stroke:cols[c], "stroke-width":widths[c], "stroke-linejoin":"round", "stroke-linecap":"round", "data-sw":"1", opacity:c === 4 ? .6 : .85}));
+}
+function hit(o, fn){ o.classList.add("hit"); o.addEventListener("click", e => { if (dragMoved) return; e.stopPropagation(); fn(); }); o.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } }); o.setAttribute("tabindex", "0"); }
+function buildSites(){
+  D.sites.forEach((s, i) => {
+    const [o, g] = marker(s.x, s.y);
+    const col = css(KIND_COL[s.k]);
+    const big = s.s >= 8, r = big ? 5.5 : s.s >= 3 ? 4 : 3;
+    if (s.k === "peak") g.appendChild(svgEl("path", {d:`M0,${-r - 1}L${r},${r - 1}L${-r},${r - 1}Z`, fill:col, stroke:"#fff", "stroke-width":1}));
+    else if (s.k === "temple") g.appendChild(svgEl("circle", {r, fill:col, stroke:"#fff", "stroke-width":1}));
+    else g.appendChild(svgEl("rect", {x:-r, y:-r, width:2 * r, height:2 * r, rx:1.5, fill:col, stroke:"#fff", "stroke-width":1, transform:s.k === "nature" ? "rotate(45)" : ""}));
+    const t = svgEl("title"); t.textContent = s.n + (s.e ? ` (${num(s.e)} m)` : ""); o.appendChild(t);
+    o.setAttribute("aria-label", s.n);
+    hit(o, () => showSite(i));
+    groups[s.k].appendChild(o);
+  });
+}
+function stayOk(s){ return s.checks.road && s.checks.food; }
+function buildStays(){
+  D.stays.forEach((s, i) => {
+    const [o, g] = marker(s.x, s.y);
+    if (s.kmvn) g.appendChild(svgEl("rect", {x:-5, y:-5, width:10, height:10, fill:css("--kmvn"), stroke:"#fff", "stroke-width":1.3}));
+    else g.appendChild(svgEl("rect", {x:-3.6, y:-3.6, width:7.2, height:7.2, fill:stayOk(s) ? css("--stay") : "#fff", stroke:css("--stay"), "stroke-width":1.4}));
+    const t = svgEl("title"); t.textContent = s.name; o.appendChild(t);
+    o.setAttribute("aria-label", s.name);
+    hit(o, () => showStay(i));
+    groups[s.kmvn ? "kmvn" : "stays"].appendChild(o);
+  });
+}
+function buildHotspots(){
+  D.birds.hotspots.forEach((h, i) => {
+    const [o, g] = marker(h.x, h.y);
+    g.appendChild(svgEl("circle", {r:2.5 + Math.sqrt(h.species) / 3, fill:"rgba(79,143,47,.18)", stroke:css("--bird"), "stroke-width":1.4}));
+    const t = svgEl("title"); t.textContent = `${h.name}: ${h.species} species`; o.appendChild(t);
+    hit(o, () => showHotspot(i));
+    groups.hotspots.appendChild(o);
+  });
+}
+function buildLabels(){
+  const L = [];
+  D.destinations.filter(d => d.kind === "town").forEach(d => L.push([d.x, d.y, d.name, 12, 600]));
+  D.sites.filter(s => s.k === "peak" && s.e >= 6400).forEach(s => L.push([s.x, s.y, `${s.n} ${num(s.e)}`, 10.5, 500, true]));
+  L.forEach(([x, y, txt, fs, fw, peak]) => {
+    const [o, g] = marker(x, y);
+    g.appendChild(label(txt, {x:7, y:4, "font-size":fs, "font-weight":fw, "font-style":peak ? "italic" : "normal"}));
+    if (!peak) g.appendChild(svgEl("circle", {r:2.4, fill:"#1f2a2e"}));
+    o.dataset.peak = peak ? "1" : "";
+    groups.labels.appendChild(o);
+  });
+}
+
+/* ---------------- info panel ---------------- */
+const info = $("#info");
+function openInfo(html, x, y){
+  info.innerHTML = `<button class="x" aria-label="Close">×</button>` + html;
+  info.hidden = false;
+  info.querySelector(".x").onclick = () => { info.hidden = true; groups.focus.innerHTML = ""; };
+  ring(x, y);
+}
+function ring(x, y){
+  groups.focus.innerHTML = "";
+  const [o, g] = marker(x, y); g.appendChild(svgEl("circle", {r:11, fill:"none", stroke:"#b8324f", "stroke-width":2.5})); groups.focus.appendChild(o);
+  applyView();
+}
+function addBtn(stop){ return `<div class="acts"><button class="tbtn" data-add='${esc(JSON.stringify(stop))}'>Add to trip</button></div>`; }
+info.addEventListener("click", e => { const b = e.target.closest("[data-add]"); if (b) { addStop(JSON.parse(b.dataset.add)); b.textContent = "Added"; b.disabled = true; } });
+const KIND_NAME = {temple:"Temple or shrine", heritage:"Heritage", nature:"Nature", attraction:"Attraction", peak:"Peak"};
+function showSite(i){
+  const s = D.sites[i];
+  const links = [s.w && `<a href="${esc(s.w)}" target="_blank" rel="noopener">Wikipedia</a>`, s.q && `<a href="https://www.wikidata.org/wiki/${esc(s.q)}" target="_blank" rel="noopener">Wikidata</a>`, s.o && `<a href="https://www.openstreetmap.org/${esc(s.o)}" target="_blank" rel="noopener">OpenStreetMap</a>`].filter(Boolean).join(" · ");
+  openInfo(`<h3>${esc(s.n)}</h3><div class="muted">${KIND_NAME[s.k]}${s.r && s.r !== "hindu" ? " (" + esc(s.r) + ")" : ""} · ${esc(s.d)}${s.e ? " · " + num(s.e) + " m" : ""}</div>` +
+    (s.i ? `<img src="${esc(s.i)}" alt="${esc(s.n)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "") +
+    `<div style="margin-top:4px">${links}</div>` + (s.k !== "peak" ? addBtn({name:s.n, x:s.x, y:s.y}) : `<div class="note" style="margin-top:6px">Peaks aren't routable; add a nearby town to see it from.</div>`), s.x, s.y);
+}
+function stayFacts(s){
+  const road = s.road_km <= .3 ? `${D.roads.names[s.road_cls]}, ${s.road_km < .05 ? "at the door" : Math.round(s.road_km * 1000) + " m away"}` : `nearest mapped road ${num(s.road_km, 1)} km away (${D.roads.names[s.road_cls].toLowerCase()})`;
+  const food = [s.meals, s.food_1km ? `${s.food_1km} restaurant${s.food_1km > 1 ? "s" : ""} or café${s.food_1km > 1 ? "s" : ""} mapped within 1 km` : "no restaurants mapped within 1 km"].filter(Boolean).join("; ");
+  return {road, food};
+}
+function showStay(i){
+  const s = D.stays[i], f = stayFacts(s);
+  const rows = [["Type", esc(s.type)], ["Where", `${esc(s.locality)}, ${esc(s.district)}`], ["Road", esc(f.road)], ["Food", esc(f.food)]];
+  if (s.kmvn) rows.push(["Meal plan", s.plan ? `${s.plan}: ${({EP:"room only", CP:"breakfast included", MAP:"breakfast and dinner included"})[s.plan]}` : "not listed"]);
+  if (s.stars) rows.push(["Stars", s.stars]);
+  if (s.rooms) rows.push(["Rooms", s.rooms]);
+  const extra = [s.internet && "internet", s.wheelchair && "wheelchair access"].filter(Boolean);
+  if (extra.length) rows.push(["Listed", extra.join(", ")]);
+  if (s.placed && s.placed !== "OpenStreetMap") rows.push(["Map position", s.placed === "approximate" ? "approximate" : esc(s.placed)]);
+  const link = s.kmvn ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">KMVN page and booking</a>` : `<a href="https://www.openstreetmap.org/${esc(s.osm)}" target="_blank" rel="noopener">OpenStreetMap</a>`;
+  openInfo(`<h3>${esc(s.name)}</h3>${s.kmvn ? `<span class="tag kmvn">state-run (KMVN)</span>` : ""}<div class="kv" style="margin-top:6px">${rows.map(r => `<span class="muted">${r[0]}</span><span>${r[1]}</span>`).join("")}</div><div style="margin-top:6px">${link}</div>` + addBtn({name:s.locality && !s.kmvn ? `${s.name}, ${s.locality}` : s.name, x:s.x, y:s.y}), s.x, s.y);
+}
+function showHotspot(i){
+  const h = D.birds.hotspots[i];
+  openInfo(`<h3>${esc(h.name)}</h3><div class="muted">eBird hotspot · ${esc(h.district)}</div><div class="kv" style="margin-top:6px"><span class="muted">Species</span><span>${h.species}</span><span class="muted">Last checklist</span><span>${esc(h.last) || "–"}</span></div><div style="margin-top:6px"><a href="https://ebird.org/hotspot/${esc(h.id)}" target="_blank" rel="noopener">Bar chart and checklists on eBird</a></div>` + addBtn({name:h.name, x:h.x, y:h.y}), h.x, h.y);
+}
+
+/* ---------------- visibility, pan and zoom ---------------- */
+function syncVisibility(){
+  const L = state.layers;
+  ["temple","heritage","nature","attraction","peak","kmvn","stays","hotspots","protected","roads"].forEach(k => groups[k].style.display = L[k] ? "" : "none");
+  groups.labels.querySelectorAll("[data-peak='1']").forEach(o => o.style.display = L.peak ? "" : "none");
+  $("#forestImg").hidden = !L.forest;
+  $("#birdsImg").hidden = !L.birds;
+}
+function applyView(){
+  const w = box.clientWidth, h = box.clientHeight;
+  state.zoom = Math.max(1, Math.min(14, state.zoom));
+  state.tx = Math.min(0, Math.max(w - w * state.zoom, state.tx));
+  state.ty = Math.min(0, Math.max(h - h * state.zoom, state.ty));
+  stage.style.transform = `translate(${state.tx}px,${state.ty}px) scale(${state.zoom})`;
+  const u = unitPx(); if (!u) return;
+  const s = 1 / (u * state.zoom);
+  svg.querySelectorAll(".mki").forEach(g => g.setAttribute("transform", `scale(${s.toFixed(4)})`));
+  // Lines keep a constant on-screen width (vector-effect ignores the CSS zoom).
+  svg.querySelectorAll("[data-sw]").forEach(p => { if (!p.dataset.base) p.dataset.base = p.getAttribute("stroke-width"); p.setAttribute("stroke-width", (p.dataset.base * s).toFixed(4)); });
+}
+function zoomAt(f, cx, cy){
+  const z0 = state.zoom, z1 = Math.max(1, Math.min(14, z0 * f));
+  state.tx = cx - (cx - state.tx) * z1 / z0; state.ty = cy - (cy - state.ty) * z1 / z0; state.zoom = z1; applyView();
+}
+let hintTimer = null, dragMoved = false;
+box.addEventListener("wheel", e => {
+  if (!(e.ctrlKey || e.metaKey)) { const h = $("#zoomHint"); h.hidden = false; clearTimeout(hintTimer); hintTimer = setTimeout(() => { h.hidden = true; }, 1200); return; }
+  e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top);
+}, {passive:false});
+let drag = null;
+box.addEventListener("pointerdown", e => { if (e.target.closest(".maptools, .legend, .readout, .info")) return; dragMoved = false; drag = {x:e.clientX, y:e.clientY, tx:state.tx, ty:state.ty, moved:false}; });
+box.addEventListener("pointermove", e => {
+  if (drag && (drag.moved || Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4)) {
+    if (!drag.moved) { drag.moved = true; dragMoved = true; box.setPointerCapture(e.pointerId); }
+    state.tx = drag.tx + e.clientX - drag.x; state.ty = drag.ty + e.clientY - drag.y; applyView();
+  }
+  readout(e);
+});
+box.addEventListener("pointerup", () => { drag = null; setTimeout(() => { dragMoved = false; }, 0); });
+box.addEventListener("pointercancel", () => { drag = null; dragMoved = false; });
+$("#zin").onclick = () => zoomAt(1.5, box.clientWidth / 2, box.clientHeight / 2);
+$("#zout").onclick = () => zoomAt(1 / 1.5, box.clientWidth / 2, box.clientHeight / 2);
+$("#zreset").onclick = () => { state.zoom = 1; state.tx = 0; state.ty = 0; applyView(); };
+window.addEventListener("resize", applyView);
+function focusOn(x, y, z, scroll){
+  state.zoom = Math.max(state.zoom, z || 4);
+  const u = unitPx();
+  state.tx = box.clientWidth / 2 - x * u * state.zoom; state.ty = box.clientHeight / 2 - y * u * state.zoom;
+  applyView();
+  if (scroll) box.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"center"});
+}
+function fitTo(pts){
+  if (!pts.length) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); });
+  const z = Math.max(1, Math.min(6, .82 / Math.max((x1 - x0 + 20) / GW, (y1 - y0 + 20) / GH)));
+  const u = unitPx(); state.zoom = z;
+  state.tx = box.clientWidth / 2 - (x0 + x1) / 2 * u * z; state.ty = box.clientHeight / 2 - (y0 + y1) / 2 * u * z;
+  applyView();
+}
+
+/* ---------------- hover readout ---------------- */
+let demPix = null;
+function loadImg(src){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+function pixels(img){ const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const x = c.getContext("2d", {willReadFrequently:true}); x.drawImage(img, 0, 0); return {w:img.width, h:img.height, d:x.getImageData(0, 0, c.width, c.height).data}; }
+function readout(e){
+  const r = box.getBoundingClientRect(), u = unitPx();
+  const gx = Math.floor((e.clientX - r.left - state.tx) / state.zoom / u), gy = Math.floor((e.clientY - r.top - state.ty) / state.zoom / u);
+  if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) return;
+  const [lon, lat] = gridToLonLat(gx, gy);
+  let elev = null;
+  if (demPix) { const i = (Math.min(demPix.h - 1, gy >> 1) * demPix.w + Math.min(demPix.w - 1, gx >> 1)) * 4; elev = demPix.d[i] * 256 + demPix.d[i + 1] - 500; }
+  let near = null, nd = 1e9;
+  D.destinations.forEach(d => { const dd = Math.hypot(d.x - gx, d.y - gy); if (dd < nd) { nd = dd; near = d; } });
+  $("#readout").innerHTML = `<div class="mono">${lat.toFixed(3)}°N ${lon.toFixed(3)}°E${elev != null ? ` · ~${Math.round(elev).toLocaleString("en-IN")} m` : ""}</div>` +
+    (near ? `<div>${num(nd * KM, 0)} km from ${esc(near.name)}${near.district ? ", " + esc(near.district) : ""}</div>` : "");
+}
+
+/* ---------------- controls and legend ---------------- */
+const LAYER_GROUPS = [
+  ["places", [["temple","Temples","--temple"],["heritage","Heritage","--heritage"],["nature","Nature","--nature"],["attraction","Other attractions","--attraction"],["peak","Peaks","--peak"]]],
+  ["stay", [["kmvn","KMVN rest houses","--kmvn"],["stays","Other stays","--stay"]]],
+  ["land", [["forest","Forest",null,"rgb(28,112,58)"],["protected","Protected areas",null,"rgb(47,127,79)"],["roads","Roads",null,"rgb(154,74,36)"]]],
+  ["birds", [["hotspots","eBird hotspots","--bird"],["birds","Bird records (GBIF)",null,"rgb(255,152,0)"]]],
+];
+function buildControls(){
+  const c = $("#controls");
+  LAYER_GROUPS.forEach(([name, items]) => {
+    const g = el("div", {class:"group", role:"group", "aria-label":name});
+    g.appendChild(el("span", {class:"sc"}, name));
+    items.forEach(([key, lab, v, raw]) => {
+      const b = el("button", {class:"chip", "aria-pressed":String(!!state.layers[key]), "data-layer":key}, `<span class="sw" style="background:${raw || css(v)}"></span>${lab}`);
+      b.onclick = () => { state.layers[key] = !state.layers[key]; b.setAttribute("aria-pressed", String(state.layers[key])); store.set("layers", state.layers); syncVisibility(); renderLegend(); };
+      g.appendChild(b);
+    });
+    c.appendChild(g);
+  });
+}
+function renderLegend(){
+  const ly = state.layers, K = [];
+  const sw = (shape, col, extra) => shape === "c" ? `<span class="k" style="border-radius:50%;background:${col}${extra || ""}"></span>` : `<span class="k" style="background:${col}${extra || ""}"></span>`;
+  if (ly.temple) K.push(sw("c", css("--temple")) + "temple or shrine (larger: better known)");
+  if (ly.heritage) K.push(sw("s", css("--heritage")) + "fort, ruin, museum, monument");
+  if (ly.nature) K.push(`<span class="k" style="background:${css("--nature")};transform:rotate(45deg) scale(.85)"></span>viewpoint, lake, cave, glacier`);
+  if (ly.attraction) K.push(sw("s", css("--attraction")) + "other attraction");
+  if (ly.peak) K.push(`<span class="k" style="background:${css("--peak")};clip-path:polygon(50% 0,100% 100%,0 100%)"></span>peak`);
+  if (ly.kmvn) K.push(sw("s", css("--kmvn")) + "KMVN tourist rest house");
+  if (ly.stays) K.push(sw("s", css("--stay")) + "stay on a good road with food nearby " + sw("s", "#fff", ";border:1.5px solid " + css("--stay")) + "other");
+  if (ly.forest) K.push(sw("s", "rgba(28,112,58,.7)") + "tree cover (WorldCover 2021)");
+  if (ly.protected) K.push(sw("s", "rgba(47,143,90,.25)", ";border:1.5px solid #2f7f4f") + "protected area");
+  if (ly.roads) K.push(`<span class="k" style="height:3px;background:#7a2d1e"></span>highway <span class="k" style="height:2px;background:#a8682c"></span>district road <span class="k" style="height:1px;background:#8b8478"></span>minor`);
+  if (ly.hotspots) K.push(sw("c", "rgba(79,143,47,.2)", ";border:1.5px solid " + css("--bird")) + "eBird hotspot (size: species)");
+  if (ly.birds) K.push(`<span class="k" style="background:linear-gradient(90deg,#ffff00,#ffcb00,#ff9800,#ff6600,#d50a00)"></span>bird records per cell, few → many`);
+  if (stops.length) K.push(`<span class="k" style="height:3px;background:${css("--route")}"></span>your circuit`);
+  const leg = $("#legend");
+  leg.innerHTML = `<div class="legend-head" id="legendHead"><span>Legend</span><span class="car">&#9662;</span></div><div class="legend-body">${K.map(k => `<div class="row">${k}</div>`).join("")}</div>`;
+  leg.hidden = !K.length;
+  leg.classList.toggle("collapsed", state.legendCollapsed);
+  $("#legendHead").onclick = () => { state.legendCollapsed = !state.legendCollapsed; store.set("legendCollapsed", state.legendCollapsed); leg.classList.toggle("collapsed", state.legendCollapsed); };
+}
+
+/* ---------------- circuit planner ---------------- */
+let stops = [];
+const destByName = Object.fromEntries(D.destinations.map(d => [d.name, d]));
+function mkStop(s){
+  const d = destByName[s.name];
+  if (d) return {name:d.name, x:d.x, y:d.y, node:d.node, snap_km:d.snap_km};
+  const [node, km] = nearestNode(s.x, s.y);
+  return {name:s.name, x:s.x, y:s.y, node, snap_km:km};
+}
+function addStop(s){ stops.push(mkStop(s)); $("#circSel").value = ""; planChanged(); }
+function readHash(){
+  const m = location.hash.match(/trip=([^&]+)/);
+  if (!m) return null;
+  return decodeURIComponent(m[1]).split("|").map(n => destByName[n] ? {name:n} : null).filter(Boolean);
+}
+function buildPlanner(){
+  const cs = $("#circSel");
+  cs.appendChild(el("option", {value:""}, "My own circuit"));
+  D.circuits.forEach((c, i) => cs.appendChild(el("option", {value:String(i)}, esc(c.name))));
+  cs.onchange = () => { if (cs.value !== "") { stops = D.circuits[+cs.value].stops.map(n => mkStop({name:n})); planChanged(true); } };
+  const as = $("#addSel"), groupsDef = [["town","Towns"],["stay","KMVN rest-house places"],["temple","Temples"],["heritage","Heritage"],["nature","Nature"]];
+  groupsDef.forEach(([k, lab]) => {
+    const og = el("optgroup", {label:lab});
+    D.destinations.filter(d => d.kind === k).forEach(d => og.appendChild(el("option", {value:d.name}, esc(d.name) + (d.snap_km > 2 ? " (trek)" : ""))));
+    if (og.children.length) as.appendChild(og);
+  });
+  $("#addBtn").onclick = () => { if (as.value) addStop({name:as.value}); };
+  const mh = $("#maxH"); mh.value = state.maxH;
+  mh.onchange = () => { state.maxH = Math.max(2, Math.min(10, +mh.value || 5)); store.set("maxH", state.maxH); planChanged(); };
+  $("#clearBtn").onclick = () => { stops = []; cs.value = ""; planChanged(); };
+  $("#shareBtn").onclick = async () => {
+    const named = stops.every(s => destByName[s.name]);
+    const url = location.href.split("#")[0] + "#trip=" + encodeURIComponent(stops.map(s => s.name).join("|"));
+    try { await navigator.clipboard.writeText(url); $("#shareBtn").textContent = named ? "Link copied" : "Copied (map-picked stops left out)"; } catch(e) { location.hash = "trip=" + encodeURIComponent(stops.map(s => s.name).join("|")); $("#shareBtn").textContent = "Link in address bar"; }
+    setTimeout(() => { $("#shareBtn").textContent = "Copy link"; }, 2500);
+  };
+  window.addEventListener("hashchange", () => { const h = readHash(); if (h && h.length) { stops = h.map(mkStop); cs.value = ""; planChanged(true); } });
+  const fromHash = readHash();
+  if (fromHash && fromHash.length) { stops = fromHash.map(mkStop); cs.value = ""; }
+  else {
+    const saved = store.get("trip", null);
+    if (saved && saved.length) stops = saved.map(mkStop);
+    else { stops = D.circuits.length ? D.circuits[1 % D.circuits.length].stops.map(n => mkStop({name:n})) : []; cs.value = D.circuits.length ? String(1 % D.circuits.length) : ""; }
+  }
+  planChanged(false);
+}
+function renderStops(){
+  const ol = $("#stops"); ol.innerHTML = "";
+  stops.forEach((s, i) => {
+    const li = el("li", null, `<span>${esc(s.name)}${s.snap_km > 2 ? ` <span class="muted" style="font-size:12.5px">· road ends ${num(s.snap_km, 0)} km away</span>` : ""}</span>`);
+    const ops = el("span", {class:"ops"});
+    const b = (txt, lab, fn, dis) => { const x = el("button", {"aria-label":lab, title:lab}, txt); x.disabled = !!dis; x.onclick = fn; ops.appendChild(x); };
+    b("↑", "Move up", () => { [stops[i - 1], stops[i]] = [stops[i], stops[i - 1]]; $("#circSel").value = ""; planChanged(); }, i === 0);
+    b("↓", "Move down", () => { [stops[i + 1], stops[i]] = [stops[i], stops[i + 1]]; $("#circSel").value = ""; planChanged(); }, i === stops.length - 1);
+    b("⌖", "Show on map", () => { focusOn(s.x, s.y, 4, true); ring(s.x, s.y); });
+    b("×", "Remove", () => { stops.splice(i, 1); $("#circSel").value = ""; planChanged(); });
+    li.appendChild(ops); ol.appendChild(li);
+  });
+}
+function staysNear(s, km){
+  return D.stays.map((st, i) => ({st, i, d:pxKm(st, s)})).filter(o => o.d <= km)
+    .sort((a, b) => (b.st.kmvn - a.st.kmvn) || (stayOk(b.st) - stayOk(a.st)) || a.d - b.d);
+}
+function sitesAlong(pts){
+  const step = Math.max(1, Math.floor(pts.length / 400)), P = pts.filter((_, j) => j % step === 0), lim = 2 / KM;
+  const hits = [];
+  D.sites.forEach((s, i) => {
+    if (s.k === "peak" || s.s < 3) return;
+    let best = Infinity, at = 0;
+    for (let j = 0; j < P.length; j++) { const d = Math.hypot(P[j][0] - s.x, P[j][1] - s.y); if (d < best) { best = d; at = j; } }
+    if (best <= lim) hits.push({s, i, at});
+  });
+  return hits.sort((a, b) => b.s.s - a.s.s).slice(0, 7).sort((a, b) => a.at - b.at);
+}
+function midStop(r){
+  const half = r.min / 2; let j = r.cum.findIndex(t => t >= half); if (j < 0) j = r.pts.length - 1;
+  const p = {x:r.pts[j][0], y:r.pts[j][1]};
+  let best = null, bd = 12;
+  D.destinations.forEach(d => { if (d.kind !== "town" && d.kind !== "stay") return; const dd = pxKm(d, p); if (dd < bd) { bd = dd; best = d; } });
+  return best;
+}
+function planChanged(fit){
+  store.set("trip", stops.map(s => ({name:s.name, x:s.x, y:s.y})));
+  if (location.hash.includes("trip=")) history.replaceState(null, "", location.pathname + location.search);
+  renderStops();
+  groups.route.innerHTML = ""; groups.stopmk.innerHTML = "";
+  const legs = $("#legs"); legs.innerHTML = "";
+  let totMin = 0, totKm = 0, over = 0;
+  const allPts = [];
+  const nightHtml = (s, i) => {
+    const near = staysNear(s, 8).slice(0, 4);
+    const items = near.map(o => `<li><a href="#" data-stay="${o.i}">${esc(o.st.name)}</a> <span class="muted">${o.st.kmvn ? "KMVN" + (o.st.plan ? ", " + o.st.plan : "") : esc(o.st.type.toLowerCase())}${stayOk(o.st) ? "" : ", fewer checks met"} · ${num(o.d, 1)} km</span></li>`).join("");
+    return `<div class="night"><b>${i === 0 ? "Start" : "Night " + i}: ${esc(s.name)}</b>${items ? `<ol>${items}</ol>` : `<div class="muted">No mapped stays within 8 km.</div>`}</div>`;
+  };
+  stops.forEach((s, i) => {
+    const [o, g] = marker(s.x, s.y);
+    g.appendChild(svgEl("circle", {r:8.5, fill:css("--route"), stroke:"#fff", "stroke-width":1.6}));
+    const t = svgEl("text", {"text-anchor":"middle", y:3.8, "font-size":10.5, "font-weight":700, fill:"#fff"}); t.textContent = i + 1; g.appendChild(t);
+    groups.stopmk.appendChild(o);
+    allPts.push([s.x, s.y]);
+    if (i > 0) {
+      const a = stops[i - 1], r = route(a.node, s.node);
+      if (!r) { legs.appendChild(el("div", {class:"leg over"}, `<div class="hd"><b>${esc(a.name)} → ${esc(s.name)}</b><span class="muted">no road route found</span></div>`)); return; }
+      const isOver = r.min > state.maxH * 60; if (isOver) over++;
+      totMin += r.min; totKm += r.km;
+      groups.route.appendChild(svgEl("polyline", {points:r.pts.map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" "), fill:"none", stroke:css("--route"), "stroke-width":4, "stroke-linejoin":"round", "stroke-linecap":"round", "data-sw":"1", opacity:.9}));
+      r.pts.forEach(q => allPts.push(q));
+      const along = sitesAlong(r.pts);
+      const mid = isOver ? midStop(r) : null;
+      const walk = [a.snap_km > .5 && `${esc(a.name)} is ${num(a.snap_km, 1)} km from the road`, s.snap_km > .5 && `${esc(s.name)} is ${num(s.snap_km, 1)} km from the road`].filter(Boolean);
+      const div = el("div", {class:"leg" + (isOver ? " over" : "")},
+        `<div class="hd"><b>${esc(a.name)} → ${esc(s.name)}</b><span class="t">${fmtDur(r.min)} · ${num(r.km)} km</span>${isOver ? `<span class="tag pend">over ${state.maxH} h</span>` : ""}</div>` +
+        (isOver && mid ? `<div class="note">Long for one day: ${esc(mid.name)} is about halfway.${destByName[mid.name] ? ` <a href="#" data-insert="${i}" data-name="${esc(mid.name)}">Add it as a stop</a>` : ""}</div>` : "") +
+        (walk.length ? `<div class="note">${walk.join("; ")}: the time is to the road's end.</div>` : "") +
+        (along.length ? `<ul>${along.map(h => `<li><a href="#" data-site="${h.i}">${esc(h.s.n)}</a> <span class="muted">${KIND_NAME[h.s.k].toLowerCase()}</span></li>`).join("")}</ul>` : ""));
+      legs.appendChild(div);
+    }
+    legs.appendChild(el("div", null, nightHtml(s, i)));
+  });
+  const nights = Math.max(0, stops.length - 1);
+  $("#tripStats").innerHTML = stops.length > 1 ? `<span>Driving <b>${fmtDur(totMin)}</b></span><span><b>${num(totKm)}</b> km</span><span><b>${nights}</b> leg${nights === 1 ? "" : "s"}</span>${over ? `<span style="color:var(--warn)"><b>${over}</b> over ${state.maxH} h</span>` : ""}` : `<span class="muted">Add at least two stops.</span>`;
+  renderLegend(); applyView();
+  if (fit !== false && stops.length && fit) fitTo(allPts);
+}
+$("#legs").addEventListener("click", e => {
+  const a = e.target.closest("a"); if (!a) return;
+  if (a.dataset.stay != null) { e.preventDefault(); const s = D.stays[+a.dataset.stay]; focusOn(s.x, s.y, 5, true); showStay(+a.dataset.stay); }
+  else if (a.dataset.site != null) { e.preventDefault(); const s = D.sites[+a.dataset.site]; focusOn(s.x, s.y, 5, true); showSite(+a.dataset.site); }
+  else if (a.dataset.insert != null) { e.preventDefault(); stops.splice(+a.dataset.insert, 0, mkStop({name:a.dataset.name})); $("#circSel").value = ""; planChanged(); }
+});
+
+/* ---------------- tables ---------------- */
+function fillSelect(sel, opts, val){ sel.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join(""); if (val != null) sel.value = val; }
+function buildStayTable(){
+  fillSelect($("#stDist"), [["", "All"]].concat(DISTRICTS.map(d => [d, d])), store.get("stDist", ""));
+  $("#stKmvn").checked = store.get("stKmvn", false); $("#stChecks").checked = store.get("stChecks", true);
+  const draw = () => {
+    const dist = $("#stDist").value, km = $("#stKmvn").checked, ck = $("#stChecks").checked;
+    store.set("stDist", dist); store.set("stKmvn", km); store.set("stChecks", ck);
+    const rows = D.stays.map((s, i) => [s, i]).filter(([s]) => (!dist || s.district === dist) && (!km || s.kmvn) && (!ck || stayOk(s)))
+      .sort((a, b) => (b[0].kmvn - a[0].kmvn) || a[0].district.localeCompare(b[0].district) || a[0].locality.localeCompare(b[0].locality));
+    $("#stCount").textContent = `${rows.length} of ${D.stays.length}`;
+    const t = $("#stayTable");
+    t.innerHTML = `<thead><tr><th>Name</th><th>Where</th><th>Type</th><th title="Within 300 m of a tertiary or bigger road">Road</th><th title="Meals served, or a restaurant or café mapped within 1 km">Food</th><th>Meal plan</th></tr></thead>`;
+    const tb = el("tbody");
+    rows.forEach(([s, i]) => {
+      const tr = el("tr", {tabindex:"0"}, `<td>${esc(s.name)} ${s.kmvn ? '<span class="tag kmvn">KMVN</span>' : ""}</td><td>${esc(s.locality)}<br><span class="muted" style="font-size:12.5px">${esc(s.district)}</span></td><td>${esc(s.kmvn ? "Rest house" : s.type)}</td>` +
+        `<td><span class="ck ${s.checks.road ? "y" : "n"}">${s.checks.road ? "✓" : "–"}</span> <span class="muted" style="font-size:12.5px">${D.roads.names[s.road_cls].replace(" road", "").toLowerCase()}${s.road_km > .3 ? ", " + num(s.road_km, 1) + " km" : ""}</span></td>` +
+        `<td><span class="ck ${s.checks.food ? "y" : "n"}">${s.checks.food ? "✓" : "–"}</span> <span class="muted" style="font-size:12.5px">${s.meals ? esc(s.meals) : s.food_1km ? s.food_1km + " nearby" : ""}</span></td><td>${s.plan || ""}</td>`);
+      const go = () => { focusOn(s.x, s.y, 5, true); showStay(i); };
+      tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter") go(); };
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+  };
+  ["#stDist", "#stKmvn", "#stChecks"].forEach(s => $(s).onchange = draw);
+  draw();
+  const nk = D.stays.filter(s => s.kmvn).length, ok = D.stays.filter(stayOk).length;
+  $("#stayNote").innerHTML = `${nk} KMVN tourist rest houses (Kumaon Mandal Vikas Nigam, the state's tourism corporation; from kmvn.in) and ${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book. KMVN meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a KMVN rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (KMVN publishes no coordinates) are marked as such in their details. Only business names and places are shown: no phone numbers or personal names.`;
+}
+function buildSiteTable(){
+  fillSelect($("#siKind"), [["", "All but peaks"]].concat(Object.entries(D.kinds).map(([k, v]) => [k, v])), store.get("siKind", ""));
+  fillSelect($("#siDist"), [["", "All"]].concat(DISTRICTS.map(d => [d, d])), store.get("siDist", ""));
+  const draw = () => {
+    const k = $("#siKind").value, dist = $("#siDist").value; store.set("siKind", k); store.set("siDist", dist);
+    const rows = D.sites.map((s, i) => [s, i]).filter(([s]) => (k ? s.k === k : s.k !== "peak") && (!dist || s.d === dist))
+      .sort((a, b) => k === "peak" ? (b[0].e || 0) - (a[0].e || 0) : b[0].s - a[0].s || a[0].n.localeCompare(b[0].n)).slice(0, 150);
+    const t = $("#siteTable");
+    t.innerHTML = `<thead><tr><th>Name</th><th>Kind</th><th>District</th><th class="num">${k === "peak" ? "m" : "Wiki editions"}</th></tr></thead>`;
+    const tb = el("tbody");
+    rows.forEach(([s, i]) => {
+      const tr = el("tr", {tabindex:"0"}, `<td>${esc(s.n)}${s.w ? ` <a href="${esc(s.w)}" target="_blank" rel="noopener" title="Wikipedia" onclick="event.stopPropagation()">W</a>` : ""}</td><td>${KIND_NAME[s.k]}</td><td>${esc(s.d)}</td><td class="num">${k === "peak" ? num(s.e) : s.s ? Math.max(0, s.s - (s.w ? 3 : 0) - (s.i ? 1 : 0)) : "–"}</td>`);
+      const go = () => { focusOn(s.x, s.y, 5, true); showSite(i); };
+      tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter") go(); };
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+  };
+  $("#siKind").onchange = draw; $("#siDist").onchange = draw; draw();
+}
+function buildBirds(){
+  const B = D.birds;
+  $("#birdStats").innerHTML = `<span><b>${B.species_total}</b> species recorded in Kumaon</span><span><b>${B.hotspots.length}</b> hotspots</span>`;
+  $("#birdDist").innerHTML = `<thead><tr><th>District</th><th class="num">Species</th><th class="num">Hotspots</th></tr></thead><tbody>` +
+    B.districts.map(d => `<tr><td><a href="https://ebird.org/region/${esc(d.code)}" target="_blank" rel="noopener">${esc(d.district)}</a></td><td class="num">${d.species}</td><td class="num">${d.hotspots}</td></tr>`).join("") + "</tbody>";
+  const t = $("#hotspotTable");
+  t.innerHTML = `<thead><tr><th>Top hotspots</th><th>District</th><th class="num">Species</th></tr></thead>`;
+  const tb = el("tbody");
+  B.hotspots.map((h, i) => [h, i]).sort((a, b) => b[0].species - a[0].species).slice(0, 40).forEach(([h, i]) => {
+    const tr = el("tr", {tabindex:"0"}, `<td>${esc(h.name)}</td><td>${esc(h.district)}</td><td class="num">${h.species}</td>`);
+    const go = () => { if (!state.layers.hotspots) { state.layers.hotspots = true; document.querySelector("[data-layer=hotspots]").setAttribute("aria-pressed", "true"); store.set("layers", state.layers); syncVisibility(); renderLegend(); } focusOn(h.x, h.y, 5, true); showHotspot(i); };
+    tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter") go(); };
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+const LC = [["tree","Tree cover","#2f7f4f"],["shrub_grass","Shrub, grass, moss","#b9c46a"],["crop","Cropland","#e3b04b"],["built","Built-up","#b8324f"],["bare","Bare rock","#a59a8c"],["snow","Snow and ice","#d6e6f2"],["water","Water","#4f86a3"]];
+function buildLand(){
+  $("#landcover").innerHTML = D.landcover.map(r => `<div class="lcrow"><span>${esc(r.district)} <span class="mono muted" style="font-size:12px">${Math.round(r.tree)}%</span></span><div class="lcbar" role="img" aria-label="${esc(r.district)}: ${LC.map(([k, l]) => `${l} ${r[k]}%`).join(", ")}">${LC.map(([k, l, c]) => r[k] > 0 ? `<span style="width:${r[k]}%;background:${c}" title="${l} ${r[k]}%"></span>` : "").join("")}</div></div>`).join("");
+  $("#lcKey").innerHTML = LC.map(([k, l, c]) => `<span><span class="k" style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};vertical-align:-1px;border:1px solid var(--rule)"></span> ${l}</span>`).join("");
+  $("#paTable").innerHTML = `<thead><tr><th>Protected area</th><th class="num">km² in Kumaon</th></tr></thead><tbody>` + D.protected.slice().sort((a, b) => b.km2 - a.km2).map(p => `<tr><td>${esc(p.name)} <span class="muted" style="font-size:12.5px">${esc(p.kind.toLowerCase())}</span></td><td class="num">${num(p.km2)}</td></tr>`).join("") + "</tbody>";
+}
+function buildGI(){
+  const reg = D.gi.filter(g => g.status === "Registered").sort((a, b) => (b.kumaon - a.kumaon) || a.name.localeCompare(b.name));
+  const pend = D.gi.filter(g => !["Registered", "Refused", "Abandoned", "Withdrawn"].includes(g.status));
+  const yr = s => (s || "").slice(-4);
+  $("#giTable").innerHTML = `<thead><tr><th>Registered GI</th><th>Goods</th><th class="num">Year</th></tr></thead><tbody>` +
+    reg.map(g => `<tr><td><a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.name)}</a> ${g.kumaon ? '<span class="tag kum">Kumaon</span>' : ""}</td><td>${esc(g.goods.replace("Handi Crafts", "Handicraft"))}</td><td class="num">${esc(yr(g.certificate_date))}</td></tr>`).join("") +
+    (pend.length ? `<tr><td colspan="3" class="muted" style="padding-top:10px"><b>Applied for, not yet registered:</b> ${pend.map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.name)}</a> <span class="muted">(${esc(g.status.toLowerCase())})</span>`).join(", ")}</td></tr>` : "") + "</tbody>";
+  $("#giNote").innerHTML = `Geographical indications filed for Uttarakhand, each checked against its page in India's GI registry (status, goods, certificate). <span class="tag kum">Kumaon</span> marks products named for a Kumaon place; the rest are registered for all of Uttarakhand, and many (Aipan, Tamta copperware, Bhotia dann and thulma, Ringal) are crafts long practised in Kumaon. Year is the registration certificate's. For the region's medicinal plants, see the <a href="https://rahulbhargavain.github.io/jadibooti-atlas/" target="_blank" rel="noopener">Jadibooti atlas</a>.`;
+}
+function buildVisitors(){
+  const V = D.visitors, years = ["2021","2022","2023","2024","2025"];
+  const max = Math.max(...V.flatMap(v => years.map(y => (v.years[y] || {}).total || 0)));
+  $("#visitors").innerHTML = V.map(v => {
+    const bw = 100 / years.length;
+    const bars = years.map((y, j) => { const t = (v.years[y] || {}).total; if (!t) return ""; const h = Math.max(1, t / max * 28); return `<rect x="${j * bw + 1}" y="${30 - h}" width="${bw - 2}" height="${h}" fill="${j === years.length - 1 ? "var(--glacier)" : "var(--rule)"}"><title>${y}: ${num(t)}</title></rect>`; }).join("");
+    const last = (v.years["2025"] || {}).total, prev = (v.years["2024"] || {}).total;
+    const ch = last && prev ? Math.round((last / prev - 1) * 100) : null;
+    return `<div class="vrow"><span>${esc(v.name)}<br><span class="muted" style="font-size:12px">${esc(v.district)}</span></span><svg viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="${esc(v.name)} visitors 2021 to 2025">${bars}</svg><span class="mono" style="text-align:right;font-size:13px">${num(last)}<br><span class="muted" style="font-size:11.5px">${ch == null ? "" : (ch >= 0 ? "+" : "") + ch + "% on 2024"}</span></span></div>`;
+  }).join("");
+}
+function buildLimits(){
+  $("#limits").innerHTML = `<ul style="margin:0;padding-left:18px">
+    <li><b>Hospitality and food hygiene.</b> No open dataset rates them, and the review sites that do don't allow copying. Stays here pass or fail checkable facts only.</li>
+    <li><b>Road conditions.</b> OpenStreetMap shows which roads exist, not whether they're open, paved or under repair. Monsoon landslides and winter snow (above about 2,000 m) close roads; check with the district administration or your host.</li>
+    <li><b>Drive times.</b> Estimated from road class and terrain, not traffic. They are for planning a day, not to the minute.</li>
+    <li><b>Small temples and village sites.</b> OpenStreetMap is uneven in the hills: a village with a well-known temple may have no mapped site at all.</li>
+    <li><b>Treks.</b> Glaciers and passes (Pindari, Milam, Kafni, Traill's) are shown with how far the road ends from them. They need permits, guides and acclimatisation, which this page doesn't cover.</li>
+  </ul>`;
+}
+function buildMethod(){
+  const t = new Date(D.generated * 1000).toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"});
+  $("#stamp").innerHTML = `<span>Built <b>${t}</b></span><span>Refreshed every month or two</span>`;
+  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and KMVN's tourist rest houses (kmvn.in). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m. Routes are computed in your browser.</p>
+  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt by hand, so it changes when those sources do, not hour by hour like the <a href="../">Kumaon nowcast</a>.</p>`;
+}
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  $("#shadeImg").src = D.images.shade;
+  $("#forestImg").src = D.images.forest;
+  $("#birdsImg").src = D.images.birds;
+  $("#outsideImg").src = D.images.outside;
+  buildBase(); buildSites(); buildStays(); buildHotspots(); buildLabels();
+  buildControls(); syncVisibility(); renderLegend(); applyView();
+  buildMethod(); buildLimits(); buildPlanner(); buildStayTable(); buildSiteTable(); buildBirds(); buildLand(); buildGI(); buildVisitors();
+  if (stops.length) requestAnimationFrame(() => fitTo(stops.map(s => [s.x, s.y])));
+  try { demPix = pixels(await loadImg(D.images.dem)); } catch(e) {}
+}
+boot();
+})();
+</script>

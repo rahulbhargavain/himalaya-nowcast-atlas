@@ -6,6 +6,8 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 
 **Kumaon nowcast:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/ — a standalone page for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar, built in the same run: zoom-10 relief, IMD's Mukteshwar Doppler radar (decoded and placed on the map), the atlas's tracked radar cropped to Kumaon, IMD nowcasts and 5-day district warnings, IMD's live automatic stations and observatories, hour-by-hour forecasts and air quality for 22 towns, GloFAS flow on Kumaon's rivers, VIIRS fires, MODIS snow and earthquakes.
 
+**Kumaon cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ — temples, forts, peaks, forests, birds, registered GI products and visitor numbers for the same six districts, with places to stay and a circuit planner that routes on OpenStreetMap's roads in the browser. Stays are described by checkable facts (state-run KMVN rest house, the road that reaches them, food on site or within 1 km), not ratings: open data can't judge hospitality or food hygiene. Only business names and localities are shown.
+
 ## What it shows
 
 **Timeline (−2 h to +8 h, 10-minute steps)**
@@ -53,6 +55,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/imd_nowcast.py` | IMD's district and station nowcasts and 5-day district warnings, via IMD's public GeoServer WFS |
 | `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and the Mukteshwar radar image, decoded to dBZ |
 | `nowcast/kumaon.py` + `kumaon_template.html` | The Kumaon page (`python -m nowcast.kumaon` re-renders it from the last build's data) |
+| `nowcast/culture.py` + `culture_template.html` | The Kumaon cultural atlas, built by hand (see below) into `static/kumaon/culture/`, which `build.py` copies into `dist/` |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 | `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2, CO and UV Aerosol Index via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
@@ -82,6 +85,17 @@ Open `dist/index.html`. Static layers are cached in `cache/` after the first run
 
 The air-quality layers (NO2, CO, UV Aerosol Index) need a free [NASA Earthdata Login](https://urs.earthdata.nasa.gov/) token, set as the `EARTHDATA_TOKEN` environment variable (a GitHub Actions repository secret for the live build). Without it, they're silently skipped. Generate a token from your Earthdata profile page, and approve the GES DISC data-download app once at `https://urs.earthdata.nasa.gov/approve_app?client_id=e2WVk8Pw6weeLUKZYOxvTQ` (a one-time step per account; the token itself doesn't imply that approval).
 
+### Rebuilding the Kumaon cultural atlas
+
+Its sources change over months, so it isn't part of the two-hourly run. Rebuild it locally and commit `static/kumaon/culture/index.html`:
+
+```bash
+pip install rasterio scipy shapely networkx
+python -m nowcast.culture
+```
+
+It needs an eBird API key (free, from https://ebird.org/api/keygen) in the `EBIRD_API_KEY` environment variable or in `../.secrets/ebird_key` (outside the repo; never commit it), and reads UTDB visitor counts from the local Uttarakhand point-in-time database if present (otherwise from `cache/culture/utdb.json`). Fetches are cached under `cache/culture/`; delete a file there to refresh that source. `python -m nowcast.culture --render` re-renders from the last build's data after template changes.
+
 ## Data sources and credits
 
 All free; all but one keyless (the air-quality layers need a free Earthdata login, see above). Thanks to these providers, whose open data makes this atlas possible:
@@ -99,6 +113,17 @@ All free; all but one keyless (the air-quality layers need a free Earthdata logi
 - **[aviationweather.gov](https://aviationweather.gov/data/api/)** (NOAA) — airport METARs.
 - **[ICIMOD](https://geoapps.icimod.org/icimodarcgis/rest/services)** (International Centre for Integrated Mountain Development) — the Regional Database System and SERVIR-HKH thematic layers, inventories and station network.
 
+For the Kumaon cultural atlas:
+
+- **[OpenStreetMap](https://www.openstreetmap.org/copyright)** contributors (ODbL) — sites, lodging, restaurants, roads, protected areas and district boundaries, via the Overpass API.
+- **[Wikidata](https://www.wikidata.org/)** (CC0) and **[Wikimedia Commons](https://commons.wikimedia.org/)** — site notability, Wikipedia links and photos.
+- **[KMVN](https://kmvn.in/)** (Kumaon Mandal Vikas Nigam) — its tourist rest houses, room types and meal plans.
+- **[eBird](https://ebird.org/)** (Cornell Lab of Ornithology) — hotspots and species per district (API key required).
+- **[GBIF](https://www.gbif.org/)** — bird occurrence density maps.
+- **[ESA WorldCover 2021](https://esa-worldcover.org/)** (CC BY 4.0) — tree cover and land cover by district.
+- **[GI Registry, Intellectual Property India](https://search.ipindia.gov.in/GIRPublicSearch/)** — geographical indications, application-level fields only (the registry's lists of authorised users' names and addresses are never kept).
+- **[Uttarakhand Tourism Development Board](https://uttarakhandtourism.gov.in/)** — yearly visitor statistics.
+
 ICIMOD's Bhutan pastoral migration survey points include household names and ID numbers, so the atlas uses only the grazing-area maps from that service.
 
-None of the above requires a login. Two candidates were deliberately left out because they'd need one: India's National Center for Seismology (no public API, portal/app only) and JAXA's own GSMaP near-real-time feed (registration-gated; NASA/JAXA's IMERG via GIBS covers the same ground with no login needed).
+None of the above requires a login, apart from the Earthdata token for air quality and the eBird key for the cultural atlas. Two candidates were deliberately left out because they'd need one: India's National Center for Seismology (no public API, portal/app only) and JAXA's own GSMaP near-real-time feed (registration-gated; NASA/JAXA's IMERG via GIBS covers the same ground with no login needed).

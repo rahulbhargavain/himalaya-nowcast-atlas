@@ -319,6 +319,12 @@ def main():
         if os.path.exists(src):
             import shutil
             shutil.copy(src, os.path.join(out_dir, extra))
+    # Slow-refresh pages built by hand and committed under static/ (the
+    # Kumaon cultural atlas: python -m nowcast.culture).
+    static_dir = os.path.join(HERE, "static")
+    if os.path.isdir(static_dir):
+        import shutil
+        shutil.copytree(static_dir, out_dir, dirs_exist_ok=True)
     # Point-in-time record of this build, filed into the data branch by the workflow.
     archive.write_snapshot(os.path.join(HERE, "snapshot"), data, frames_all, t_all, t0_index, radar.STEP_MIN)
 
