@@ -2,11 +2,23 @@
 
 A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunachal (72–97°E, 26–37°N).
 
-**Live page:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/ (rebuilt every 2 hours)
+## Live pages
+
+| Page | Link | Refreshed |
+| --- | --- | --- |
+| Himalaya Nowcast Atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/ | every 2 hours |
+| TV mode (kiosk view) | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/?tv | every 2 hours |
+| Kumaon nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/ | every 2 hours |
+| Kumaon cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ | monthly |
+| Garhwal cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ | monthly |
+| Winter chill in the apple belts, 1990–2026 | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/chill_report.html | static analysis |
+| Point-in-time archive | [`data` branch](https://github.com/rahulbhargavain/himalaya-nowcast-atlas/tree/data) | every 2 hours |
 
 **Kumaon nowcast:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/ — a standalone page for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar, built in the same run: zoom-10 relief, IMD's Mukteshwar Doppler radar (decoded and placed on the map), the atlas's tracked radar cropped to Kumaon, IMD nowcasts and 5-day district warnings, IMD's live automatic stations and observatories, hour-by-hour forecasts and air quality for 22 towns, GloFAS flow on Kumaon's rivers, VIIRS fires, MODIS snow and earthquakes.
 
 **Kumaon cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ — temples, forts, peaks, forests, birds, registered GI products and visitor numbers for the same six districts, with places to stay and a circuit planner that routes on OpenStreetMap's roads in the browser. Stays are described by checkable facts (state-run KMVN rest house, the road that reaches them, food on site or within 1 km), not ratings: open data can't judge hospitality or food hygiene. Only business names and localities are shown.
+
+**Garhwal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ — the same atlas for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with GMVN rest houses in place of KMVN's. There is no Garhwal nowcast page, so `/garhwal/` itself is not a page.
 
 ## What it shows
 
