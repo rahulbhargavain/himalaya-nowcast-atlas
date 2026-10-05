@@ -1,43 +1,94 @@
-"""Kumaon cultural atlas: temples, forts, peaks, protected areas, forests,
-birds, GI products and visitor numbers, plus places to stay and drive-time
-circuits for planning your own tour.
+"""Regional cultural atlases: temples, forts, peaks, protected areas,
+forests, birds, GI products and visitor numbers, plus places to stay and
+drive-time circuits for planning your own tour. One page per region (see
+REGIONS at the end of this file); Kumaon is the first.
 
 A slow-refresh page: its sources change over months, not hours, so it's
-built locally (python -m nowcast.culture) and the output is committed under
-static/, which build.py copies into the published site. That keeps
-Overpass, Wikidata and eBird out of the two-hourly run.
+built locally (python -m nowcast.culture [--region kumaon]) and the output
+is committed under static/<region>/culture/, which build.py copies into the
+published site. That keeps Overpass, Wikidata and eBird out of the
+two-hourly run.
 
 Places to stay can't be rated on hospitality or food hygiene from open data,
 and review sites forbid scraping, so stays are described by facts that can
-be checked: run by the state (KMVN tourist rest houses), the road that
-reaches them, food on site or within walking distance, and what OSM records
-about them. Only business names and localities are shown - no phone numbers
-or personal names.
+be checked: run by the state (the region's tourism corporation's rest
+houses, such as KMVN's), the road that reaches them, food on site or within
+walking distance, and what OSM records about them. Only business names and
+localities are shown - no phone numbers or personal names.
 """
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import time
+from dataclasses import dataclass, field as dc_field
+from typing import Callable
 
 import numpy as np
 
-from .geo import CACHE, get, get_json
+from .geo import CACHE, get, get_json, make_frame
 
-BOX = (78.6, 28.6, 81.2, 30.7)  # w, s, e, n - the Kumaon nowcast frame
 OVERPASS = "https://overpass-api.de/api/interpreter"
 CDIR = os.path.join(CACHE, "culture")
 os.makedirs(CDIR, exist_ok=True)
 
 
-def _overpass(q, key):
-    body = get(OVERPASS, params={"data": q}, timeout=400, cache_key=f"culture/{key}")
+@dataclass(frozen=True)
+class Corp:
+    """A state tourism corporation's rest houses: where to fetch them, and
+    where each one is (their pages have no coordinates)."""
+    abbr: str                 # "KMVN"
+    name: str                 # "Kumaon Mandal Vikas Nigam"
+    site: str                 # "kmvn.in"
+    fetch: Callable[[], list]  # -> [{slug, name, address, blurb, rooms}]
+    url: Callable[[str], str]  # slug -> the rest house's page
+    place: dict               # slug -> OSM place names (with alternative spellings)
+    fallback: dict = dc_field(default_factory=dict)  # slug -> approximate (lat, lon)
+    district: dict = dc_field(default_factory=dict)  # slug -> district, where a place name recurs
+
+
+@dataclass(frozen=True)
+class Region:
+    """Everything that differs between one region's cultural atlas and
+    another's. Fetchers and the page itself are shared."""
+    id: str                   # "kumaon": output under static/<id>/culture/
+    name: str                 # "Kumaon"
+    box: tuple                # w, s, e, n
+    districts: list           # OSM admin_level 5 names, in display order
+    ebird: dict               # eBird subnational2 code -> district
+    towns: Callable[[], list]  # -> [(name, lat, lon, district)], always routable destinations
+    corp: Corp
+    gi_words: re.Pattern      # GI products named for a place in the region
+    utdb: dict                # UTDB entity -> (destination name, district)
+    circuits: list            # (title, blurb, [overnight bases])
+    shade_alt: str            # alt text for the relief image
+    gi_note: str              # HTML: crafts registered state-wide but practised here
+    pa_skip: frozenset = frozenset()       # protected areas across the state line
+    wd_bad_coords: frozenset = frozenset()  # Wikidata items placed well off
+    cache_dir: str = ""       # under cache/culture/ (Kumaon's predates regions: "")
+    store: str = ""           # localStorage key prefix; the pages share an origin
+    back: tuple = ()          # (href, label) links above the title
+    nowcast: str = ""         # relative link to the region's weather nowcast, if any
+
+    @property
+    def frame(self):
+        w, s, e, n = self.box
+        return make_frame(w, e, s, n, z=10)
+
+    def ckey(self, name):
+        """Cache key for a region-specific fetch."""
+        return "/".join(p for p in ("culture", self.cache_dir, name) if p)
+
+
+def _overpass(R, q, key):
+    body = get(OVERPASS, params={"data": q}, timeout=400, cache_key=R.ckey(key))
     return json.loads(body)["elements"]
 
 
-def _bbox_ql():
-    w, s, e, n = BOX
+def _bbox_ql(R):
+    w, s, e, n = R.box
     return f"({s},{w},{n},{e})"
 
 
@@ -45,8 +96,8 @@ def _bbox_ql():
 # Fetchers (each cached under cache/culture/; delete a file to refresh it)
 # --------------------------------------------------------------------------
 
-def osm_pois():
-    b = _bbox_ql()
+def osm_pois(R):
+    b = _bbox_ql(R)
     q = (f'[out:json][timeout:300];('
          f'nwr["tourism"~"^(hotel|guest_house|hostel|chalet|alpine_hut|camp_site|apartment|motel|attraction|'
          f'viewpoint|museum|artwork)$"]{b};'
@@ -54,26 +105,27 @@ def osm_pois():
          f'nwr["historic"]{b};nwr["natural"~"^(peak|cave_entrance|waterfall)$"]["name"]{b};'
          f'nwr["boundary"~"^(protected_area|national_park)$"]{b};nwr["leisure"="nature_reserve"]{b};'
          f');out center tags qt;')
-    return _overpass(q, "osm_poi.json")
+    return _overpass(R, q, "osm_poi.json")
 
 
-def osm_roads():
+def osm_roads(R):
     q = (f'[out:json][timeout:380];way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|'
-         f'trunk_link|primary_link|secondary_link|tertiary_link)$"]{_bbox_ql()};out body geom qt;')
-    return _overpass(q, "osm_roads.json")
+         f'trunk_link|primary_link|secondary_link|tertiary_link)$"]{_bbox_ql(R)};out body geom qt;')
+    return _overpass(R, q, "osm_roads.json")
 
 
-def osm_protected():
-    q = (f'[out:json][timeout:300];(relation["boundary"~"^(protected_area|national_park)$"]{_bbox_ql()};'
-         f'way["boundary"~"^(protected_area|national_park)$"]{_bbox_ql()};'
-         f'relation["leisure"="nature_reserve"]{_bbox_ql()};way["leisure"="nature_reserve"]{_bbox_ql()};);'
+def osm_protected(R):
+    b = _bbox_ql(R)
+    q = (f'[out:json][timeout:300];(relation["boundary"~"^(protected_area|national_park)$"]{b};'
+         f'way["boundary"~"^(protected_area|national_park)$"]{b};'
+         f'relation["leisure"="nature_reserve"]{b};way["leisure"="nature_reserve"]{b};);'
          f'out body geom qt;')
-    return _overpass(q, "osm_protected.json")
+    return _overpass(R, q, "osm_protected.json")
 
 
-def osm_places():
-    q = f'[out:json][timeout:300];node["place"~"^(city|town|village|hamlet|locality)$"]["name"]{_bbox_ql()};out qt;'
-    return _overpass(q, "osm_places.json")
+def osm_places(R):
+    q = f'[out:json][timeout:300];node["place"~"^(city|town|village|hamlet|locality)$"]["name"]{_bbox_ql(R)};out qt;'
+    return _overpass(R, q, "osm_places.json")
 
 
 def _page_text(html):
@@ -119,8 +171,6 @@ def kmvn_houses():
 
 
 EBIRD = "https://api.ebird.org/v2"
-EBIRD_REGIONS = {"IN-UL-NA": "Nainital", "IN-UL-AL": "Almora", "IN-UL-BA": "Bageshwar",
-                 "IN-UL-CP": "Champawat", "IN-UL-PI": "Pithoragarh", "IN-UL-US": "Udham Singh Nagar"}
 
 
 def _ebird_key():
@@ -150,13 +200,13 @@ def _ebird(path, key, params=None):
     return r.json()
 
 
-def ebird():
-    """Hotspots and species lists per Kumaon district, with English and
+def ebird(R):
+    """Hotspots and species lists per district, with English and
     scientific names from eBird's taxonomy."""
     tax = {t["speciesCode"]: t for t in _ebird("ref/taxonomy/ebird", "taxonomy.json", {"fmt": "json"})}
     out = {"districts": [], "hotspots": []}
     all_species = set()
-    for code, name in EBIRD_REGIONS.items():
+    for code, name in R.ebird.items():
         spp = [s for s in _ebird(f"product/spplist/{code}", f"spplist_{code}.json")
                if tax.get(s, {}).get("category") == "species"]
         all_species.update(spp)
@@ -177,31 +227,39 @@ WORLDCOVER = ("/vsicurl/https://esa-worldcover.s3.eu-central-1.amazonaws.com/v20
 WC_RES = 0.001  # degrees (~100 m): read from the COG overviews, not the 10 m data
 
 
-def worldcover():
-    """ESA WorldCover 2021 classes on a 0.001-degree lat/lon grid over BOX
-    (north-up; row 0 = north edge). Read straight from the cloud-optimised
-    GeoTIFFs' overviews (needs rasterio, a local-only dependency)."""
-    p = os.path.join(CDIR, "worldcover.npz")
+def _wc_tiles(box):
+    """South-west corners of the 3-degree WorldCover tiles covering box."""
+    w, s, e, n = box
+    return [(tlat, tlon) for tlat in range(math.floor(s / 3) * 3, math.ceil(n), 3)
+            for tlon in range(math.floor(w / 3) * 3, math.ceil(e), 3)]
+
+
+def worldcover(R):
+    """ESA WorldCover 2021 classes on a 0.001-degree lat/lon grid over the
+    region's box (north-up; row 0 = north edge). Read straight from the
+    cloud-optimised GeoTIFFs' overviews (needs rasterio, a local-only
+    dependency)."""
+    p = os.path.join(CACHE, R.ckey("worldcover.npz"))
     if os.path.exists(p):
         z = np.load(p)
         return z["cls"]
     import rasterio
     from rasterio.enums import Resampling
     from rasterio.windows import from_bounds
-    w, s, e, n = BOX
+    w, s, e, n = R.box
     W, H = int(round((e - w) / WC_RES)), int(round((n - s) / WC_RES))
     out = np.zeros((H, W), np.uint8)
-    for tlat in range(27, 31, 3):
-        for tlon in range(78, 82, 3):
-            bw, bs, be, bn = max(w, tlon), max(s, tlat), min(e, tlon + 3), min(n, tlat + 3)
-            if be <= bw or bn <= bs:
-                continue
-            with rasterio.open(WORLDCOVER.format(lat=tlat, lon=tlon)) as d:
-                win = from_bounds(bw, bs, be, bn, d.transform)
-                shape = (int(round((bn - bs) / WC_RES)), int(round((be - bw) / WC_RES)))
-                a = d.read(1, window=win, out_shape=shape, resampling=Resampling.nearest)
-            r0, c0 = int(round((n - bn) / WC_RES)), int(round((bw - w) / WC_RES))
-            out[r0:r0 + shape[0], c0:c0 + shape[1]] = a
+    for tlat, tlon in _wc_tiles(R.box):
+        bw, bs, be, bn = max(w, tlon), max(s, tlat), min(e, tlon + 3), min(n, tlat + 3)
+        if be <= bw or bn <= bs:
+            continue
+        with rasterio.open(WORLDCOVER.format(lat=tlat, lon=tlon)) as d:
+            win = from_bounds(bw, bs, be, bn, d.transform)
+            shape = (int(round((bn - bs) / WC_RES)), int(round((be - bw) / WC_RES)))
+            a = d.read(1, window=win, out_shape=shape, resampling=Resampling.nearest)
+        r0, c0 = int(round((n - bn) / WC_RES)), int(round((bw - w) / WC_RES))
+        out[r0:r0 + shape[0], c0:c0 + shape[1]] = a
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     np.savez_compressed(p, cls=out)
     return out
 
@@ -213,16 +271,16 @@ GIR = "https://search.ipindia.gov.in/GIRPublicSearch/"
 GI_APPS = [415, 419, 520, 589, 648, 649, 650, 651, 652, 653, 654, 829, 832, 835, 841, 844, 852, 856, 860, 863,
            864, 866, 867, 873, 874, 905, 907, 919, 1082, 1188, 1189, 1206, 1390, 1703, 1704, 1705, 1706, 1850,
            2069, 2070, 2071]
-KUMAON_WORDS = re.compile(r"kumaon|almora|nainital|munsyari|munsiari|berinag|ramnagar|ramgarh|champawat|kausani|"
-                          r"pithoragarh|bageshwar|lohaghat|dharchula|udham singh nagar|haldwani", re.I)
 GI_LABELS = {"application number", "geographical indications", "status", "applicant name", "applicant address",
              "date of filing", "class", "goods", "geographical area", "priority country", "journal number",
              "availability date", "certificate number", "certificate date", "registration valid upto"}
 
 
 def gi_products():
-    """Application-level fields only. The registry pages also list every
-    authorised user's name and address; those are never kept."""
+    """Uttarakhand's GI applications, shared by every region (build() marks
+    the ones named for a place in the region). Application-level fields
+    only: the registry pages also list every authorised user's name and
+    address; those are never kept."""
     out = []
     for app in GI_APPS:
         key = f"culture/gi/{app}.html"
@@ -246,47 +304,43 @@ def gi_products():
                "goods": field("Goods"), "class": field("Class"), "area": field("Geographical Area"),
                "filed": field("Date of Filing"), "certificate_date": field("Certificate Date"),
                "url": f"{GIR}Application/Details/{app}"}
-        rec["kumaon"] = bool(KUMAON_WORDS.search(rec["name"] + " " + rec["area"]))
         out.append(rec)
     return out
 
 
 # --------------------------------------------------------------------------
-# Kumaon outline
+# Region outline
 # --------------------------------------------------------------------------
 
-DISTRICTS = ["Nainital", "Almora", "Bageshwar", "Champawat", "Pithoragarh", "Udham Singh Nagar"]
-
-
-def districts_shapes():
+def districts_shapes(R):
     """{district: shapely geometry} from OSM's district boundaries
     (admin_level 5), assembled from their member ways."""
     from shapely.geometry import LineString
     from shapely.ops import polygonize, unary_union
-    q = (f'[out:json][timeout:300];relation["boundary"="administrative"]["admin_level"="5"]{_bbox_ql()};'
+    q = (f'[out:json][timeout:300];relation["boundary"="administrative"]["admin_level"="5"]{_bbox_ql(R)};'
          f'out body geom;')
     out = {}
-    for r in _overpass(q, "osm_districts.json"):
+    for r in _overpass(R, q, "osm_districts.json"):
         name = re.sub(r"\s+district$", "", r.get("tags", {}).get("name:en") or r.get("tags", {}).get("name") or "",
                       flags=re.I)
-        if name not in DISTRICTS:
+        if name not in R.districts:
             continue
         lines = [LineString([(g["lon"], g["lat"]) for g in m["geometry"]]) for m in r.get("members", [])
                  if m.get("type") == "way" and m.get("role") in ("outer", "") and m.get("geometry")]
         polys = list(polygonize(unary_union(lines)))
         if polys:
             out[name] = unary_union(polys).buffer(0)
-    missing = set(DISTRICTS) - set(out)
+    missing = set(R.districts) - set(out)
     if missing:
         raise RuntimeError(f"OSM district boundaries missing: {missing}")
     return out
 
 
 class Locator:
-    def __init__(self):
+    def __init__(self, R):
         from shapely.ops import unary_union
         from shapely.prepared import prep
-        self.shapes = districts_shapes()
+        self.shapes = districts_shapes(R)
         self.prepared = {k: prep(v) for k, v in self.shapes.items()}
         self.union = unary_union(list(self.shapes.values()))
         self.near = prep(self.union.buffer(0.03))  # ~3 km: roads and stays just over a line
@@ -325,13 +379,13 @@ def _hav_km(lon1, lat1, lon2, lat2):
     return 6371.0 * 2 * np.arcsin(np.sqrt(a))
 
 
-def road_graph(loc, elev_at):
+def road_graph(R, loc, elev_at):
     """Edges between junctions: {a, b, cls, km, min, geom[(lon, lat)...]}.
-    Keeps ways touching Kumaon (with a 3 km margin) and then the largest
+    Keeps ways touching the region (with a 3 km margin) and then the largest
     connected network, so isolated fragments can't trap a route."""
     import networkx as nx
     ways = []
-    for w in osm_roads():
+    for w in osm_roads(R):
         cls = ROAD_CLASS.get(w.get("tags", {}).get("highway"))
         geom = w.get("geometry")
         if cls is None or not geom or len(geom) != len(w["nodes"]):
@@ -398,8 +452,8 @@ def _merge_chains(edges):
     return [e for e, ok in zip(edges, alive) if ok]
 
 
-def wikidata_sites():
-    w, s, e, n = BOX
+def wikidata_sites(R):
+    w, s, e, n = R.box
     q = f"""SELECT ?item ?itemLabel ?coord ?type ?typeLabel ?article ?image ?links WHERE {{
   SERVICE wikibase:box {{ ?item wdt:P625 ?coord .
     bd:serviceParam wikibase:cornerSouthWest "Point({w} {s})"^^geo:wktLiteral .
@@ -411,7 +465,7 @@ def wikidata_sites():
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,hi" . }}
 }}"""
     body = get("https://query.wikidata.org/sparql", params={"query": q, "format": "json"}, timeout=300,
-               cache_key="culture/wikidata.json")
+               cache_key=R.ckey("wikidata.json"))
     return json.loads(body)["results"]["bindings"]
 
 
@@ -456,9 +510,6 @@ OSM_KIND = {
     "tourism=museum": "heritage", "tourism=viewpoint": "nature", "natural=cave_entrance": "nature",
     "natural=waterfall": "nature", "tourism=attraction": "attraction",
 }
-# Wikidata items whose coordinates put them in the wrong place (Patal
-# Bhuvaneshwar 50 km off; Khaptad Lake is in Nepal); OSM has the first.
-WD_BAD_COORDS = {"Patal Bhuvaneshwar", "Khaptad Lake"}
 KIND_LABEL = {"temple": "Temples and shrines", "heritage": "Forts, ruins and museums",
               "nature": "Viewpoints, lakes, caves, glaciers", "attraction": "Other attractions", "peak": "Peaks"}
 
@@ -501,10 +552,10 @@ def _num(s):
         return None
 
 
-def sites(loc):
+def sites(R, loc):
     from scipy.spatial import cKDTree
     wd = {}
-    for r in wikidata_sites():
+    for r in wikidata_sites(R):
         q = r["item"]["value"].rsplit("/", 1)[1]
         m = re.match(r"Point\(([-\d.]+) ([-\d.]+)\)", r["coord"]["value"])
         if not m:
@@ -528,11 +579,11 @@ def sites(loc):
         if it["kind"] is None and re.search(r"\bmountain\b|\bhill\b|\bpeak\b", tl) and "hill station" not in tl:
             it["kind"] = "peak"
 
-    for q in [q for q, it in wd.items() if it["name"] in WD_BAD_COORDS]:
+    for q in [q for q, it in wd.items() if it["name"] in R.wd_bad_coords]:
         wd.pop(q)
     out = []
     used_wd = set()
-    for e in osm_pois():
+    for e in osm_pois(R):
         t = e.get("tags", {})
         name = t.get("name:en") or t.get("name")
         lat, lon = (e.get("lat"), e.get("lon")) if "lat" in e else (e["center"]["lat"], e["center"]["lon"])
@@ -646,13 +697,13 @@ def _meal_plan(rooms):
 
 
 class Places:
-    """Settlement names (OSM place nodes) for locality labels and KMVN placement."""
+    """Settlement names (OSM place nodes) for locality labels and rest-house placement."""
 
-    def __init__(self, loc):
+    def __init__(self, R, loc):
         from scipy.spatial import cKDTree
         rank = {"city": 0, "town": 1, "village": 2, "hamlet": 3, "locality": 4}
         self.items = []
-        for e in osm_places():
+        for e in osm_places(R):
             t = e.get("tags", {})
             name = _latin(t.get("name:en")) or _latin(t.get("name"))
             if name and loc.inside(e["lon"], e["lat"], pad=True):
@@ -678,12 +729,13 @@ class Places:
         return None
 
 
-def stays(loc, places, road_tree, road_cls, kmvn):
-    """Lodging from OSM and KMVN, with checkable facts only (no phone
-    numbers, emails or operators are read)."""
+def stays(R, loc, places, road_tree, road_cls, houses):
+    """Lodging from OSM and the state tourism corporation, with checkable
+    facts only (no phone numbers, emails or operators are read)."""
     from scipy.spatial import cKDTree
+    C = R.corp
     food, lodging = [], []
-    for e in osm_pois():
+    for e in osm_pois(R):
         t = e.get("tags", {})
         lat, lon = (e.get("lat"), e.get("lon")) if "lat" in e else (e["center"]["lat"], e["center"]["lon"])
         if t.get("amenity") in FOOD_AMENITIES:
@@ -704,32 +756,32 @@ def stays(loc, places, road_tree, road_cls, kmvn):
     for e, t, lon, lat in lodging:
         name = t.get("name:en") or t.get("name")
         rec = {"name": name, "type": STAY_TYPES[t["tourism"]], "lon": lon, "lat": lat,
-               "district": loc.district(lon, lat), "locality": places.locality(lon, lat)[0], "kmvn": False,
+               "district": loc.district(lon, lat), "locality": places.locality(lon, lat)[0], "corp": False,
                "osm": f"{e['type']}/{e['id']}", "stars": _num(t.get("stars")), "rooms": _num(t.get("rooms")),
                "meals": "restaurant on site" if t.get("restaurant") == "yes" or t.get("amenity") in FOOD_AMENITIES
                else None,
                "internet": t.get("internet_access") in ("wlan", "yes", "wifi"),
                "wheelchair": t.get("wheelchair") == "yes"}
-        if re.search(r"\bkmvn\b|tourist rest house|\btrh\b", name, re.I):
-            rec["kmvn_osm"] = True
+        if re.search(rf"\b{C.abbr}\b|tourist rest house|\btrh\b", name, re.I):
+            rec["corp_osm"] = True
         rec.update(facts(lon, lat))
         out.append(rec)
 
     placed = []
-    for h in kmvn:
-        names = KMVN_PLACE.get(h["slug"], [])
-        p = places.find(names, loc, KMVN_DISTRICT.get(h["slug"])) if names else None
+    for h in houses:
+        names = C.place.get(h["slug"], [])
+        p = places.find(names, loc, C.district.get(h["slug"])) if names else None
         if p:
             lon, lat, how = p["lon"], p["lat"], f"at {p['name']} (village/town centre)"
-        elif h["slug"] in KMVN_FALLBACK:
-            lat, lon = KMVN_FALLBACK[h["slug"]]
+        elif h["slug"] in C.fallback:
+            lat, lon = C.fallback[h["slug"]]
             how = "approximate"
         else:
             continue
         # Prefer an OSM lodging tagged as the rest house itself: named for the
         # same place within 6 km, or any rest house within 1.5 km.
         keys = [_norm(n) for n in names]
-        cands = [r for r in out if r.get("kmvn_osm") and (
+        cands = [r for r in out if r.get("corp_osm") and (
             (_hav_km(lon, lat, r["lon"], r["lat"]) < 6 and any(k and k in _norm(r["name"]) for k in keys))
             or _hav_km(lon, lat, r["lon"], r["lat"]) < 1.5)]
         if cands:
@@ -738,9 +790,9 @@ def stays(loc, places, road_tree, road_cls, kmvn):
             out.remove(best)
         district = loc.district(lon, lat) or min(loc.shapes, key=lambda k: loc.shapes[k].distance(
             __import__("shapely.geometry", fromlist=["Point"]).Point(lon, lat)))
-        rec = {"name": h["name"], "type": "KMVN tourist rest house", "lon": lon, "lat": lat, "district": district,
-               "locality": places.locality(lon, lat)[0], "kmvn": True, "slug": h["slug"], "placed": how,
-               "url": f"https://kmvn.in/hotels/{h['slug']}", "plan": _meal_plan(h["rooms"]),
+        rec = {"name": h["name"], "type": f"{C.abbr} tourist rest house", "lon": lon, "lat": lat,
+               "district": district, "locality": places.locality(lon, lat)[0], "corp": True, "slug": h["slug"],
+               "placed": how, "url": C.url(h["slug"]), "plan": _meal_plan(h["rooms"]),
                "room_types": len([r for r in h["rooms"] if not re.search(r"plan|\bEP\b|\bCP\b|\bMAP\b|C P", r, re.I)]),
                "meals": None, "stars": None, "rooms": None, "internet": False, "wheelchair": False}
         if rec["plan"] in ("CP", "MAP"):
@@ -748,11 +800,11 @@ def stays(loc, places, road_tree, road_cls, kmvn):
         rec.update(facts(lon, lat))
         placed.append(rec)
     for r in out:
-        r.pop("kmvn_osm", None)
+        r.pop("corp_osm", None)
     allst = placed + out
     for r in allst:
         r["checks"] = {"road": r["road_km"] <= 0.3 and r["road_cls"] <= 3,
-                       "food": bool(r["meals"]) or r["food_1km"] > 0, "state": r["kmvn"]}
+                       "food": bool(r["meals"]) or r["food_1km"] > 0, "state": r["corp"]}
     return allst
 
 
@@ -761,18 +813,13 @@ def stays(loc, places, road_tree, road_cls, kmvn):
 # --------------------------------------------------------------------------
 
 PIT = os.environ.get("UTTARAKHAND_PIT", r"E:\weather\uttarakhand-atlas\pit.sqlite")
-UTDB_KUMAON = {"nainital": ("Nainital", "Nainital"), "almora": ("Almora", "Almora"),
-               "ranikheth": ("Ranikhet", "Almora"), "kausani_bageshwar": ("Kausani and Bageshwar", "Bageshwar"),
-               "pithoragarh": ("Pithoragarh", "Pithoragarh"), "champawat": ("Champawat", "Champawat"),
-               "kathgodam": ("Kathgodam", "Nainital"), "corbett_national_park": ("Corbett National Park", "Nainital"),
-               "udham_singh_nagar": ("Udham Singh Nagar", "Udham Singh Nagar")}
 
 
-def visitors():
+def visitors(R):
     """Uttarakhand Tourism Development Board's published yearly visitor
-    counts for the Kumaon destinations (public PDFs, as filed in pit.sqlite)."""
+    counts for the region's destinations (public PDFs, as filed in pit.sqlite)."""
     import sqlite3
-    p = os.path.join(CDIR, "utdb.json")
+    p = os.path.join(CACHE, R.ckey("utdb.json"))
     if not os.path.exists(PIT):
         return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else []
     con = sqlite3.connect(PIT)
@@ -780,15 +827,16 @@ def visitors():
                        "where source='utdb' and series='tourists_total' order by entity, valid_time").fetchall()
     out = {}
     for ent, yr, val, ref, meta in rows:
-        if ent not in UTDB_KUMAON:
+        if ent not in R.utdb:
             continue
         m = json.loads(meta or "{}")
-        name, dist = UTDB_KUMAON[ent]
+        name, dist = R.utdb[ent]
         r = out.setdefault(ent, {"name": name, "district": dist, "years": {}, "refs": []})
         r["years"][yr] = {"total": int(val), "foreign": m.get("foreign")}
         if ref and ref not in r["refs"]:
             r["refs"].append(ref)
     res = sorted(out.values(), key=lambda r: -max(v["total"] for v in r["years"].values()))
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         json.dump(res, f)
     return res
@@ -800,7 +848,7 @@ def visitors():
 
 # Suggested circuits: overnight bases in order. Each is routed on the page
 # itself, the same way as a circuit you build.
-CIRCUITS = [
+KUMAON_CIRCUITS = [
     ("Lakes and the Corbett edge", "Short, gentle drives: the lake towns above Haldwani, then down to the sal forest at Ramnagar.",
      ["Haldwani", "Bhimtal", "Nainital", "Ramnagar", "Haldwani"]),
     ("Almora, Jageshwar and Binsar", "The old Chand capital, the Jageshwar temple group in its deodar valley, the Binsar ridge and Kausani's long view of the snows.",
@@ -810,11 +858,6 @@ CIRCUITS = [
     ("To the high peaks: Munsiyari", "A long hill drive to Munsiyari under the Panchachuli, back by the Kali valley at Dharchula.",
      ["Haldwani", "Almora", "Chaukori", "Munsiyari", "Dharchula", "Pithoragarh", "Champawat", "Tanakpur"]),
 ]
-
-
-# Pilibhit Tiger Reserve is in Uttar Pradesh; its OSM outline overlaps
-# Udham Singh Nagar's along the state border.
-PA_SKIP = {"Pilibhit Tiger Reserve"}
 
 
 def _grid(frame, lon, lat):
@@ -839,9 +882,9 @@ def _mask(shapes, frame):
     return m.astype(bool)
 
 
-def _wc_masks(shapes):
+def _wc_masks(shapes, box):
     import cv2
-    w, s, e, n = BOX
+    w, s, e, n = box
     H, W = int(round((n - s) / WC_RES)), int(round((e - w) / WC_RES))
     out = {}
     for name, g in shapes.items():
@@ -858,10 +901,10 @@ WC_GROUPS = [("tree", [10]), ("shrub_grass", [20, 30, 100]), ("crop", [40]), ("b
              ("bare", [60]), ("snow", [70]), ("water", [80, 90])]
 
 
-def _forest(cls, frame, inside):
+def _forest(cls, frame, inside, box):
     """WorldCover tree-cover share on the GRID, as a green tint."""
     import cv2
-    w, s, e, n = BOX
+    w, s, e, n = box
     tree = cv2.blur((cls == 10).astype(np.float32), (3, 3))
     lon, lat = frame.grid_lonlat()
     fx = ((lon - w) / WC_RES - 0.5).astype(np.float32)
@@ -893,24 +936,25 @@ def _encode_roads(edges, node_ids, frame, eps=0.0005):
     return flat_e, geom, off
 
 
-def build(out_path, template_path, log=print):
+def build(R, out_path, template_path, log=print):
     import cv2
     import networkx as nx
     from scipy.spatial import cKDTree
     from . import kumaon
-    from .kumaon import KF, _jpg, _png
+    from .kumaon import _jpg, _png
 
-    log("culture: terrain")
-    dem_g, shade = kumaon._terrain()
+    KF = R.frame
+    log(f"culture ({R.name}): terrain")
+    dem_g, shade = kumaon._terrain(KF)
 
     def elev_at(lon, lat):
         x, y = KF.to_grid(lon, lat)
         return float(dem_g[int(np.clip(y, 0, KF.gh - 1)), int(np.clip(x, 0, KF.gw - 1))])
 
     log("culture: districts, roads")
-    loc = Locator()
+    loc = Locator(R)
     inside = _mask(loc.shapes.values(), KF)
-    edges = road_graph(loc, elev_at)
+    edges = road_graph(R, loc, elev_at)
     node_ids = sorted({e["a"] for e in edges} | {e["b"] for e in edges})
     node_ll = {}
     for e in edges:
@@ -936,30 +980,30 @@ def build(out_path, template_path, log=print):
         return i, round(float(d) * 111, 2)
 
     log("culture: sites, places, stays")
-    places = Places(loc)
-    site_list = sites(loc)
-    kmvn = kmvn_houses()
-    stay_list = stays(loc, places, vtree, vcls, kmvn)
+    places = Places(R, loc)
+    site_list = sites(R, loc)
+    houses = R.corp.fetch()
+    stay_list = stays(R, loc, places, vtree, vcls, houses)
 
     log("culture: eBird, GBIF, WorldCover")
-    eb = ebird()
+    eb = ebird(R)
     birds = gbif_birds(KF).copy()
     birds[~inside] = 0
-    cls = worldcover()
-    wcm = _wc_masks(loc.shapes)
+    cls = worldcover(R)
+    wcm = _wc_masks(loc.shapes, R.box)
     landcover = []
-    for name in DISTRICTS:
+    for name in R.districts:
         v = cls[wcm[name]]
         n = max(1, (v > 0).sum())
         landcover.append({"district": name, **{k: round(float(np.isin(v, codes).sum()) / n * 100, 1)
                                                for k, codes in WC_GROUPS}})
-    forest = _forest(cls, KF, inside)
+    forest = _forest(cls, KF, inside, R.box)
 
     log("culture: protected areas, GI, visitors")
     from shapely.geometry import LineString, Polygon
     from shapely.ops import polygonize, unary_union
     protected = []
-    for r in osm_protected():
+    for r in osm_protected(R):
         t = r.get("tags", {})
         name = t.get("name:en") or t.get("name")
         if r["type"] == "way" and r.get("geometry"):
@@ -974,13 +1018,13 @@ def build(out_path, template_path, log=print):
         else:
             continue
         inter = g.intersection(loc.union).area * 111 * 96
-        if not name or inter < 5 or name in PA_SKIP:
+        if not name or inter < 5 or name in R.pa_skip:
             continue
         protected.append({"name": name, "d": _svg_path(g, KF, 0.002), "km2": round(inter),
                           "kind": "National park" if t.get("boundary") == "national_park" or t.get("protect_class") == "2"
                           else "Wildlife sanctuary or reserve"})
-    gi = gi_products()
-    vis = visitors()
+    gi = [dict(g, local=bool(R.gi_words.search(g["name"] + " " + g["area"]))) for g in gi_products()]
+    vis = visitors(R)
 
     log("culture: destinations and circuits")
     dest = {}
@@ -995,11 +1039,11 @@ def build(out_path, template_path, log=print):
         dest[name] = {"name": name, "lon": lon, "lat": lat, "x": x, "y": y, "node": int(i), "snap_km": km,
                       "kind": kind, "district": loc.district(lon, lat)}
 
-    for name, lat, lon, _ in kumaon.TOWNS:
+    for name, lat, lon, _ in R.towns():
         add_dest(name, lon, lat, "town")
     for s in stay_list:
-        if s["kmvn"]:
-            nm = KMVN_PLACE[s["slug"]][0]
+        if s["corp"]:
+            nm = R.corp.place[s["slug"]][0]
             add_dest(nm, s["lon"], s["lat"], "stay")
     for s in sorted(site_list, key=lambda s: -s["score"]):
         if s["kind"] != "peak" and s["score"] >= 6:
@@ -1007,7 +1051,7 @@ def build(out_path, template_path, log=print):
     destinations = sorted(dest.values(), key=lambda d: d["name"])
     names = {d["name"] for d in destinations}
     circuits = []
-    for title, blurb, stops in CIRCUITS:
+    for title, blurb, stops in R.circuits:
         missing = [s for s in stops if s not in names]
         if missing:
             log(f"  culture circuit {title}: unknown stops {missing}")
@@ -1029,7 +1073,7 @@ def build(out_path, template_path, log=print):
 
     def stay_rec(s):
         x, y = _grid(KF, s["lon"], s["lat"])
-        r = {k: s.get(k) for k in ("name", "type", "district", "locality", "kmvn", "osm", "url", "plan", "meals",
+        r = {k: s.get(k) for k in ("name", "type", "district", "locality", "corp", "osm", "url", "plan", "meals",
                                    "stars", "rooms", "internet", "wheelchair", "food_1km", "road_km", "road_cls",
                                    "checks", "placed", "room_types")}
         r.update({"x": x, "y": y, "lat": round(s["lat"], 4), "lon": round(s["lon"], 4)})
@@ -1047,8 +1091,9 @@ def build(out_path, template_path, log=print):
     outside[~inside] = [238, 240, 234, 120]
     data = {
         "generated": int(time.time()),
+        "region": _region_info(R),
         "frame": {"w": KF.w, "h": KF.h, "gw": KF.gw, "gh": KF.gh, "x0": KF.x0, "y0": KF.y0, "z": KF.z,
-                  "box": list(BOX), "km_px": KF.km_per_grid_px},
+                  "box": list(R.box), "km_px": KF.km_per_grid_px},
         "images": {"shade": _jpg(shade, 78), "dem": kumaon._dem_png(dem_g), "outside": _png(outside, quantize=4),
                    "forest": _png(forest, quantize=64), "birds": _png(birds, quantize=32)},
         "districts": [{"name": k, "d": _svg_path(v, KF, 0.002)} for k, v in loc.shapes.items()],
@@ -1068,19 +1113,52 @@ def build(out_path, template_path, log=print):
         "circuits": circuits,
     }
     size = render(data, out_path, template_path)
-    with open(os.path.join(CDIR, "culture_last.json"), "w", encoding="utf-8") as f:
+    last = os.path.join(CACHE, R.ckey("culture_last.json"))
+    os.makedirs(os.path.dirname(last), exist_ok=True)
+    with open(last, "w", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"))
-    return (f"{size / 1e6:.1f} MB, {len(data['sites'])} sites, {len(data['stays'])} stays "
-            f"({sum(s['kmvn'] for s in stay_list)} KMVN), {len(edges)} road links, {len(hotspots)} eBird hotspots, "
+    return (f"{R.name}: {size / 1e6:.1f} MB, {len(data['sites'])} sites, {len(data['stays'])} stays "
+            f"({sum(s['corp'] for s in stay_list)} {R.corp.abbr}), {len(edges)} road links, {len(hotspots)} eBird hotspots, "
             f"{len(protected)} protected areas, {len(destinations)} destinations, {len(circuits)} circuits")
 
 
+def _region_info(R):
+    """What the page needs to know about its region."""
+    return {"id": R.id, "name": R.name, "districts": list(R.districts),
+            "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site},
+            "shade_alt": R.shade_alt, "gi_note": R.gi_note, "store": R.store, "nowcast": R.nowcast,
+            "back": [list(b) for b in R.back]}
+
+
+def _upgrade(data, R):
+    """Bring a culture_last.json from before regions up to date, so
+    --render works without a rebuild."""
+    if "region" in data:
+        return data
+    data = {"generated": data["generated"], "region": _region_info(R), **data}
+    for s in data["stays"]:
+        if "kmvn" in s:
+            s["corp"] = s.pop("kmvn")
+    data["gi"] = [{("local" if k == "kumaon" else k): v for k, v in g.items()} for g in data["gi"]]
+    return data
+
+
+def _and(names):
+    return ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else "".join(names)
+
+
 def render(data, out_path, template_path):
+    from html import escape
+    G = data["region"]
     tpl = open(template_path, encoding="utf-8").read()
+    for k, v in {"REGION": escape(G["name"]), "CORP": escape(G["corp"]["abbr"]), "DISTRICTS": escape(_and(G["districts"])),
+                 "SHADE_ALT": escape(G["shade_alt"]),
+                 "BACK": "".join(f'<a href="{escape(h)}">← {escape(t)}</a>' for h, t in G["back"])}.items():
+        tpl = tpl.replace("{{" + k + "}}", v)
     body = tpl.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
     html = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
-            '<meta name="description" content="Kumaon cultural atlas: temples, forts, peaks, forests, birds, GI '
+            f'<meta name="description" content="{escape(G["name"])} cultural atlas: temples, forts, peaks, forests, birds, GI '
             'products, visitor numbers, and places to stay along drive-time circuits you plan yourself.">'
             '<style>body{margin:0}[hidden]{display:none!important}</style></head><body>' + body + "</body></html>")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -1089,15 +1167,65 @@ def render(data, out_path, template_path):
     return len(html)
 
 
+# --------------------------------------------------------------------------
+# Regions
+# --------------------------------------------------------------------------
+
+def _kumaon_towns():
+    from .kumaon import TOWNS
+    return TOWNS
+
+
+KMVN = Corp(
+    abbr="KMVN", name="Kumaon Mandal Vikas Nigam", site="kmvn.in", fetch=kmvn_houses,
+    url=lambda slug: f"https://kmvn.in/hotels/{slug}",
+    place=KMVN_PLACE, fallback=KMVN_FALLBACK, district=KMVN_DISTRICT)
+
+KUMAON = Region(
+    id="kumaon", name="Kumaon", box=(78.6, 28.6, 81.2, 30.7),  # the Kumaon nowcast frame
+    districts=["Nainital", "Almora", "Bageshwar", "Champawat", "Pithoragarh", "Udham Singh Nagar"],
+    ebird={"IN-UL-NA": "Nainital", "IN-UL-AL": "Almora", "IN-UL-BA": "Bageshwar",
+           "IN-UL-CP": "Champawat", "IN-UL-PI": "Pithoragarh", "IN-UL-US": "Udham Singh Nagar"},
+    towns=_kumaon_towns, corp=KMVN,
+    gi_words=re.compile(r"kumaon|almora|nainital|munsyari|munsiari|berinag|ramnagar|ramgarh|champawat|kausani|"
+                        r"pithoragarh|bageshwar|lohaghat|dharchula|udham singh nagar|haldwani", re.I),
+    utdb={"nainital": ("Nainital", "Nainital"), "almora": ("Almora", "Almora"),
+          "ranikheth": ("Ranikhet", "Almora"), "kausani_bageshwar": ("Kausani and Bageshwar", "Bageshwar"),
+          "pithoragarh": ("Pithoragarh", "Pithoragarh"), "champawat": ("Champawat", "Champawat"),
+          "kathgodam": ("Kathgodam", "Nainital"), "corbett_national_park": ("Corbett National Park", "Nainital"),
+          "udham_singh_nagar": ("Udham Singh Nagar", "Udham Singh Nagar")},
+    circuits=KUMAON_CIRCUITS,
+    shade_alt="Shaded relief of Kumaon, from the terai plains to the Panchachuli and Nanda Kot",
+    gi_note="many (Aipan, Tamta copperware, Bhotia dann and thulma, Ringal) are crafts long practised in Kumaon",
+    # Pilibhit Tiger Reserve is in Uttar Pradesh; its OSM outline overlaps
+    # Udham Singh Nagar's along the state border.
+    pa_skip=frozenset({"Pilibhit Tiger Reserve"}),
+    # Wikidata items whose coordinates put them in the wrong place (Patal
+    # Bhuvaneshwar 50 km off; Khaptad Lake is in Nepal); OSM has the first.
+    wd_bad_coords=frozenset({"Patal Bhuvaneshwar", "Khaptad Lake"}),
+    store="kca:", back=(("../", "Kumaon nowcast"), ("../../", "Himalaya Nowcast Atlas")), nowcast="../")
+
+REGIONS = {R.id: R for R in (KUMAON,)}
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(HERE, "static", "kumaon", "culture", "index.html")
 TEMPLATE = os.path.join(HERE, "culture_template.html")
 
+
+def out_path(R):
+    return os.path.join(HERE, "static", R.id, "culture", "index.html")
+
+
 if __name__ == "__main__":
-    import sys
-    if "--render" in sys.argv:
-        # Re-render from the last build's data (template work).
-        n = render(json.load(open(os.path.join(CDIR, "culture_last.json"), encoding="utf-8")), OUT, TEMPLATE)
-        print(f"wrote {OUT} ({n / 1e6:.1f} MB)")
-    else:
-        print(build(OUT, TEMPLATE))
+    import argparse
+    ap = argparse.ArgumentParser(description="Build a regional cultural atlas into static/<region>/culture/.")
+    ap.add_argument("--region", default="kumaon", help=f"comma-separated: {', '.join(REGIONS)}")
+    ap.add_argument("--render", action="store_true", help="re-render from the last build's data (template work)")
+    args = ap.parse_args()
+    for rid in args.region.split(","):
+        R = REGIONS[rid.strip()]
+        if args.render:
+            data = json.load(open(os.path.join(CACHE, R.ckey("culture_last.json")), encoding="utf-8"))
+            n = render(_upgrade(data, R), out_path(R), TEMPLATE)
+            print(f"wrote {out_path(R)} ({n / 1e6:.1f} MB)")
+        else:
+            print(build(R, out_path(R), TEMPLATE))

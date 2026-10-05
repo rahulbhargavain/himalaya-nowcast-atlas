@@ -77,18 +77,20 @@ def _in_box(lon, lat, pad=0.0):
 # Rasters
 # --------------------------------------------------------------------------
 
-def _terrain():
-    dem = land.load_dem(KF)
-    lat_rows = world_lonlat(np.full(KF.h, KF.x0), KF.y0 + np.arange(KF.h) + 0.5, KF.z)[1]
-    shade = land.hillshade_image(dem, lat_rows, z=KF.z)
-    dem_g = cv2.resize(dem, (KF.gw, KF.gh), interpolation=cv2.INTER_AREA)
+def _terrain(frame=KF):
+    """Elevation on the frame's GRID and the shaded relief at FULL
+    resolution (the cultural atlases pass their own frame)."""
+    dem = land.load_dem(frame)
+    lat_rows = world_lonlat(np.full(frame.h, frame.x0), frame.y0 + np.arange(frame.h) + 0.5, frame.z)[1]
+    shade = land.hillshade_image(dem, lat_rows, z=frame.z)
+    dem_g = cv2.resize(dem, (frame.gw, frame.gh), interpolation=cv2.INTER_AREA)
     return dem_g, shade
 
 
 def _dem_png(dem_g):
     """Elevation for the hover readout, at half the grid resolution (~530 m):
     plenty for a readout, a third of the bytes."""
-    half = cv2.resize(dem_g, (KF.gw // 2, KF.gh // 2), interpolation=cv2.INTER_AREA)
+    half = cv2.resize(dem_g, (dem_g.shape[1] // 2, dem_g.shape[0] // 2), interpolation=cv2.INTER_AREA)
     u = np.clip(np.round(half) + 500, 0, 65535).astype(np.uint16)
     rgb = np.dstack([(u >> 8).astype(np.uint8), (u & 255).astype(np.uint8), np.zeros_like(u, np.uint8)])
     return _png(rgb, "RGB")

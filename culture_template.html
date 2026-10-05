@@ -1,4 +1,4 @@
-<title>Kumaon Cultural Atlas</title>
+<title>{{REGION}} Cultural Atlas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans+SC:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -9,7 +9,7 @@
   --ok:#2f8f7f; --warn:#c07a1e; --bad:#b8324f; --chip:#e3e7df; --chip-on:#1f2a2e; --chip-on-ink:#f7f8f4;
   --shadow:0 1px 2px rgba(20,30,30,.08);
   --temple:#d0782a; --heritage:#8a5a2b; --nature:#2f8f7f; --attraction:#7a5aa6; --peak:#3d4a52;
-  --kmvn:#b8324f; --stay:#3a64a8; --bird:#4f8f2f; --route:#c2185b;
+  --corp:#b8324f; --stay:#3a64a8; --bird:#4f8f2f; --route:#c2185b;
   --f-display:"Alegreya",Georgia,"Times New Roman",serif;
   --f-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
   --f-sc:"Alegreya Sans SC","Alegreya Sans","Segoe UI",sans-serif;
@@ -107,7 +107,7 @@ tr[tabindex]:hover td{background:var(--chip)}
 .ck{display:inline-block;min-width:18px;font-weight:700}
 .ck.y{color:var(--ok)} .ck.n{color:var(--ink2);opacity:.6}
 .tag{display:inline-block;font:700 11.5px/1.5 var(--f-sc);letter-spacing:.4px;text-transform:lowercase;border-radius:3px;padding:0 6px;border:1px solid currentColor}
-.tag.kmvn{color:var(--kmvn)} .tag.kum{color:var(--ok)} .tag.pend{color:var(--warn)}
+.tag.corp{color:var(--corp)} .tag.local{color:var(--ok)} .tag.pend{color:var(--warn)}
 
 .planner{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:16px}
 @media (max-width:860px){ .planner{grid-template-columns:1fr} }
@@ -147,9 +147,9 @@ tr[tabindex]:hover td{background:var(--chip)}
 <div class="wrap">
   <header class="top">
     <div>
-      <div class="back"><a href="../">← Kumaon nowcast</a><a href="../../">← Himalaya Nowcast Atlas</a></div>
-      <h1>Kumaon Cultural Atlas</h1>
-      <div class="sub">Temples, forts, peaks, forests, birds, the region's registered GI products and visitor numbers, and places to stay along road circuits you can plan yourself, for Nainital, Almora, Bageshwar, Champawat, Pithoragarh and Udham Singh Nagar.</div>
+      <div class="back">{{BACK}}</div>
+      <h1>{{REGION}} Cultural Atlas</h1>
+      <div class="sub">Temples, forts, peaks, forests, birds, the region's registered GI products and visitor numbers, and places to stay along road circuits you can plan yourself, for {{DISTRICTS}}.</div>
     </div>
     <div class="stamp" id="stamp"></div>
   </header>
@@ -158,7 +158,7 @@ tr[tabindex]:hover td{background:var(--chip)}
 
   <div class="mapbox" id="mapbox">
     <div class="stage" id="stage">
-      <img id="shadeImg" alt="Shaded relief of Kumaon, from the terai plains to the Panchachuli and Nanda Kot">
+      <img id="shadeImg" alt="{{SHADE_ALT}}">
       <img id="forestImg" alt="" hidden>
       <img id="birdsImg" class="px" alt="" hidden>
       <img id="outsideImg" alt="">
@@ -202,7 +202,7 @@ tr[tabindex]:hover td{background:var(--chip)}
       <h2>Places to stay</h2>
       <div class="filters">
         <label>District <select id="stDist"></select></label>
-        <label><input type="checkbox" id="stKmvn"> KMVN rest houses only</label>
+        <label><input type="checkbox" id="stCorp"> {{CORP}} rest houses only</label>
         <label><input type="checkbox" id="stChecks"> On a good road, with food nearby</label>
         <span class="muted" id="stCount"></span>
       </div>
@@ -269,10 +269,10 @@ const $ = s => document.querySelector(s);
 const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
 const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const store = { get(k, d){ try { const v = localStorage.getItem("kca:" + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem("kca:" + k, JSON.stringify(v)); } catch(e){} } };
+const store = { get(k, d){ try { const v = localStorage.getItem(RG.store + k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem(RG.store + k, JSON.stringify(v)); } catch(e){} } };
 const num = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("en-IN", {maximumFractionDigits:d, minimumFractionDigits:d});
 const fmtDur = m => { m = Math.round(m); const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h ${String(r).padStart(2, "0")} m` : `${r} m`; };
-const DISTRICTS = ["Nainital","Almora","Bageshwar","Champawat","Pithoragarh","Udham Singh Nagar"];
+const RG = D.region, CORP = RG.corp.abbr, DISTRICTS = RG.districts;
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
 /* ---------------- geometry ---------------- */
@@ -285,7 +285,7 @@ const pxKm = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) * KM;
 
 /* ---------------- state ---------------- */
 const state = {
-  layers: Object.assign({temple:true, heritage:true, nature:true, attraction:false, peak:true, kmvn:true, stays:false,
+  layers: Object.assign({temple:true, heritage:true, nature:true, attraction:false, peak:true, corp:true, stays:false,
     forest:true, protected:true, roads:true, hotspots:false, birds:false}, store.get("layers", {})),
   legendCollapsed: store.get("legendCollapsed", false),
   maxH: store.get("maxH", 5),
@@ -299,7 +299,7 @@ function unitPx(){ return box.clientWidth / GW; }
 const svg = $("#svg");
 svg.setAttribute("viewBox", `0 0 ${GW} ${GH}`);
 const groups = {};
-["protected","dist","roads","route","hotspots","peak","temple","heritage","nature","attraction","stays","kmvn","labels","stopmk","focus"].forEach(k => { groups[k] = svgEl("g"); svg.appendChild(groups[k]); });
+["protected","dist","roads","route","hotspots","peak","temple","heritage","nature","attraction","stays","corp","labels","stopmk","focus"].forEach(k => { groups[k] = svgEl("g"); svg.appendChild(groups[k]); });
 const marker = (x, y) => { const o = svgEl("g", {transform:`translate(${x.toFixed(1)},${y.toFixed(1)})`}); const inner = svgEl("g", {class:"mki"}); o.appendChild(inner); return [o, inner]; };
 const label = (txt, attrs) => { const t = svgEl("text", Object.assign({"font-size":11.5, fill:"#1f2a2e", "paint-order":"stroke", stroke:"rgba(248,248,244,.92)", "stroke-width":3}, attrs || {})); t.textContent = txt; return t; };
 
@@ -358,7 +358,7 @@ function buildBase(){
   D.districts.forEach(d => groups.dist.appendChild(svgEl("path", {d:d.d, fill:"none", stroke:"#2c373b", "stroke-width":1.3, "stroke-dasharray":"5 3", "data-sw":"1", opacity:.75})));
   D.protected.forEach(p => {
     const path = svgEl("path", {d:p.d, fill:"rgba(47,143,90,.13)", stroke:"#2f7f4f", "stroke-width":1.4, "data-sw":"1"});
-    const t = svgEl("title"); t.textContent = `${p.name} (${p.kind}, about ${p.km2} km² in Kumaon)`; path.appendChild(t);
+    const t = svgEl("title"); t.textContent = `${p.name} (${p.kind}, about ${p.km2} km² in ${RG.name})`; path.appendChild(t);
     groups.protected.appendChild(path);
   });
   const widths = [2.2, 1.8, 1.4, 1.0, .55], cols = ["#7a2d1e", "#9a4a24", "#a8682c", "#8b7a5a", "#8b8478"];
@@ -388,12 +388,12 @@ function stayOk(s){ return s.checks.road && s.checks.food; }
 function buildStays(){
   D.stays.forEach((s, i) => {
     const [o, g] = marker(s.x, s.y);
-    if (s.kmvn) g.appendChild(svgEl("rect", {x:-5, y:-5, width:10, height:10, fill:css("--kmvn"), stroke:"#fff", "stroke-width":1.3}));
+    if (s.corp) g.appendChild(svgEl("rect", {x:-5, y:-5, width:10, height:10, fill:css("--corp"), stroke:"#fff", "stroke-width":1.3}));
     else g.appendChild(svgEl("rect", {x:-3.6, y:-3.6, width:7.2, height:7.2, fill:stayOk(s) ? css("--stay") : "#fff", stroke:css("--stay"), "stroke-width":1.4}));
     const t = svgEl("title"); t.textContent = s.name; o.appendChild(t);
     o.setAttribute("aria-label", s.name);
     hit(o, () => showStay(i));
-    groups[s.kmvn ? "kmvn" : "stays"].appendChild(o);
+    groups[s.corp ? "corp" : "stays"].appendChild(o);
   });
 }
 function buildHotspots(){
@@ -449,14 +449,14 @@ function stayFacts(s){
 function showStay(i){
   const s = D.stays[i], f = stayFacts(s);
   const rows = [["Type", esc(s.type)], ["Where", `${esc(s.locality)}, ${esc(s.district)}`], ["Road", esc(f.road)], ["Food", esc(f.food)]];
-  if (s.kmvn) rows.push(["Meal plan", s.plan ? `${s.plan}: ${({EP:"room only", CP:"breakfast included", MAP:"breakfast and dinner included"})[s.plan]}` : "not listed"]);
+  if (s.corp) rows.push(["Meal plan", s.plan ? `${s.plan}: ${({EP:"room only", CP:"breakfast included", MAP:"breakfast and dinner included"})[s.plan]}` : "not listed"]);
   if (s.stars) rows.push(["Stars", s.stars]);
   if (s.rooms) rows.push(["Rooms", s.rooms]);
   const extra = [s.internet && "internet", s.wheelchair && "wheelchair access"].filter(Boolean);
   if (extra.length) rows.push(["Listed", extra.join(", ")]);
   if (s.placed && s.placed !== "OpenStreetMap") rows.push(["Map position", s.placed === "approximate" ? "approximate" : esc(s.placed)]);
-  const link = s.kmvn ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">KMVN page and booking</a>` : `<a href="https://www.openstreetmap.org/${esc(s.osm)}" target="_blank" rel="noopener">OpenStreetMap</a>`;
-  openInfo(`<h3>${esc(s.name)}</h3>${s.kmvn ? `<span class="tag kmvn">state-run (KMVN)</span>` : ""}<div class="kv" style="margin-top:6px">${rows.map(r => `<span class="muted">${r[0]}</span><span>${r[1]}</span>`).join("")}</div><div style="margin-top:6px">${link}</div>` + addBtn({name:s.locality && !s.kmvn ? `${s.name}, ${s.locality}` : s.name, x:s.x, y:s.y}), s.x, s.y);
+  const link = s.corp ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${CORP} page and booking</a>` : `<a href="https://www.openstreetmap.org/${esc(s.osm)}" target="_blank" rel="noopener">OpenStreetMap</a>`;
+  openInfo(`<h3>${esc(s.name)}</h3>${s.corp ? `<span class="tag corp">state-run (${CORP})</span>` : ""}<div class="kv" style="margin-top:6px">${rows.map(r => `<span class="muted">${r[0]}</span><span>${r[1]}</span>`).join("")}</div><div style="margin-top:6px">${link}</div>` + addBtn({name:s.locality && !s.corp ? `${s.name}, ${s.locality}` : s.name, x:s.x, y:s.y}), s.x, s.y);
 }
 function showHotspot(i){
   const h = D.birds.hotspots[i];
@@ -466,7 +466,7 @@ function showHotspot(i){
 /* ---------------- visibility, pan and zoom ---------------- */
 function syncVisibility(){
   const L = state.layers;
-  ["temple","heritage","nature","attraction","peak","kmvn","stays","hotspots","protected","roads"].forEach(k => groups[k].style.display = L[k] ? "" : "none");
+  ["temple","heritage","nature","attraction","peak","corp","stays","hotspots","protected","roads"].forEach(k => groups[k].style.display = L[k] ? "" : "none");
   groups.labels.querySelectorAll("[data-peak='1']").forEach(o => o.style.display = L.peak ? "" : "none");
   $("#forestImg").hidden = !L.forest;
   $("#birdsImg").hidden = !L.birds;
@@ -544,7 +544,7 @@ function readout(e){
 /* ---------------- controls and legend ---------------- */
 const LAYER_GROUPS = [
   ["places", [["temple","Temples","--temple"],["heritage","Heritage","--heritage"],["nature","Nature","--nature"],["attraction","Other attractions","--attraction"],["peak","Peaks","--peak"]]],
-  ["stay", [["kmvn","KMVN rest houses","--kmvn"],["stays","Other stays","--stay"]]],
+  ["stay", [["corp",`${CORP} rest houses`,"--corp"],["stays","Other stays","--stay"]]],
   ["land", [["forest","Forest",null,"rgb(28,112,58)"],["protected","Protected areas",null,"rgb(47,127,79)"],["roads","Roads",null,"rgb(154,74,36)"]]],
   ["birds", [["hotspots","eBird hotspots","--bird"],["birds","Bird records (GBIF)",null,"rgb(255,152,0)"]]],
 ];
@@ -569,7 +569,7 @@ function renderLegend(){
   if (ly.nature) K.push(`<span class="k" style="background:${css("--nature")};transform:rotate(45deg) scale(.85)"></span>viewpoint, lake, cave, glacier`);
   if (ly.attraction) K.push(sw("s", css("--attraction")) + "other attraction");
   if (ly.peak) K.push(`<span class="k" style="background:${css("--peak")};clip-path:polygon(50% 0,100% 100%,0 100%)"></span>peak`);
-  if (ly.kmvn) K.push(sw("s", css("--kmvn")) + "KMVN tourist rest house");
+  if (ly.corp) K.push(sw("s", css("--corp")) + `${CORP} tourist rest house`);
   if (ly.stays) K.push(sw("s", css("--stay")) + "stay on a good road with food nearby " + sw("s", "#fff", ";border:1.5px solid " + css("--stay")) + "other");
   if (ly.forest) K.push(sw("s", "rgba(28,112,58,.7)") + "tree cover (WorldCover 2021)");
   if (ly.protected) K.push(sw("s", "rgba(47,143,90,.25)", ";border:1.5px solid #2f7f4f") + "protected area");
@@ -604,7 +604,7 @@ function buildPlanner(){
   cs.appendChild(el("option", {value:""}, "My own circuit"));
   D.circuits.forEach((c, i) => cs.appendChild(el("option", {value:String(i)}, esc(c.name))));
   cs.onchange = () => { if (cs.value !== "") { stops = D.circuits[+cs.value].stops.map(n => mkStop({name:n})); planChanged(true); } };
-  const as = $("#addSel"), groupsDef = [["town","Towns"],["stay","KMVN rest-house places"],["temple","Temples"],["heritage","Heritage"],["nature","Nature"]];
+  const as = $("#addSel"), groupsDef = [["town","Towns"],["stay",`${CORP} rest-house places`],["temple","Temples"],["heritage","Heritage"],["nature","Nature"]];
   groupsDef.forEach(([k, lab]) => {
     const og = el("optgroup", {label:lab});
     D.destinations.filter(d => d.kind === k).forEach(d => og.appendChild(el("option", {value:d.name}, esc(d.name) + (d.snap_km > 2 ? " (trek)" : ""))));
@@ -645,7 +645,7 @@ function renderStops(){
 }
 function staysNear(s, km){
   return D.stays.map((st, i) => ({st, i, d:pxKm(st, s)})).filter(o => o.d <= km)
-    .sort((a, b) => (b.st.kmvn - a.st.kmvn) || (stayOk(b.st) - stayOk(a.st)) || a.d - b.d);
+    .sort((a, b) => (b.st.corp - a.st.corp) || (stayOk(b.st) - stayOk(a.st)) || a.d - b.d);
 }
 function sitesAlong(pts){
   const step = Math.max(1, Math.floor(pts.length / 400)), P = pts.filter((_, j) => j % step === 0), lim = 2 / KM;
@@ -675,7 +675,7 @@ function planChanged(fit){
   const allPts = [];
   const nightHtml = (s, i) => {
     const near = staysNear(s, 8).slice(0, 4);
-    const items = near.map(o => `<li><a href="#" data-stay="${o.i}">${esc(o.st.name)}</a> <span class="muted">${o.st.kmvn ? "KMVN" + (o.st.plan ? ", " + o.st.plan : "") : esc(o.st.type.toLowerCase())}${stayOk(o.st) ? "" : ", fewer checks met"} · ${num(o.d, 1)} km</span></li>`).join("");
+    const items = near.map(o => `<li><a href="#" data-stay="${o.i}">${esc(o.st.name)}</a> <span class="muted">${o.st.corp ? CORP + (o.st.plan ? ", " + o.st.plan : "") : esc(o.st.type.toLowerCase())}${stayOk(o.st) ? "" : ", fewer checks met"} · ${num(o.d, 1)} km</span></li>`).join("");
     return `<div class="night"><b>${i === 0 ? "Start" : "Night " + i}: ${esc(s.name)}</b>${items ? `<ol>${items}</ol>` : `<div class="muted">No mapped stays within 8 km.</div>`}</div>`;
   };
   stops.forEach((s, i) => {
@@ -719,18 +719,18 @@ $("#legs").addEventListener("click", e => {
 function fillSelect(sel, opts, val){ sel.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join(""); if (val != null) sel.value = val; }
 function buildStayTable(){
   fillSelect($("#stDist"), [["", "All"]].concat(DISTRICTS.map(d => [d, d])), store.get("stDist", ""));
-  $("#stKmvn").checked = store.get("stKmvn", false); $("#stChecks").checked = store.get("stChecks", true);
+  $("#stCorp").checked = store.get("stCorp", false); $("#stChecks").checked = store.get("stChecks", true);
   const draw = () => {
-    const dist = $("#stDist").value, km = $("#stKmvn").checked, ck = $("#stChecks").checked;
-    store.set("stDist", dist); store.set("stKmvn", km); store.set("stChecks", ck);
-    const rows = D.stays.map((s, i) => [s, i]).filter(([s]) => (!dist || s.district === dist) && (!km || s.kmvn) && (!ck || stayOk(s)))
-      .sort((a, b) => (b[0].kmvn - a[0].kmvn) || a[0].district.localeCompare(b[0].district) || a[0].locality.localeCompare(b[0].locality));
+    const dist = $("#stDist").value, km = $("#stCorp").checked, ck = $("#stChecks").checked;
+    store.set("stDist", dist); store.set("stCorp", km); store.set("stChecks", ck);
+    const rows = D.stays.map((s, i) => [s, i]).filter(([s]) => (!dist || s.district === dist) && (!km || s.corp) && (!ck || stayOk(s)))
+      .sort((a, b) => (b[0].corp - a[0].corp) || a[0].district.localeCompare(b[0].district) || a[0].locality.localeCompare(b[0].locality));
     $("#stCount").textContent = `${rows.length} of ${D.stays.length}`;
     const t = $("#stayTable");
     t.innerHTML = `<thead><tr><th>Name</th><th>Where</th><th>Type</th><th title="Within 300 m of a tertiary or bigger road">Road</th><th title="Meals served, or a restaurant or café mapped within 1 km">Food</th><th>Meal plan</th></tr></thead>`;
     const tb = el("tbody");
     rows.forEach(([s, i]) => {
-      const tr = el("tr", {tabindex:"0"}, `<td>${esc(s.name)} ${s.kmvn ? '<span class="tag kmvn">KMVN</span>' : ""}</td><td>${esc(s.locality)}<br><span class="muted" style="font-size:12.5px">${esc(s.district)}</span></td><td>${esc(s.kmvn ? "Rest house" : s.type)}</td>` +
+      const tr = el("tr", {tabindex:"0"}, `<td>${esc(s.name)} ${s.corp ? `<span class="tag corp">${CORP}</span>` : ""}</td><td>${esc(s.locality)}<br><span class="muted" style="font-size:12.5px">${esc(s.district)}</span></td><td>${esc(s.corp ? "Rest house" : s.type)}</td>` +
         `<td><span class="ck ${s.checks.road ? "y" : "n"}">${s.checks.road ? "✓" : "–"}</span> <span class="muted" style="font-size:12.5px">${D.roads.names[s.road_cls].replace(" road", "").toLowerCase()}${s.road_km > .3 ? ", " + num(s.road_km, 1) + " km" : ""}</span></td>` +
         `<td><span class="ck ${s.checks.food ? "y" : "n"}">${s.checks.food ? "✓" : "–"}</span> <span class="muted" style="font-size:12.5px">${s.meals ? esc(s.meals) : s.food_1km ? s.food_1km + " nearby" : ""}</span></td><td>${s.plan || ""}</td>`);
       const go = () => { focusOn(s.x, s.y, 5, true); showStay(i); };
@@ -739,10 +739,10 @@ function buildStayTable(){
     });
     t.appendChild(tb);
   };
-  ["#stDist", "#stKmvn", "#stChecks"].forEach(s => $(s).onchange = draw);
+  ["#stDist", "#stCorp", "#stChecks"].forEach(s => $(s).onchange = draw);
   draw();
-  const nk = D.stays.filter(s => s.kmvn).length, ok = D.stays.filter(stayOk).length;
-  $("#stayNote").innerHTML = `${nk} KMVN tourist rest houses (Kumaon Mandal Vikas Nigam, the state's tourism corporation; from kmvn.in) and ${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book. KMVN meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a KMVN rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (KMVN publishes no coordinates) are marked as such in their details. Only business names and places are shown: no phone numbers or personal names.`;
+  const nk = D.stays.filter(s => s.corp).length, ok = D.stays.filter(stayOk).length;
+  $("#stayNote").innerHTML = `${nk} ${CORP} tourist rest houses (${esc(RG.corp.name)}, the state's tourism corporation; from ${esc(RG.corp.site)}) and ${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book. ${CORP} meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a ${CORP} rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (${CORP} publishes no coordinates) are marked as such in their details. Only business names and places are shown: no phone numbers or personal names.`;
 }
 function buildSiteTable(){
   fillSelect($("#siKind"), [["", "All but peaks"]].concat(Object.entries(D.kinds).map(([k, v]) => [k, v])), store.get("siKind", ""));
@@ -766,7 +766,7 @@ function buildSiteTable(){
 }
 function buildBirds(){
   const B = D.birds;
-  $("#birdStats").innerHTML = `<span><b>${B.species_total}</b> species recorded in Kumaon</span><span><b>${B.hotspots.length}</b> hotspots</span>`;
+  $("#birdStats").innerHTML = `<span><b>${B.species_total}</b> species recorded in ${RG.name}</span><span><b>${B.hotspots.length}</b> hotspots</span>`;
   $("#birdDist").innerHTML = `<thead><tr><th>District</th><th class="num">Species</th><th class="num">Hotspots</th></tr></thead><tbody>` +
     B.districts.map(d => `<tr><td><a href="https://ebird.org/region/${esc(d.code)}" target="_blank" rel="noopener">${esc(d.district)}</a></td><td class="num">${d.species}</td><td class="num">${d.hotspots}</td></tr>`).join("") + "</tbody>";
   const t = $("#hotspotTable");
@@ -784,16 +784,16 @@ const LC = [["tree","Tree cover","#2f7f4f"],["shrub_grass","Shrub, grass, moss",
 function buildLand(){
   $("#landcover").innerHTML = D.landcover.map(r => `<div class="lcrow"><span>${esc(r.district)} <span class="mono muted" style="font-size:12px">${Math.round(r.tree)}%</span></span><div class="lcbar" role="img" aria-label="${esc(r.district)}: ${LC.map(([k, l]) => `${l} ${r[k]}%`).join(", ")}">${LC.map(([k, l, c]) => r[k] > 0 ? `<span style="width:${r[k]}%;background:${c}" title="${l} ${r[k]}%"></span>` : "").join("")}</div></div>`).join("");
   $("#lcKey").innerHTML = LC.map(([k, l, c]) => `<span><span class="k" style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};vertical-align:-1px;border:1px solid var(--rule)"></span> ${l}</span>`).join("");
-  $("#paTable").innerHTML = `<thead><tr><th>Protected area</th><th class="num">km² in Kumaon</th></tr></thead><tbody>` + D.protected.slice().sort((a, b) => b.km2 - a.km2).map(p => `<tr><td>${esc(p.name)} <span class="muted" style="font-size:12.5px">${esc(p.kind.toLowerCase())}</span></td><td class="num">${num(p.km2)}</td></tr>`).join("") + "</tbody>";
+  $("#paTable").innerHTML = `<thead><tr><th>Protected area</th><th class="num">km² in ${RG.name}</th></tr></thead><tbody>` + D.protected.slice().sort((a, b) => b.km2 - a.km2).map(p => `<tr><td>${esc(p.name)} <span class="muted" style="font-size:12.5px">${esc(p.kind.toLowerCase())}</span></td><td class="num">${num(p.km2)}</td></tr>`).join("") + "</tbody>";
 }
 function buildGI(){
-  const reg = D.gi.filter(g => g.status === "Registered").sort((a, b) => (b.kumaon - a.kumaon) || a.name.localeCompare(b.name));
+  const reg = D.gi.filter(g => g.status === "Registered").sort((a, b) => (b.local - a.local) || a.name.localeCompare(b.name));
   const pend = D.gi.filter(g => !["Registered", "Refused", "Abandoned", "Withdrawn"].includes(g.status));
   const yr = s => (s || "").slice(-4);
   $("#giTable").innerHTML = `<thead><tr><th>Registered GI</th><th>Goods</th><th class="num">Year</th></tr></thead><tbody>` +
-    reg.map(g => `<tr><td><a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.name)}</a> ${g.kumaon ? '<span class="tag kum">Kumaon</span>' : ""}</td><td>${esc(g.goods.replace("Handi Crafts", "Handicraft"))}</td><td class="num">${esc(yr(g.certificate_date))}</td></tr>`).join("") +
+    reg.map(g => `<tr><td><a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.name)}</a> ${g.local ? `<span class="tag local">${esc(RG.name)}</span>` : ""}</td><td>${esc(g.goods.replace("Handi Crafts", "Handicraft"))}</td><td class="num">${esc(yr(g.certificate_date))}</td></tr>`).join("") +
     (pend.length ? `<tr><td colspan="3" class="muted" style="padding-top:10px"><b>Applied for, not yet registered:</b> ${pend.map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.name)}</a> <span class="muted">(${esc(g.status.toLowerCase())})</span>`).join(", ")}</td></tr>` : "") + "</tbody>";
-  $("#giNote").innerHTML = `Geographical indications filed for Uttarakhand, each checked against its page in India's GI registry (status, goods, certificate). <span class="tag kum">Kumaon</span> marks products named for a Kumaon place; the rest are registered for all of Uttarakhand, and many (Aipan, Tamta copperware, Bhotia dann and thulma, Ringal) are crafts long practised in Kumaon. Year is the registration certificate's. For the region's medicinal plants, see the <a href="https://rahulbhargavain.github.io/jadibooti-atlas/" target="_blank" rel="noopener">Jadibooti atlas</a>.`;
+  $("#giNote").innerHTML = `Geographical indications filed for Uttarakhand, each checked against its page in India's GI registry (status, goods, certificate). <span class="tag local">${esc(RG.name)}</span> marks products named for a ${esc(RG.name)} place; the rest are registered for all of Uttarakhand, and ${RG.gi_note}. Year is the registration certificate's. For the region's medicinal plants, see the <a href="https://rahulbhargavain.github.io/jadibooti-atlas/" target="_blank" rel="noopener">Jadibooti atlas</a>.`;
 }
 function buildVisitors(){
   const V = D.visitors, years = ["2021","2022","2023","2024","2025"];
@@ -818,8 +818,8 @@ function buildLimits(){
 function buildMethod(){
   const t = new Date(D.generated * 1000).toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"});
   $("#stamp").innerHTML = `<span>Built <b>${t}</b></span><span>Refreshed every month or two</span>`;
-  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and KMVN's tourist rest houses (kmvn.in). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m. Routes are computed in your browser.</p>
-  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt by hand, so it changes when those sources do, not hour by hour like the <a href="../">Kumaon nowcast</a>.</p>`;
+  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and ${CORP}'s tourist rest houses (${esc(RG.corp.site)}). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m. Routes are computed in your browser.</p>
+  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt by hand, so it changes when those sources do, not hour by hour${RG.nowcast ? ` like the <a href="${esc(RG.nowcast)}">${esc(RG.name)} nowcast</a>` : ""}.</p>`;
 }
 
 /* ---------------- boot ---------------- */
