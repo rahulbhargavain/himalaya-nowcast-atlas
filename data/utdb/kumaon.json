@@ -1,0 +1,281 @@
+[
+ {
+  "name": "Nainital",
+  "district": "Nainital",
+  "years": {
+   "2021": {
+    "total": 326259,
+    "foreign": 633
+   },
+   "2022": {
+    "total": 529676,
+    "foreign": 4020
+   },
+   "2023": {
+    "total": 784497,
+    "foreign": 7971
+   },
+   "2024": {
+    "total": 1024139,
+    "foreign": 9537
+   },
+   "2025": {
+    "total": 1322874,
+    "foreign": 22237
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Almora",
+  "district": "Almora",
+  "years": {
+   "2021": {
+    "total": 38198,
+    "foreign": 171
+   },
+   "2022": {
+    "total": 148801,
+    "foreign": 1606
+   },
+   "2023": {
+    "total": 238611,
+    "foreign": 3040
+   },
+   "2024": {
+    "total": 422292,
+    "foreign": 2782
+   },
+   "2025": {
+    "total": 426648,
+    "foreign": 3198
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Pithoragarh",
+  "district": "Pithoragarh",
+  "years": {
+   "2021": {
+    "total": 53506,
+    "foreign": 73
+   },
+   "2022": {
+    "total": 117214,
+    "foreign": 217
+   },
+   "2023": {
+    "total": 127397,
+    "foreign": 408
+   },
+   "2024": {
+    "total": 193006,
+    "foreign": 584
+   },
+   "2025": {
+    "total": 387558,
+    "foreign": 643
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Kathgodam",
+  "district": "Nainital",
+  "years": {
+   "2021": {
+    "total": 108109,
+    "foreign": 177
+   },
+   "2022": {
+    "total": 215543,
+    "foreign": 467
+   },
+   "2023": {
+    "total": 173096,
+    "foreign": 355
+   },
+   "2024": {
+    "total": 161349,
+    "foreign": 962
+   },
+   "2025": {
+    "total": 385347,
+    "foreign": 11168
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Corbett National Park",
+  "district": "Nainital",
+  "years": {
+   "2021": {
+    "total": 294137,
+    "foreign": 6813
+   },
+   "2022": {
+    "total": 353283,
+    "foreign": 3537
+   },
+   "2023": {
+    "total": 333093,
+    "foreign": 4721
+   },
+   "2024": {
+    "total": 361891,
+    "foreign": 10120
+   },
+   "2025": {
+    "total": 130119,
+    "foreign": 1829
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Udham Singh Nagar",
+  "district": "Udham Singh Nagar",
+  "years": {
+   "2021": {
+    "total": 182418,
+    "foreign": 156
+   },
+   "2022": {
+    "total": 228371,
+    "foreign": 856
+   },
+   "2023": {
+    "total": 250909,
+    "foreign": 1220
+   },
+   "2024": {
+    "total": 281157,
+    "foreign": 1399
+   },
+   "2025": {
+    "total": 306628,
+    "foreign": 1623
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Champawat",
+  "district": "Champawat",
+  "years": {
+   "2021": {
+    "total": 15711,
+    "foreign": 7
+   },
+   "2022": {
+    "total": 36542,
+    "foreign": 208
+   },
+   "2023": {
+    "total": 227352,
+    "foreign": 223
+   },
+   "2024": {
+    "total": 259259,
+    "foreign": 452
+   },
+   "2025": {
+    "total": 279860,
+    "foreign": 398
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Ranikhet",
+  "district": "Almora",
+  "years": {
+   "2021": {
+    "total": 54265,
+    "foreign": 0
+   },
+   "2022": {
+    "total": 80126,
+    "foreign": 52
+   },
+   "2023": {
+    "total": 125167,
+    "foreign": 0
+   },
+   "2024": {
+    "total": 126245,
+    "foreign": 625
+   },
+   "2025": {
+    "total": 127563,
+    "foreign": 1476
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Kausani and Bageshwar",
+  "district": "Bageshwar",
+  "years": {
+   "2021": {
+    "total": 45815,
+    "foreign": 8
+   },
+   "2022": {
+    "total": 82106,
+    "foreign": 154
+   },
+   "2023": {
+    "total": 82563,
+    "foreign": 628
+   },
+   "2024": {
+    "total": 109249,
+    "foreign": 579
+   },
+   "2025": {
+    "total": 109515,
+    "foreign": 841
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ }
+]

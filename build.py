@@ -319,8 +319,9 @@ def main():
         if os.path.exists(src):
             import shutil
             shutil.copy(src, os.path.join(out_dir, extra))
-    # Slow-refresh pages built by hand and committed under static/ (the
-    # Kumaon cultural atlas: python -m nowcast.culture).
+    # Slow-refresh pages under static/: the cultural atlases (python -m
+    # nowcast.culture), which the workflow refreshes monthly from the
+    # culture branch before this runs.
     static_dir = os.path.join(HERE, "static")
     if os.path.isdir(static_dir):
         import shutil

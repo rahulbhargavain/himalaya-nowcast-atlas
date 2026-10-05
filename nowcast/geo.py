@@ -115,9 +115,11 @@ def make_frame(w_lon=W_LON, e_lon=E_LON, s_lat=S_LAT, n_lat=N_LAT, z=ZOOM) -> Fr
 FRAME = make_frame()
 
 
-def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None):
+def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None, stale_ok=False):
     """GET with retries. With cache_key, the body is cached on disk
-    (forever, or for max_age seconds)."""
+    (forever, or for max_age seconds). With stale_ok, an expired copy is
+    returned if the fetch fails - for slow-refresh pages, where last month's
+    data beats no page; never for live layers."""
     path = None
     if cache_key:
         path = os.path.join(CACHE, cache_key)
@@ -145,6 +147,11 @@ def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None):
         except requests.RequestException as e:
             last = e
             time.sleep(1.5 * (attempt + 1))
+    if stale_ok and path and os.path.exists(path):
+        print(f"  GET failed, using the cached copy from {time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(path)))}: "
+              f"{url} ({last})", flush=True)
+        with open(path, "rb") as f:
+            return f.read()
     raise RuntimeError(f"GET failed after {tries} tries: {url} ({last})")
 
 

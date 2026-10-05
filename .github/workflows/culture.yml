@@ -1,0 +1,87 @@
+name: Rebuild cultural atlases
+
+# The regional cultural atlases (python -m nowcast.culture) change with their
+# sources, over months: rebuild them monthly and publish them to the culture
+# branch, which the two-hourly Pages build copies into the site. Each source
+# is re-fetched only once its cached copy has expired (see the TTLs in
+# nowcast/culture.py); one that's down falls back to that copy.
+
+on:
+  schedule:
+    # 02:40 UTC on the 3rd of each month.
+    - cron: "40 2 3 * *"
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Regions to rebuild (comma-separated)"
+        default: "kumaon,garhwal"
+
+permissions:
+  contents: write   # to publish to the culture branch
+  actions: write    # to start a Pages deploy afterwards
+
+concurrency:
+  group: culture
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - run: pip install -r requirements.txt -r requirements-culture.txt
+
+      # Fetched sources and terrain tiles, kept between monthly runs so each
+      # source is fetched again only when it expires.
+      - name: Restore culture cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            cache/culture
+            cache/terrarium
+          key: culture-cache-${{ github.run_id }}
+          restore-keys: culture-cache-
+
+      # What's published now: regions not rebuilt this run are kept as they are.
+      - name: Check out the published pages
+        id: published
+        continue-on-error: true   # the first run, before the branch exists
+        uses: actions/checkout@v4
+        with:
+          ref: culture
+          path: published
+
+      - name: Build
+        env:
+          EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
+          REGIONS: ${{ inputs.regions || 'kumaon,garhwal' }}
+        run: |
+          rm -rf published/.git
+          python -m nowcast.culture --region "$REGIONS" --publish published
+
+      - name: Publish to the culture branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd published
+          git init -q -b culture
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Cultural atlases built $(date -u +%Y-%m-%d)"
+          # One commit, replaced each month: the pages are 2-3 MB each, and
+          # their history would otherwise ride along in every clone.
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" culture
+
+      - name: Deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
