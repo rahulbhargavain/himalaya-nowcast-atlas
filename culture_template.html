@@ -408,12 +408,28 @@ function buildHotspots(){
 function buildLabels(){
   const L = [];
   D.destinations.filter(d => d.kind === "town").forEach(d => L.push([d.x, d.y, d.name, 12, 600]));
-  D.sites.filter(s => s.k === "peak" && s.e >= 6400).forEach(s => L.push([s.x, s.y, `${s.n} ${num(s.e)}`, 10.5, 500, true]));
+  D.sites.filter(s => s.k === "peak" && s.e >= 6400).sort((a, b) => b.e - a.e)
+    .forEach(s => L.push([s.x, s.y, `${s.n} ${num(s.e)}`, 10.5, 500, true]));
+  // Labels keep their on-screen size, so whether two collide depends on
+  // the zoom. Towns always show; each peak label (highest first) gets the
+  // map scale, in screen px per grid unit, from which it clears every label
+  // placed before it, and applyView() shows it only from there in.
+  const placed = [];
   L.forEach(([x, y, txt, fs, fw, peak]) => {
+    const w = txt.length * fs * 0.56 + 9, h = fs * 1.15 + 2;
+    let mink = 0;
+    if (peak) placed.forEach(q => {
+      const dx = x - q.x, dy = y - q.y;
+      const kx = dx === 0 ? Infinity : (dx > 0 ? q.w : w) / Math.abs(dx), ky = dy === 0 ? Infinity : Math.max(h, q.h) / Math.abs(dy);
+      const need = Math.min(kx, ky);
+      if (need > q.mink) mink = Math.max(mink, need);
+    });
+    placed.push({x, y, w, h, mink});
     const [o, g] = marker(x, y);
     g.appendChild(label(txt, {x:7, y:4, "font-size":fs, "font-weight":fw, "font-style":peak ? "italic" : "normal"}));
     if (!peak) g.appendChild(svgEl("circle", {r:2.4, fill:"#1f2a2e"}));
     o.dataset.peak = peak ? "1" : "";
+    if (mink) o.dataset.mink = mink.toFixed(3);
     groups.labels.appendChild(o);
   });
 }
@@ -480,6 +496,8 @@ function applyView(){
   const u = unitPx(); if (!u) return;
   const s = 1 / (u * state.zoom);
   svg.querySelectorAll(".mki").forEach(g => g.setAttribute("transform", `scale(${s.toFixed(4)})`));
+  const k = u * state.zoom;
+  groups.labels.querySelectorAll("[data-mink]").forEach(o => o.style.visibility = k >= +o.dataset.mink ? "" : "hidden");
   // Lines keep a constant on-screen width (vector-effect ignores the CSS zoom).
   svg.querySelectorAll("[data-sw]").forEach(p => { if (!p.dataset.base) p.dataset.base = p.getAttribute("stroke-width"); p.setAttribute("stroke-width", (p.dataset.base * s).toFixed(4)); });
 }
