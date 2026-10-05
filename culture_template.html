@@ -465,13 +465,13 @@ function stayFacts(s){
 function showStay(i){
   const s = D.stays[i], f = stayFacts(s);
   const rows = [["Type", esc(s.type)], ["Where", `${esc(s.locality)}, ${esc(s.district)}`], ["Road", esc(f.road)], ["Food", esc(f.food)]];
-  if (s.corp) rows.push(["Meal plan", s.plan ? `${s.plan}: ${({EP:"room only", CP:"breakfast included", MAP:"breakfast and dinner included"})[s.plan]}` : "not listed"]);
+  if (s.corp && !RG.corp.osm) rows.push(["Meal plan", s.plan ? `${s.plan}: ${({EP:"room only", CP:"breakfast included", MAP:"breakfast and dinner included"})[s.plan]}` : "not listed"]);
   if (s.stars) rows.push(["Stars", s.stars]);
   if (s.rooms) rows.push(["Rooms", s.rooms]);
   const extra = [s.internet && "internet", s.wheelchair && "wheelchair access"].filter(Boolean);
   if (extra.length) rows.push(["Listed", extra.join(", ")]);
   if (s.placed && s.placed !== "OpenStreetMap") rows.push(["Map position", s.placed === "approximate" ? "approximate" : esc(s.placed)]);
-  const link = s.corp ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${CORP} page and booking</a>` : `<a href="https://www.openstreetmap.org/${esc(s.osm)}" target="_blank" rel="noopener">OpenStreetMap</a>`;
+  const link = s.corp && s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${CORP} page and booking</a>` : `<a href="https://www.openstreetmap.org/${esc(s.osm)}" target="_blank" rel="noopener">OpenStreetMap</a>`;
   openInfo(`<h3>${esc(s.name)}</h3>${s.corp ? `<span class="tag corp">state-run (${CORP})</span>` : ""}<div class="kv" style="margin-top:6px">${rows.map(r => `<span class="muted">${r[0]}</span><span>${r[1]}</span>`).join("")}</div><div style="margin-top:6px">${link}</div>` + addBtn({name:s.locality && !s.corp ? `${s.name}, ${s.locality}` : s.name, x:s.x, y:s.y}), s.x, s.y);
 }
 function showHotspot(i){
@@ -607,7 +607,7 @@ let stops = [];
 const destByName = Object.fromEntries(D.destinations.map(d => [d.name, d]));
 function mkStop(s){
   const d = destByName[s.name];
-  if (d) return {name:d.name, x:d.x, y:d.y, node:d.node, snap_km:d.snap_km};
+  if (d) return {name:d.name, x:d.x, y:d.y, node:d.node, snap_km:d.snap_km, via:d.via};
   const [node, km] = nearestNode(s.x, s.y);
   return {name:s.name, x:s.x, y:s.y, node, snap_km:km};
 }
@@ -625,7 +625,7 @@ function buildPlanner(){
   const as = $("#addSel"), groupsDef = [["town","Towns"],["stay",`${CORP} rest-house places`],["temple","Temples"],["heritage","Heritage"],["nature","Nature"]];
   groupsDef.forEach(([k, lab]) => {
     const og = el("optgroup", {label:lab});
-    D.destinations.filter(d => d.kind === k).forEach(d => og.appendChild(el("option", {value:d.name}, esc(d.name) + (d.snap_km > 2 ? " (trek)" : ""))));
+    D.destinations.filter(d => d.kind === k).forEach(d => og.appendChild(el("option", {value:d.name}, esc(d.name) + (d.snap_km > 2 ? (d.via ? ` (trek from ${d.via})` : " (trek)") : ""))));
     if (og.children.length) as.appendChild(og);
   });
   $("#addBtn").onclick = () => { if (as.value) addStop({name:as.value}); };
@@ -651,7 +651,7 @@ function buildPlanner(){
 function renderStops(){
   const ol = $("#stops"); ol.innerHTML = "";
   stops.forEach((s, i) => {
-    const li = el("li", null, `<span>${esc(s.name)}${s.snap_km > 2 ? ` <span class="muted" style="font-size:12.5px">· road ends ${num(s.snap_km, 0)} km away</span>` : ""}</span>`);
+    const li = el("li", null, `<span>${esc(s.name)}${s.snap_km > 2 ? ` <span class="muted" style="font-size:12.5px">· road ends ${s.via ? `at ${esc(s.via)}, ` : ""}${num(s.snap_km, 0)} km away in a straight line</span>` : ""}</span>`);
     const ops = el("span", {class:"ops"});
     const b = (txt, lab, fn, dis) => { const x = el("button", {"aria-label":lab, title:lab}, txt); x.disabled = !!dis; x.onclick = fn; ops.appendChild(x); };
     b("↑", "Move up", () => { [stops[i - 1], stops[i]] = [stops[i], stops[i - 1]]; $("#circSel").value = ""; planChanged(); }, i === 0);
@@ -711,7 +711,7 @@ function planChanged(fit){
       r.pts.forEach(q => allPts.push(q));
       const along = sitesAlong(r.pts);
       const mid = isOver ? midStop(r) : null;
-      const walk = [a.snap_km > .5 && `${esc(a.name)} is ${num(a.snap_km, 1)} km from the road`, s.snap_km > .5 && `${esc(s.name)} is ${num(s.snap_km, 1)} km from the road`].filter(Boolean);
+      const walk = [a.snap_km > .5 && `${esc(a.name)} is ${num(a.snap_km, 1)} km from the road${a.via ? ` (at ${esc(a.via)})` : ""}`, s.snap_km > .5 && `${esc(s.name)} is ${num(s.snap_km, 1)} km from the road${s.via ? ` (at ${esc(s.via)})` : ""}`].filter(Boolean);
       const div = el("div", {class:"leg" + (isOver ? " over" : "")},
         `<div class="hd"><b>${esc(a.name)} → ${esc(s.name)}</b><span class="t">${fmtDur(r.min)} · ${num(r.km)} km</span>${isOver ? `<span class="tag pend">over ${state.maxH} h</span>` : ""}</div>` +
         (isOver && mid ? `<div class="note">Long for one day: ${esc(mid.name)} is about halfway.${destByName[mid.name] ? ` <a href="#" data-insert="${i}" data-name="${esc(mid.name)}">Add it as a stop</a>` : ""}</div>` : "") +
@@ -760,7 +760,7 @@ function buildStayTable(){
   ["#stDist", "#stCorp", "#stChecks"].forEach(s => $(s).onchange = draw);
   draw();
   const nk = D.stays.filter(s => s.corp).length, ok = D.stays.filter(stayOk).length;
-  $("#stayNote").innerHTML = `${nk} ${CORP} tourist rest houses (${esc(RG.corp.name)}, the state's tourism corporation; from ${esc(RG.corp.site)}) and ${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book. ${CORP} meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a ${CORP} rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (${CORP} publishes no coordinates) are marked as such in their details. Only business names and places are shown: no phone numbers or personal names.`;
+  $("#stayNote").innerHTML = `${nk} ${CORP} tourist rest houses (${esc(RG.corp.name)}, the state's tourism corporation; ${RG.corp.osm ? `those mapped on OpenStreetMap, a partial list: ${esc(RG.corp.site)} turns away automated reading` : `from ${esc(RG.corp.site)}`}) and ${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book.${RG.corp.osm ? "" : ` ${CORP} meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a ${CORP} rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (${CORP} publishes no coordinates) are marked as such in their details.`} Only business names and places are shown: no phone numbers or personal names.`;
 }
 function buildSiteTable(){
   fillSelect($("#siKind"), [["", "All but peaks"]].concat(Object.entries(D.kinds).map(([k, v]) => [k, v])), store.get("siKind", ""));
@@ -836,7 +836,7 @@ function buildLimits(){
 function buildMethod(){
   const t = new Date(D.generated * 1000).toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"});
   $("#stamp").innerHTML = `<span>Built <b>${t}</b></span><span>Refreshed every month or two</span>`;
-  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and ${CORP}'s tourist rest houses (${esc(RG.corp.site)}). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m. Routes are computed in your browser.</p>
+  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and ${CORP}'s tourist rest houses (${RG.corp.osm ? "those mapped on OpenStreetMap" : esc(RG.corp.site)}). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m${D.roads.flat_slope ? ` or where the ground within ${D.roads.flat_km} km averages under ${D.roads.flat_slope}° (broad valley floors such as the Doon)` : ""}. Routes are computed in your browser.</p>
   <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt by hand, so it changes when those sources do, not hour by hour${RG.nowcast ? ` like the <a href="${esc(RG.nowcast)}">${esc(RG.name)} nowcast</a>` : ""}.</p>`;
 }
 

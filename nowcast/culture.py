@@ -47,6 +47,9 @@ class Corp:
     place: dict               # slug -> OSM place names (with alternative spellings)
     fallback: dict = dc_field(default_factory=dict)  # slug -> approximate (lat, lon)
     district: dict = dc_field(default_factory=dict)  # slug -> district, where a place name recurs
+    # When the corporation's own site can't be read, its rest houses are the
+    # OSM lodgings whose name or operator matches this (none are fetched).
+    osm_match: re.Pattern | None = None
 
 
 @dataclass(frozen=True)
@@ -371,6 +374,12 @@ ROAD_NAMES = ["National highway", "Primary road", "Secondary road", "Tertiary ro
 SPEED_HILL = [32, 30, 25, 20, 15]
 SPEED_PLAINS = [55, 48, 38, 30, 22]
 PLAINS_M = 450  # below this, the bhabar and terai: straighter, flatter roads
+# Broad valley floors above PLAINS_M drive like the plains too: the Doon
+# valley sits at 450-700 m. Roads count as flat where the ground within
+# FLAT_KM averages under FLAT_SLOPE degrees; valley floors and the bhabar
+# average 1-3, hill towns and gorges 11-22.
+FLAT_SLOPE = 4.0
+FLAT_KM = 1.5
 
 
 def _hav_km(lon1, lat1, lon2, lat2):
@@ -379,7 +388,7 @@ def _hav_km(lon1, lat1, lon2, lat2):
     return 6371.0 * 2 * np.arcsin(np.sqrt(a))
 
 
-def road_graph(R, loc, elev_at):
+def road_graph(R, loc, elev_at, flat_at=lambda lon, lat: False):
     """Edges between junctions: {a, b, cls, km, min, geom[(lon, lat)...]}.
     Keeps ways touching the region (with a 3 km margin) and then the largest
     connected network, so isolated fragments can't trap a route."""
@@ -407,7 +416,7 @@ def road_graph(R, loc, elev_at):
                     a = np.array(seg)
                     km = float(_hav_km(a[:-1, 0], a[:-1, 1], a[1:, 0], a[1:, 1]).sum())
                     mid = seg[len(seg) // 2]
-                    sp = (SPEED_PLAINS if elev_at(*mid) < PLAINS_M else SPEED_HILL)[cls]
+                    sp = (SPEED_PLAINS if elev_at(*mid) < PLAINS_M or flat_at(*mid) else SPEED_HILL)[cls]
                     edges.append({"a": nodes[start], "b": nodes[k], "cls": cls, "km": km, "min": km / sp * 60,
                                   "geom": seg, "ref": tags.get("ref") or ""})
                 start = k
@@ -764,8 +773,18 @@ def stays(R, loc, places, road_tree, road_cls, houses):
                "wheelchair": t.get("wheelchair") == "yes"}
         if re.search(rf"\b{C.abbr}\b|tourist rest house|\btrh\b", name, re.I):
             rec["corp_osm"] = True
+        if C.osm_match and C.osm_match.search(f"{name} {t.get('operator', '')}"):
+            rec.update({"corp": True, "type": f"{C.abbr} rest house", "placed": "OpenStreetMap"})
         rec.update(facts(lon, lat))
         out.append(rec)
+    # One rest house is sometimes mapped twice (a hotel and a hostel node at
+    # the same spot): keep the first within 150 m.
+    kept = []
+    for r in out:
+        if r["corp"] and any(k["corp"] and _hav_km(r["lon"], r["lat"], k["lon"], k["lat"]) < 0.15 for k in kept):
+            continue
+        kept.append(r)
+    out = kept
 
     placed = []
     for h in houses:
@@ -951,10 +970,20 @@ def build(R, out_path, template_path, log=print):
         x, y = KF.to_grid(lon, lat)
         return float(dem_g[int(np.clip(y, 0, KF.gh - 1)), int(np.clip(x, 0, KF.gw - 1))])
 
+    from .geo import world_lonlat
+    from . import land
+    lat_rows = world_lonlat(np.full(KF.gh, KF.x0), KF.y0 + 2 * np.arange(KF.gh) + 1, KF.z)[1]
+    k = int(round(2 * FLAT_KM / KF.km_per_grid_px)) | 1
+    slope = cv2.blur(land.slope_deg(dem_g, lat_rows, scale=2, z=KF.z).astype(np.float32), (k, k))
+
+    def flat_at(lon, lat):
+        x, y = KF.to_grid(lon, lat)
+        return bool(slope[int(np.clip(y, 0, KF.gh - 1)), int(np.clip(x, 0, KF.gw - 1))] < FLAT_SLOPE)
+
     log("culture: districts, roads")
     loc = Locator(R)
     inside = _mask(loc.shapes.values(), KF)
-    edges = road_graph(R, loc, elev_at)
+    edges = road_graph(R, loc, elev_at, flat_at)
     node_ids = sorted({e["a"] for e in edges} | {e["b"] for e in edges})
     node_ll = {}
     for e in edges:
@@ -1042,12 +1071,14 @@ def build(R, out_path, template_path, log=print):
         x, y = _grid(KF, lon, lat)
         dest[name] = {"name": name, "lon": lon, "lat": lat, "x": x, "y": y, "node": int(i), "snap_km": km,
                       "kind": kind, "district": loc.district(lon, lat)}
+        if km > 2:  # a trek: name the place where the road ends
+            dest[name]["via"] = places.locality(*node_ll[node_ids[i]])[0]
 
     for name, lat, lon, _ in R.towns():
         add_dest(name, lon, lat, "town")
     for s in stay_list:
         if s["corp"]:
-            nm = R.corp.place[s["slug"]][0]
+            nm = R.corp.place[s["slug"]][0] if "slug" in s else s["locality"]
             add_dest(nm, s["lon"], s["lat"], "stay")
     for s in sorted(site_list, key=lambda s: -s["score"]):
         if s["kind"] != "peak" and s["score"] >= 6:
@@ -1104,7 +1135,8 @@ def build(R, out_path, template_path, log=print):
         "protected": protected,
         "roads": {"nodes": [v for xy in nodes_xy for v in (round(xy[0] * 10), round(xy[1] * 10))],
                   "edges": flat_e, "geom": geom, "off": off, "names": ROAD_NAMES,
-                  "speed_hill": SPEED_HILL, "speed_plains": SPEED_PLAINS, "plains_m": PLAINS_M},
+                  "speed_hill": SPEED_HILL, "speed_plains": SPEED_PLAINS, "plains_m": PLAINS_M,
+                  "flat_slope": FLAT_SLOPE, "flat_km": FLAT_KM},
         "sites": [site_rec(s) for s in site_list],
         "kinds": KIND_LABEL,
         "stays": [stay_rec(s) for s in stay_list],
@@ -1112,7 +1144,7 @@ def build(R, out_path, template_path, log=print):
         "landcover": landcover,
         "gi": [g for g in gi if g["status"]],
         "visitors": vis,
-        "destinations": [{k: d[k] for k in ("name", "x", "y", "node", "snap_km", "kind", "district")}
+        "destinations": [{k: d[k] for k in ("name", "x", "y", "node", "snap_km", "kind", "district", "via") if k in d}
                          for d in destinations],
         "circuits": circuits,
     }
@@ -1129,7 +1161,7 @@ def build(R, out_path, template_path, log=print):
 def _region_info(R):
     """What the page needs to know about its region."""
     return {"id": R.id, "name": R.name, "districts": list(R.districts),
-            "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site},
+            "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site, "osm": bool(R.corp.osm_match)},
             "shade_alt": R.shade_alt, "gi_note": R.gi_note, "store": R.store, "nowcast": R.nowcast,
             "back": [list(b) for b in R.back]}
 
@@ -1227,11 +1259,28 @@ GARHWAL_TOWNS = [
     ("Joshimath", 30.556, 79.561, "Chamoli"), ("Badrinath", 30.742, 79.493, "Chamoli"),
 ]
 
-# GMVN's rest houses aren't fetched yet: gmvnonline.com refuses scripted
-# requests, so its scraper and place table are still to come.
+GARHWAL_CIRCUITS = [
+    ("Doon, Mussoorie and Tehri", "Up from the Doon valley to Mussoorie's ridge, along the Dhanaulti deodars to Chamba and the Tehri lake, and down to Rishikesh.",
+     ["Dehradun", "Mussoorie", "Dhanaulti", "Chamba", "New Tehri", "Rishikesh", "Dehradun"]),
+    ("The prayags to Badrinath", "Up the Alaknanda by its confluences: Devprayag, Rudraprayag, Karnaprayag, Nandprayag and Vishnuprayag below Joshimath, to Badrinath.",
+     ["Rishikesh", "Devprayag", "Srinagar", "Rudraprayag", "Karnaprayag", "Joshimath", "Badrinath"]),
+    ("Kedar valley and Tungnath", "To Gaurikund, where the Kedarnath trail starts, then over the Chopta meadows below Tungnath to Gopeshwar.",
+     ["Rishikesh", "Rudraprayag", "Gaurikund", "Ukhimath", "Tunganath", "Gopeshwar", "Karnaprayag", "Srinagar", "Rishikesh"]),
+    ("Yamunotri and Gangotri", "Over Mussoorie to the Yamuna valley and the Yamunotri trail, then across to Uttarkashi and up the Bhagirathi past Harsil to Gangotri.",
+     ["Dehradun", "Mussoorie", "Barkot", "Yamunotri", "Barkot", "Uttarkashi", "Harsil", "Gangotri"]),
+    ("The Pauri ridge", "From Kotdwar up to the cantonment at Lansdowne, along the oak ridges to Pauri, down to Srinagar and by Devprayag to Rishikesh.",
+     ["Kotdwar", "Lansdowne", "Pauri", "Srinagar", "Devprayag", "Rishikesh"]),
+    ("Jaunsar-Bawar and the Tons", "Up from Vikasnagar to Chakrata's cantonment, through the Jaunsari villages to Purola, and back by the Yamuna valley and Mussoorie.",
+     ["Dehradun", "Vikasnagar", "Chakrata", "Purola", "Barkot", "Mussoorie", "Dehradun"]),
+]
+
+# gmvnonline.com sits behind a bot challenge that turns away scripted
+# requests, robots.txt included, so GMVN's rest houses are the ones mapped
+# on OpenStreetMap (named for GMVN, or with it as operator): a partial list.
 GMVN = Corp(
     abbr="GMVN", name="Garhwal Mandal Vikas Nigam", site="gmvnonline.com", fetch=list,
-    url=lambda slug: f"https://gmvnonline.com/{slug}", place={})
+    url=lambda slug: "https://gmvnonline.com/", place={},
+    osm_match=re.compile(r"\bgmvn\b|garh?wal mandal", re.I))
 
 GARHWAL = Region(
     id="garhwal", name="Garhwal",
@@ -1252,7 +1301,7 @@ GARHWAL = Region(
           "tehri": ("Tehri", "Tehri Garhwal"), "lansdowne": ("Lansdowne", "Pauri Garhwal"),
           "pauri": ("Pauri", "Pauri Garhwal"), "uttarkashi": ("Uttarkashi", "Uttarkashi"),
           "chamoli": ("Chamoli", "Chamoli"), "rudraprayag": ("Rudraprayag", "Rudraprayag")},
-    circuits=[],
+    circuits=GARHWAL_CIRCUITS,
     shade_alt="Shaded relief of Garhwal, from the Doon valley and the Haridwar plains to Bandarpunch, "
               "the Gangotri peaks and Nanda Devi",
     gi_note="many (Ringal craft, Bichhu Buti nettle fabric, Thulma and Bhotia dann; Jhangora, Mandua and "
@@ -1260,6 +1309,8 @@ GARHWAL = Region(
     # Hastinapur sanctuary is in Uttar Pradesh; its OSM outline overlaps
     # Haridwar's along the state border.
     pa_skip=frozenset({"Hastinapur WLS"}),
+    # Amangarh Tiger Reserve is across the line in Uttar Pradesh.
+    wd_bad_coords=frozenset({"Amangarh Tiger Reserve"}),
     cache_dir="garhwal", store="gca:", back=(("../../", "Himalaya Nowcast Atlas"),))
 
 REGIONS = {R.id: R for R in (KUMAON, GARHWAL)}
