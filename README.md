@@ -18,7 +18,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 
 **Kumaon cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ — temples, forts, peaks, forests, birds, registered GI products and visitor numbers for the same six districts, with places to stay and a circuit planner that routes on OpenStreetMap's roads in the browser. Stays are described by checkable facts (state-run KMVN rest house, the road that reaches them, food on site or within 1 km), not ratings: open data can't judge hospitality or food hygiene. Only business names and localities are shown.
 
-**Garhwal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ — the same atlas for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with GMVN rest houses in place of KMVN's. There is no Garhwal nowcast page, so `/garhwal/` itself is not a page.
+**Garhwal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ — the same atlas for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with GMVN rest houses in place of KMVN's (only those mapped on OpenStreetMap: GMVN's own site turns away scripted requests, so the list is partial). There is no Garhwal nowcast page, so `/garhwal/` itself is not a page.
 
 ## What it shows
 
