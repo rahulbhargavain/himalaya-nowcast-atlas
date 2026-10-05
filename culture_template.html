@@ -47,6 +47,8 @@ header.top .sub{font-size:15px;color:var(--ink2);max-width:76ch}
 header.top .back{font-size:14px;display:flex;gap:14px;flex-wrap:wrap}
 .stamp{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
 .stamp b{font-family:var(--f-mono);font-weight:500}
+.changes{margin:0 0 12px;padding:8px 12px;border-left:3px solid var(--ok);background:rgba(127,127,127,.08);border-radius:3px;font-size:13.5px;line-height:1.5}
+.changes b{font-weight:600}
 
 .controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:flex-start}
 .group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -153,6 +155,7 @@ tr[tabindex]:hover td{background:var(--chip)}
     </div>
     <div class="stamp" id="stamp"></div>
   </header>
+  <div class="changes" id="changes" hidden></div>
 
   <div class="controls" id="controls"></div>
 
@@ -835,11 +838,28 @@ function buildLimits(){
     <li><b>Treks.</b> Glaciers, lakes and passes (${esc(RG.treks)}) are shown with how far the road ends from them. They need permits, guides and acclimatisation, which this page doesn't cover.</li>
   </ul>`;
 }
+const fmtDay = d => new Date(typeof d === "number" ? d * 1000 : d + "T12:00:00").toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"});
+function buildChanges(){
+  const C = D.changes; if (!C) return;
+  const list = (names, more) => names.length ? ` (${names.map(esc).join(", ")}${more > names.length ? ", …" : ""})` : "";
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  const parts = [];
+  if (C.sites.added || C.sites.removed) parts.push([C.sites.added && n(C.sites.added, "site added", "sites added") + list(C.sites.names, C.sites.added), C.sites.removed && `${C.sites.removed} gone`].filter(Boolean).join(", "));
+  if (C.stays.added || C.stays.removed) parts.push([C.stays.added && n(C.stays.added, "new stay", "new stays") + list(C.stays.names, C.stays.added), C.stays.removed && `${C.stays.removed} gone`].filter(Boolean).join(", "));
+  if (C.birds.hotspots) parts.push(n(C.birds.hotspots, "new eBird hotspot", "new eBird hotspots") + list(C.birds.names, C.birds.hotspots));
+  if (C.birds.species) parts.push(`${C.birds.species > 0 ? C.birds.species + " more" : -C.birds.species + " fewer"} bird species recorded`);
+  if (C.gi.length) parts.push(`newly registered GI: ${C.gi.map(esc).join(", ")}`);
+  if (C.protected.length) parts.push(`new protected area${C.protected.length > 1 ? "s" : ""}: ${C.protected.map(esc).join(", ")}`);
+  if (C.visitor_years.length) parts.push(`visitor figures for ${C.visitor_years.join(", ")}`);
+  const el = $("#changes");
+  el.innerHTML = `<b>Since ${C.since ? fmtDay(C.since) : "the last build"}:</b> ` + (parts.length ? parts.join(" · ") + "." : "no changes in the sources.");
+  el.hidden = false;
+}
 function buildMethod(){
   const t = new Date(D.generated * 1000).toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"});
   $("#stamp").innerHTML = `<span>Built <b>${t}</b></span><span>Refreshed monthly</span>`;
   $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and ${CORP}'s tourist rest houses (${RG.corp.osm ? "those mapped on OpenStreetMap" : esc(RG.corp.site)}). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m${D.roads.flat_slope ? ` or where the ground within ${D.roads.flat_km} km averages under ${D.roads.flat_slope}° (broad valley floors such as the Doon)` : ""}. Routes are computed in your browser.</p>
-  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt monthly, so it changes when those sources do, not hour by hour${RG.nowcast ? ` like the <a href="${esc(RG.nowcast)}">${esc(RG.name)} nowcast</a>` : ""}.</p>`;
+  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt monthly, so it changes when those sources do, not hour by hour${RG.nowcast ? ` like the <a href="${esc(RG.nowcast)}">${esc(RG.name)} nowcast</a>` : ""}.</p>${D.asof ? `<p style="margin-top:6px"><b>Data as of</b>: ${[["OpenStreetMap sites and stays", D.asof.osm], ["roads and protected areas", D.asof.roads], ["Wikidata", D.asof.wikidata], ["eBird", D.asof.ebird], ["GBIF", D.asof.gbif], [RG.corp.osm ? null : `${CORP} rest houses`, D.asof.corp], ["GI registry", D.asof.gi]].filter(([k, d]) => k && d).map(([k, d]) => `${k} ${fmtDay(d)}`).join("; ")}${D.asof.utdb ? `; visitor counts to ${D.asof.utdb}` : ""}. Each source is fetched again when its copy is a month old (two months for roads, protected areas and rest houses; three for district outlines and the GI registry).</p>` : ""}`;
 }
 
 /* ---------------- boot ---------------- */
@@ -850,7 +870,7 @@ async function boot(){
   $("#outsideImg").src = D.images.outside;
   buildBase(); buildSites(); buildStays(); buildHotspots(); buildLabels();
   buildControls(); syncVisibility(); renderLegend(); applyView();
-  buildMethod(); buildLimits(); buildPlanner(); buildStayTable(); buildSiteTable(); buildBirds(); buildLand(); buildGI(); buildVisitors();
+  buildMethod(); buildChanges(); buildLimits(); buildPlanner(); buildStayTable(); buildSiteTable(); buildBirds(); buildLand(); buildGI(); buildVisitors();
   if (stops.length) requestAnimationFrame(() => fitTo(stops.map(s => [s.x, s.y])));
   try { demPix = pixels(await loadImg(D.images.dem)); } catch(e) {}
 }

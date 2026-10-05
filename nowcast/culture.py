@@ -50,6 +50,7 @@ class Corp:
     # When the corporation's own site can't be read, its rest houses are the
     # OSM lodgings whose name or operator matches this (none are fetched).
     osm_match: re.Pattern | None = None
+    cache_glob: str = ""      # its fetched pages under cache/, for the page's as-of date
 
 
 @dataclass(frozen=True)
@@ -192,11 +193,13 @@ EBIRD = "https://api.ebird.org/v2"
 
 
 def _ebird_key():
+    """EBIRD_API_KEY, else .secrets/ebird_key in the repo (gitignored) or
+    beside it."""
     k = os.environ.get("EBIRD_API_KEY")
-    if not k:
-        p = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                         ".secrets", "ebird_key")
-        if os.path.exists(p):
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for d in (repo, os.path.dirname(repo)):
+        p = os.path.join(d, ".secrets", "ebird_key")
+        if not k and os.path.exists(p):
             k = open(p, encoding="utf-8").read().strip()
     return k
 
@@ -209,7 +212,8 @@ def _ebird(path, key, params=None, max_age=MONTHLY):
     token = _ebird_key()
     try:
         if not token:
-            raise RuntimeError("no eBird API key (set EBIRD_API_KEY)")
+            raise RuntimeError("no eBird API key: export EBIRD_API_KEY (a shell variable set without export "
+                               "isn't passed to Python) or put it in .secrets/ebird_key")
         r = requests.get(f"{EBIRD}/{path}", params=params or {}, headers={"X-eBirdApiToken": token}, timeout=120)
         r.raise_for_status()
     except (RuntimeError, requests.RequestException) as e:
@@ -981,7 +985,63 @@ def _encode_roads(edges, node_ids, frame, eps=0.0005):
     return flat_e, geom, off
 
 
-def build(R, out_path, template_path, log=print):
+def _asof(*patterns):
+    """When the oldest of these cached files was fetched (ISO date): what
+    the page reflects at worst. None if none are cached."""
+    import glob
+    times = [os.path.getmtime(f) for p in patterns for f in glob.glob(os.path.join(CACHE, p))]
+    return time.strftime("%Y-%m-%d", time.localtime(min(times))) if times else None
+
+
+def _sources_asof(R, KF, vis):
+    osm = _asof(R.ckey("osm_poi.json"), R.ckey("osm_places.json"))
+    return {
+        "osm": osm,
+        "roads": _asof(R.ckey("osm_roads.json"), R.ckey("osm_protected.json"), R.ckey("osm_districts.json")),
+        "wikidata": _asof(R.ckey("wikidata.json")),
+        "ebird": _asof(*(f"culture/ebird/{k}_{code}.json" for code in R.ebird for k in ("spplist", "hotspots"))),
+        "gbif": _asof(f"culture/gbif/aves_{KF.z - 2}_*.png"),
+        "corp": osm if R.corp.osm_match else _asof(R.corp.cache_glob),
+        "gi": _asof(*(f"culture/gi/{a}.html" for a in GI_APPS)),
+        "utdb": max((y for v in vis for y in v["years"]), default=None),
+    }
+
+
+def _changes(prev, data, limit=4):
+    """What's new or gone since the previous build, for the page's strip.
+    Sites and stays are matched by OSM id (or Wikidata id, or rest-house
+    page), so a renamed place isn't counted as one gone and one new."""
+    if not prev:
+        return None
+
+    def diff(old, new, key, score=None):
+        o = {key(r): r for r in old}
+        n = {key(r): r for r in new}
+        add = sorted((n[k] for k in n.keys() - o.keys()), key=score or (lambda r: 0), reverse=True)
+        gone = sorted((o[k] for k in o.keys() - n.keys()), key=score or (lambda r: 0), reverse=True)
+        return add, gone
+
+    out = {"since": prev.get("generated")}
+    add, gone = diff(prev["sites"], data["sites"], lambda s: s.get("o") or s.get("q") or s["n"], lambda s: s.get("s") or 0)
+    out["sites"] = {"added": len(add), "removed": len(gone), "names": [s["n"] for s in add if s["k"] != "peak"][:limit]}
+    add, gone = diff(prev["stays"], data["stays"], lambda s: s.get("osm") or s.get("url") or s["name"])
+    out["stays"] = {"added": len(add), "removed": len(gone),
+                    "names": [f"{s['name']} at {s['locality']}" for s in add if s.get("corp")][:limit]}
+    pb, nb = prev.get("birds", {}), data["birds"]
+    add, _ = diff(pb.get("hotspots", []), nb["hotspots"], lambda h: h["id"], lambda h: h["species"])
+    out["birds"] = {"hotspots": len(add), "names": [h["name"] for h in add][:limit],
+                    "species": nb["species_total"] - pb.get("species_total", nb["species_total"])}
+    old_gi = {g["app"]: g["status"] for g in prev.get("gi", [])}
+    out["gi"] = [g["name"] for g in data["gi"] if g["status"] == "Registered" and old_gi.get(g["app"]) != "Registered"]
+    old_pa = {p["name"] for p in prev.get("protected", [])}
+    out["protected"] = [p["name"] for p in data["protected"] if p["name"] not in old_pa]
+    old_years = {y for v in prev.get("visitors", []) for y in v["years"]}
+    out["visitor_years"] = sorted({y for v in data["visitors"] for y in v["years"]} - old_years)
+    return out
+
+
+def build(R, out_path, template_path, log=print, prev=None):
+    """prev: the previous build's data, to list what changed since."""
     import cv2
     import networkx as nx
     from scipy.spatial import cKDTree
@@ -1173,7 +1233,9 @@ def build(R, out_path, template_path, log=print):
         "destinations": [{k: d[k] for k in ("name", "x", "y", "node", "snap_km", "kind", "district", "via") if k in d}
                          for d in destinations],
         "circuits": circuits,
+        "asof": _sources_asof(R, KF, vis),
     }
+    data["changes"] = _changes(prev and _upgrade(prev, R), data)
     size = render(data, out_path, template_path)
     last = os.path.join(CACHE, R.ckey("culture_last.json"))
     os.makedirs(os.path.dirname(last), exist_ok=True)
@@ -1241,7 +1303,7 @@ def _kumaon_towns():
 KMVN = Corp(
     abbr="KMVN", name="Kumaon Mandal Vikas Nigam", site="kmvn.in", fetch=kmvn_houses,
     url=lambda slug: f"https://kmvn.in/hotels/{slug}",
-    place=KMVN_PLACE, fallback=KMVN_FALLBACK, district=KMVN_DISTRICT)
+    place=KMVN_PLACE, fallback=KMVN_FALLBACK, district=KMVN_DISTRICT, cache_glob="culture/kmvn/*.html")
 
 KUMAON = Region(
     id="kumaon", name="Kumaon", box=(78.6, 28.6, 81.2, 30.7),  # the Kumaon nowcast frame
@@ -1371,7 +1433,14 @@ if __name__ == "__main__":
             n = render(_upgrade(data, R), out_path(R), TEMPLATE)
             print(f"wrote {out_path(R)} ({n / 1e6:.1f} MB)")
         else:
-            print(build(R, out_path(R), TEMPLATE))
+            # The previous build: what's published (the workflow), else the last local build.
+            prev = None
+            for p in ([os.path.join(args.publish, R.id, "culture", "data.json")] if args.publish else []) + \
+                     [os.path.join(CACHE, R.ckey("culture_last.json"))]:
+                if os.path.exists(p):
+                    prev = json.load(open(p, encoding="utf-8"))
+                    break
+            print(build(R, out_path(R), TEMPLATE, prev=prev))
         if args.publish:
             import shutil
             dst = os.path.join(args.publish, R.id, "culture")
