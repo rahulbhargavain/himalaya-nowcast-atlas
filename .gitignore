@@ -6,3 +6,5 @@ snapshot/
 archive/
 culture-pages/
 published/
+pit.sqlite
+.venv*/

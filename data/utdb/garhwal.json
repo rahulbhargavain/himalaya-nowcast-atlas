@@ -1,0 +1,591 @@
+[
+ {
+  "name": "Haridwar",
+  "district": "Haridwar",
+  "years": {
+   "2021": {
+    "total": 12718441,
+    "foreign": 616
+   },
+   "2022": {
+    "total": 34259407,
+    "foreign": 6607
+   },
+   "2023": {
+    "total": 37071502,
+    "foreign": 20657
+   },
+   "2024": {
+    "total": 34936724,
+    "foreign": 24204
+   },
+   "2025": {
+    "total": 34249380,
+    "foreign": 24480
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Dehradun",
+  "district": "Dehradun",
+  "years": {
+   "2021": {
+    "total": 2867782,
+    "foreign": 1675
+   },
+   "2022": {
+    "total": 5829659,
+    "foreign": 13447
+   },
+   "2023": {
+    "total": 6139686,
+    "foreign": 26262
+   },
+   "2024": {
+    "total": 6492040,
+    "foreign": 30457
+   },
+   "2025": {
+    "total": 6735071,
+    "foreign": 31529
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Tehri",
+  "district": "Tehri Garhwal",
+  "years": {
+   "2021": {
+    "total": 492812,
+    "foreign": 2300
+   },
+   "2022": {
+    "total": 2746312,
+    "foreign": 22709
+   },
+   "2023": {
+    "total": 3761147,
+    "foreign": 47177
+   },
+   "2024": {
+    "total": 5066808,
+    "foreign": 58855
+   },
+   "2025": {
+    "total": 5329759,
+    "foreign": 61274
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Mussoorie",
+  "district": "Dehradun",
+  "years": {
+   "2021": {
+    "total": 1229808,
+    "foreign": 280
+   },
+   "2022": {
+    "total": 1173061,
+    "foreign": 1275
+   },
+   "2023": {
+    "total": 1471913,
+    "foreign": 2250
+   },
+   "2024": {
+    "total": 2134626,
+    "foreign": 3083
+   },
+   "2025": {
+    "total": 1594221,
+    "foreign": 4134
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Kedarnath",
+  "district": "Rudraprayag",
+  "years": {
+   "2021": {
+    "total": 243012,
+    "foreign": 27
+   },
+   "2022": {
+    "total": 1564248,
+    "foreign": 968
+   },
+   "2023": {
+    "total": 1958863,
+    "foreign": 1254
+   },
+   "2024": {
+    "total": 1653581,
+    "foreign": 1505
+   },
+   "2025": {
+    "total": 1770274,
+    "foreign": 1529
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Badrinath",
+  "district": "Chamoli",
+  "years": {
+   "2021": {
+    "total": 199409,
+    "foreign": 3
+   },
+   "2022": {
+    "total": 1763578,
+    "foreign": 194
+   },
+   "2023": {
+    "total": 1780429,
+    "foreign": 499
+   },
+   "2024": {
+    "total": 1774264,
+    "foreign": 1693
+   },
+   "2025": {
+    "total": 1778298,
+    "foreign": 1790
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Rishikesh",
+  "district": "Dehradun",
+  "years": {
+   "2021": {
+    "total": 292806,
+    "foreign": 1576
+   },
+   "2022": {
+    "total": 758081,
+    "foreign": 1817
+   },
+   "2023": {
+    "total": 1042884,
+    "foreign": 3993
+   },
+   "2024": {
+    "total": 968893,
+    "foreign": 4857
+   },
+   "2025": {
+    "total": 1033325,
+    "foreign": 5273
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Srinagar",
+  "district": "Pauri Garhwal",
+  "years": {
+   "2021": {
+    "total": 209555,
+    "foreign": 0
+   },
+   "2022": {
+    "total": 456424,
+    "foreign": 56
+   },
+   "2023": {
+    "total": 599709,
+    "foreign": 111
+   },
+   "2024": {
+    "total": 633042,
+    "foreign": 111
+   },
+   "2025": {
+    "total": 844561,
+    "foreign": 106
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Gangotri",
+  "district": "Uttarkashi",
+  "years": {
+   "2021": {
+    "total": 33771,
+    "foreign": 0
+   },
+   "2022": {
+    "total": 781961,
+    "foreign": 58
+   },
+   "2023": {
+    "total": 712749,
+    "foreign": 0
+   },
+   "2024": {
+    "total": 540190,
+    "foreign": 0
+   },
+   "2025": {
+    "total": 758249,
+    "foreign": 0
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Joshimath, Govindghat and Ghangaria",
+  "district": "Chamoli",
+  "years": {
+   "2021": {
+    "total": 167381,
+    "foreign": 12
+   },
+   "2022": {
+    "total": 704129,
+    "foreign": 118
+   },
+   "2023": {
+    "total": 515373,
+    "foreign": 1033
+   },
+   "2024": {
+    "total": 155425,
+    "foreign": 725
+   },
+   "2025": {
+    "total": 157313,
+    "foreign": 580
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Yamunotri",
+  "district": "Uttarkashi",
+  "years": {
+   "2021": {
+    "total": 33311,
+    "foreign": 0
+   },
+   "2022": {
+    "total": 621538,
+    "foreign": 34
+   },
+   "2023": {
+    "total": 560918,
+    "foreign": 0
+   },
+   "2024": {
+    "total": 515067,
+    "foreign": 0
+   },
+   "2025": {
+    "total": 644637,
+    "foreign": 0
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Rudraprayag (without Kedarnath)",
+  "district": "Rudraprayag",
+  "years": {
+   "2021": {
+    "total": 46515,
+    "foreign": 36
+   },
+   "2022": {
+    "total": 343553,
+    "foreign": 130
+   },
+   "2023": {
+    "total": 401969,
+    "foreign": 351
+   },
+   "2024": {
+    "total": 491488,
+    "foreign": 361
+   },
+   "2025": {
+    "total": 531231,
+    "foreign": 608
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Kotdwar, Swargashram and Chilla",
+  "district": "Pauri Garhwal",
+  "years": {
+   "2021": {
+    "total": 109000,
+    "foreign": 638
+   },
+   "2022": {
+    "total": 275352,
+    "foreign": 4445
+   },
+   "2023": {
+    "total": 363973,
+    "foreign": 21817
+   },
+   "2024": {
+    "total": 416768,
+    "foreign": 21149
+   },
+   "2025": {
+    "total": 491897,
+    "foreign": 14671
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Auli",
+  "district": "Chamoli",
+  "years": {
+   "2021": {
+    "total": 127488,
+    "foreign": 1
+   },
+   "2022": {
+    "total": 412752,
+    "foreign": 78
+   },
+   "2023": {
+    "total": 181681,
+    "foreign": 328
+   },
+   "2024": {
+    "total": 142227,
+    "foreign": 553
+   },
+   "2025": {
+    "total": 147277,
+    "foreign": 880
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Uttarkashi, Harsil and Gangnani",
+  "district": "Uttarkashi",
+  "years": {
+   "2021": {
+    "total": 80733,
+    "foreign": 140
+   },
+   "2022": {
+    "total": 153989,
+    "foreign": 980
+   },
+   "2023": {
+    "total": 363439,
+    "foreign": 1333
+   },
+   "2024": {
+    "total": 294590,
+    "foreign": 1103
+   },
+   "2025": {
+    "total": 374346,
+    "foreign": 1351
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Hemkund Sahib",
+  "district": "Chamoli",
+  "years": {
+   "2021": {
+    "total": 19909,
+    "foreign": 0
+   },
+   "2022": {
+    "total": 190284,
+    "foreign": 86
+   },
+   "2023": {
+    "total": 164546,
+    "foreign": 45
+   },
+   "2024": {
+    "total": 185972,
+    "foreign": 175
+   },
+   "2025": {
+    "total": 187974,
+    "foreign": 240
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Gopeshwar, Nandprayag and Tharali",
+  "district": "Chamoli",
+  "years": {
+   "2021": {
+    "total": 10216,
+    "foreign": 53
+   },
+   "2022": {
+    "total": 122050,
+    "foreign": 65
+   },
+   "2023": {
+    "total": 176139,
+    "foreign": 2306
+   },
+   "2024": {
+    "total": 174460,
+    "foreign": 192
+   },
+   "2025": {
+    "total": 181666,
+    "foreign": 201
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Valley of Flowers",
+  "district": "Chamoli",
+  "years": {
+   "2021": {
+    "total": 10398,
+    "foreign": 15
+   },
+   "2022": {
+    "total": 20830,
+    "foreign": 280
+   },
+   "2023": {
+    "total": 13232,
+    "foreign": 401
+   },
+   "2024": {
+    "total": 19436,
+    "foreign": 330
+   },
+   "2025": {
+    "total": 20893,
+    "foreign": 461
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ },
+ {
+  "name": "Pauri",
+  "district": "Pauri Garhwal",
+  "years": {
+   "2021": {
+    "total": 7350,
+    "foreign": 0
+   },
+   "2022": {
+    "total": 12468,
+    "foreign": 25
+   },
+   "2023": {
+    "total": 13764,
+    "foreign": 29
+   },
+   "2024": {
+    "total": 16089,
+    "foreign": 15
+   },
+   "2025": {
+    "total": 14710,
+    "foreign": 13
+   }
+  },
+  "refs": [
+   "https://uttarakhandtourism.gov.in/assets/pdf/Statistic21-23.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1743665047Yearly_Report_Statistics_2024.pdf",
+   "https://uttarakhandtourism.gov.in/assets/media/UTDB_media_1785820386Uttarakhand_Tourist_Footfall-2025.pdf"
+  ]
+ }
+]
