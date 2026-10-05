@@ -245,7 +245,7 @@ tr[tabindex]:hover td{background:var(--chip)}
     <section class="card">
       <h2>Visitors by destination</h2>
       <div id="visitors"></div>
-      <p class="note">Yearly visitor counts published by the Uttarakhand Tourism Development Board, 2021–2025. 2021 was a Covid year. Counts are the board's own, from hotel and site registers; they aren't comparable to census-style surveys.</p>
+      <p class="note">Yearly visitor counts published by the Uttarakhand Tourism Development Board, 2021–2025. 2021 was a Covid year. Each row's bars are scaled to its own busiest year, to show its trend; compare places by the numbers. Counts are the board's own, from hotel and site registers; they aren't comparable to census-style surveys.</p>
     </section>
 
     <section class="card">
@@ -815,8 +815,10 @@ function buildGI(){
 }
 function buildVisitors(){
   const V = D.visitors, years = ["2021","2022","2023","2024","2025"];
-  const max = Math.max(...V.flatMap(v => years.map(y => (v.years[y] || {}).total || 0)));
+  // Each row is scaled to its own busiest year, so the bars show a place's
+  // trend: on one scale Haridwar's 34 million flattens every other row.
   $("#visitors").innerHTML = V.map(v => {
+    const max = Math.max(...years.map(y => (v.years[y] || {}).total || 0));
     const bw = 100 / years.length;
     const bars = years.map((y, j) => { const t = (v.years[y] || {}).total; if (!t) return ""; const h = Math.max(1, t / max * 28); return `<rect x="${j * bw + 1}" y="${30 - h}" width="${bw - 2}" height="${h}" fill="${j === years.length - 1 ? "var(--glacier)" : "var(--rule)"}"><title>${y}: ${num(t)}</title></rect>`; }).join("");
     const last = (v.years["2025"] || {}).total, prev = (v.years["2024"] || {}).total;
@@ -830,7 +832,7 @@ function buildLimits(){
     <li><b>Road conditions.</b> OpenStreetMap shows which roads exist, not whether they're open, paved or under repair. Monsoon landslides and winter snow (above about 2,000 m) close roads; check with the district administration or your host.</li>
     <li><b>Drive times.</b> Estimated from road class and terrain, not traffic. They are for planning a day, not to the minute.</li>
     <li><b>Small temples and village sites.</b> OpenStreetMap is uneven in the hills: a village with a well-known temple may have no mapped site at all.</li>
-    <li><b>Treks.</b> Glaciers and passes (Pindari, Milam, Kafni, Traill's) are shown with how far the road ends from them. They need permits, guides and acclimatisation, which this page doesn't cover.</li>
+    <li><b>Treks.</b> Glaciers, lakes and passes (${esc(RG.treks)}) are shown with how far the road ends from them. They need permits, guides and acclimatisation, which this page doesn't cover.</li>
   </ul>`;
 }
 function buildMethod(){

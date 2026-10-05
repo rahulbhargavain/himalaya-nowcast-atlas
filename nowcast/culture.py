@@ -68,6 +68,7 @@ class Region:
     circuits: list            # (title, blurb, [overnight bases])
     shade_alt: str            # alt text for the relief image
     gi_note: str              # HTML: crafts registered state-wide but practised here
+    treks: str                # a few treks on the map, for the page's limits note
     pa_skip: frozenset = frozenset()       # protected areas across the state line
     wd_bad_coords: frozenset = frozenset()  # Wikidata items placed well off
     cache_dir: str = ""       # under cache/culture/ (Kumaon's predates regions: "")
@@ -851,7 +852,9 @@ def stays(R, loc, places, road_tree, road_cls, houses):
 # Visitors (UTDB), from the local Uttarakhand point-in-time database
 # --------------------------------------------------------------------------
 
-PIT = os.environ.get("UTTARAKHAND_PIT", r"E:\weather\uttarakhand-atlas\pit.sqlite")
+# Built by python -m nowcast.utdb from UTDB's published reports.
+PIT = os.environ.get("UTTARAKHAND_PIT", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                     "pit.sqlite"))
 
 
 def visitors(R):
@@ -1185,7 +1188,7 @@ def _region_info(R):
     """What the page needs to know about its region."""
     return {"id": R.id, "name": R.name, "districts": list(R.districts),
             "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site, "osm": bool(R.corp.osm_match)},
-            "shade_alt": R.shade_alt, "gi_note": R.gi_note, "store": R.store, "nowcast": R.nowcast,
+            "shade_alt": R.shade_alt, "gi_note": R.gi_note, "treks": R.treks, "store": R.store, "nowcast": R.nowcast,
             "back": [list(b) for b in R.back]}
 
 
@@ -1256,6 +1259,7 @@ KUMAON = Region(
     circuits=KUMAON_CIRCUITS,
     shade_alt="Shaded relief of Kumaon, from the terai plains to the Panchachuli and Nanda Kot",
     gi_note="many (Aipan, Tamta copperware, Bhotia dann and thulma, Ringal) are crafts long practised in Kumaon",
+    treks="Pindari, Milam, Kafni, Traill's",
     # Pilibhit Tiger Reserve is in Uttar Pradesh; its OSM outline overlaps
     # Udham Singh Nagar's along the state border.
     pa_skip=frozenset({"Pilibhit Tiger Reserve"}),
@@ -1314,21 +1318,28 @@ GARHWAL = Region(
     towns=lambda: GARHWAL_TOWNS, corp=GMVN,
     gi_words=re.compile(r"garhwal|uttarkashi|chamoli|rudraprayag|tehri|pauri|dehradun|haridwar|mussoorie|"
                         r"rishikesh|jaunsar|chakrata|purola|harsil|joshimath|badrinath|kedarnath|gangotri", re.I),
-    # Entity names follow the Kumaon ones' pattern (UTDB's own spellings,
-    # lower-cased); build() logs any that pit.sqlite doesn't have.
-    utdb={"dehradun": ("Dehradun", "Dehradun"), "mussoorie": ("Mussoorie", "Dehradun"),
-          "rishikesh": ("Rishikesh", "Dehradun"), "haridwar": ("Haridwar", "Haridwar"),
-          "badrinath": ("Badrinath", "Chamoli"), "kedarnath": ("Kedarnath", "Rudraprayag"),
-          "gangotri": ("Gangotri", "Uttarkashi"), "yamunotri": ("Yamunotri", "Uttarkashi"),
-          "hemkund_sahib": ("Hemkund Sahib", "Chamoli"), "auli": ("Auli", "Chamoli"),
-          "tehri": ("Tehri", "Tehri Garhwal"), "lansdowne": ("Lansdowne", "Pauri Garhwal"),
-          "pauri": ("Pauri", "Pauri Garhwal"), "uttarkashi": ("Uttarkashi", "Uttarkashi"),
-          "chamoli": ("Chamoli", "Chamoli"), "rudraprayag": ("Rudraprayag", "Rudraprayag")},
+    # UTDB's 19 Garhwal destinations (python -m nowcast.utdb). Some are wider
+    # than the name: Tehri is the district from 2025, Kotdwar includes
+    # Swargashram and Chilla, Rudraprayag excludes Kedarnath.
+    utdb={"dehradun": ("Dehradun", "Dehradun"), "rishikesh": ("Rishikesh", "Dehradun"),
+          "mussoorie": ("Mussoorie", "Dehradun"), "haridwar": ("Haridwar", "Haridwar"),
+          "pauri": ("Pauri", "Pauri Garhwal"), "srinagar": ("Srinagar", "Pauri Garhwal"),
+          "kotdwar": ("Kotdwar, Swargashram and Chilla", "Pauri Garhwal"),
+          "rudraprayag": ("Rudraprayag (without Kedarnath)", "Rudraprayag"),
+          "kedarnath": ("Kedarnath", "Rudraprayag"),
+          "gopeshwar": ("Gopeshwar, Nandprayag and Tharali", "Chamoli"),
+          "joshimath": ("Joshimath, Govindghat and Ghangaria", "Chamoli"),
+          "badrinath": ("Badrinath", "Chamoli"), "auli": ("Auli", "Chamoli"),
+          "hemkund_sahib": ("Hemkund Sahib", "Chamoli"), "valley_of_flowers": ("Valley of Flowers", "Chamoli"),
+          "tehri": ("Tehri", "Tehri Garhwal"),
+          "uttarkashi": ("Uttarkashi, Harsil and Gangnani", "Uttarkashi"),
+          "gangotri": ("Gangotri", "Uttarkashi"), "yamunotri": ("Yamunotri", "Uttarkashi")},
     circuits=GARHWAL_CIRCUITS,
     shade_alt="Shaded relief of Garhwal, from the Doon valley and the Haridwar plains to Bandarpunch, "
               "the Gangotri peaks and Nanda Devi",
     gi_note="many (Ringal craft, Bichhu Buti nettle fabric, Thulma and Bhotia dann; Jhangora, Mandua and "
             "Purola's Lal Chawal) are long part of Garhwal's crafts and hill farming",
+    treks="Gomukh, Kedartal, Satopanth, Roopkund",
     # Hastinapur sanctuary is in Uttar Pradesh; its OSM outline overlaps
     # Haridwar's along the state border.
     pa_skip=frozenset({"Hastinapur WLS"}),

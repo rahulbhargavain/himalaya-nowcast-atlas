@@ -55,7 +55,7 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/imd_nowcast.py` | IMD's district and station nowcasts and 5-day district warnings, via IMD's public GeoServer WFS |
 | `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and the Mukteshwar radar image, decoded to dBZ |
 | `nowcast/kumaon.py` + `kumaon_template.html` | The Kumaon page (`python -m nowcast.kumaon` re-renders it from the last build's data) |
-| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon; Garhwal in progress), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
+| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon and Garhwal), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 | `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2, CO and UV Aerosol Index via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
@@ -101,7 +101,7 @@ python -m nowcast.culture --region kumaon,garhwal  # a comma-separated list of r
 
 Each region is a `Region` in `nowcast/culture.py` (`REGIONS` at the end of the file): its box, districts, eBird district codes, the state tourism corporation whose rest houses it lists, GI place words, UTDB destinations and suggested circuits. Region-specific fetches are cached under `cache/culture/<region>/` (Kumaon's, which predate regions, directly under `cache/culture/`); delete a file there to refresh it early.
 
-A local build needs an eBird API key (free, from https://ebird.org/api/keygen) in the `EBIRD_API_KEY` environment variable or in `../.secrets/ebird_key` (outside the repo; never commit it). UTDB visitor counts come from the local Uttarakhand point-in-time database when it's present, which rewrites `data/utdb/<region>.json`; commit those after the board's yearly release, since the workflow reads them from there. `python -m nowcast.culture --render [--region …]` re-renders from the last build's data after template changes.
+A local build needs an eBird API key (free, from https://ebird.org/api/keygen) in the `EBIRD_API_KEY` environment variable or in `../.secrets/ebird_key` (outside the repo; never commit it). UTDB visitor counts come from `pit.sqlite` in the project root when it's present (or wherever `UTTARAKHAND_PIT` points), which rewrites `data/utdb/<region>.json`; the workflow reads them from there. `python -m nowcast.utdb` builds `pit.sqlite` from the board's published PDFs, checking every row and column against each report's totals. When the board releases a new year's report, add it to `REPORTS` in `nowcast/utdb.py`, rebuild `pit.sqlite`, run a local build and commit the `data/utdb/` files. `python -m nowcast.culture --render [--region …]` re-renders from the last build's data after template changes.
 
 ## Data sources and credits
 
@@ -129,7 +129,7 @@ For the Kumaon cultural atlas:
 - **[GBIF](https://www.gbif.org/)** — bird occurrence density maps.
 - **[ESA WorldCover 2021](https://esa-worldcover.org/)** (CC BY 4.0) — tree cover and land cover by district.
 - **[GI Registry, Intellectual Property India](https://search.ipindia.gov.in/GIRPublicSearch/)** — geographical indications, application-level fields only (the registry's lists of authorised users' names and addresses are never kept).
-- **[Uttarakhand Tourism Development Board](https://uttarakhandtourism.gov.in/)** — yearly visitor statistics.
+- **[Uttarakhand Tourism Development Board](https://uttarakhandtourism.gov.in/)** — yearly visitor statistics (its published reports for 2021–23, 2024 and 2025).
 
 ICIMOD's Bhutan pastoral migration survey points include household names and ID numbers, so the atlas uses only the grazing-area maps from that service.
 
