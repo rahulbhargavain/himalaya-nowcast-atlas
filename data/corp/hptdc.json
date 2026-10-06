@@ -1,0 +1,772 @@
+[
+ {
+  "slug": "3",
+  "name": "The Log Huts",
+  "town": "Manali",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Manali"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "4",
+  "name": "The Orchard Huts",
+  "town": "Manali",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Manali"
+  ],
+  "restaurant": false,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "5",
+  "name": "The Hamta Huts",
+  "town": "Manali",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Manali"
+  ],
+  "restaurant": false,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "7",
+  "name": "Hotel Golf Glade",
+  "town": "Naldehra",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Naldehra"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "8",
+  "name": "Hotel Gaurikund",
+  "town": "Bharmour",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Bharmour"
+  ],
+  "restaurant": true,
+  "drive_in": false,
+  "season": null
+ },
+ {
+  "slug": "9",
+  "name": "Sun & Snow Cottage",
+  "town": "Kalpa",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kalpa"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "10",
+  "name": "Hotel Spiti",
+  "town": "Kaza",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kaza"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": "Open from May to October"
+ },
+ {
+  "slug": "11",
+  "name": "Hotel Chanderbhaga",
+  "town": "Keylong",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Keylong"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": "Open June to October"
+ },
+ {
+  "slug": "13",
+  "name": "The Palace",
+  "town": "Chail",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Chail"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "14",
+  "name": "Hotel Peterhof",
+  "town": "Shimla",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Shimla"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "15",
+  "name": "Hotel Apple Blossom",
+  "town": "Fagu",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Fagu"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "16",
+  "name": "The Pinewood",
+  "town": "Barog",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Barog"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "17",
+  "name": "Hotel Meghdoot",
+  "town": "Kiari Ghat",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kiari Ghat"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "18",
+  "name": "The Hatu",
+  "town": "Narkanda",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Narkanda"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "19",
+  "name": "The Tea Bud",
+  "town": "Palampur",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Palampur"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "20",
+  "name": "Hotel Iravati",
+  "town": "Chamba",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Chamba"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "21",
+  "name": "Hotel Devdar",
+  "town": "Khajjiar",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Khajjiar"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "23",
+  "name": "Hotel Holiday Home",
+  "town": "Shimla",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Shimla"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "25",
+  "name": "Hotel Bhagsu",
+  "town": "Mcleodganj",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Mcleodganj"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "27",
+  "name": "The Club House",
+  "town": "Mcleodganj",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Mcleodganj"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "28",
+  "name": "Hotel Renuka",
+  "town": "Renuka Ji",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Renuka Ji"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "29",
+  "name": "Hotel Srikhand",
+  "town": "Sarahan",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Sarahan"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "30",
+  "name": "The Kinner Kailash",
+  "town": "Kalpa",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kalpa"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "44",
+  "name": "Hotel Lakeview",
+  "town": "Bilaspur",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Bilaspur"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "45",
+  "name": "Hotel New Ros Common",
+  "town": "Kasauli",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kasauli"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "46",
+  "name": "Yatri Niwas",
+  "town": "Chamunda Ji",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Chamunda Ji"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "47",
+  "name": "Hotel Mamleshwar",
+  "town": "Chindi",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Chindi"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "48",
+  "name": "Hotel Chintpurni Heights",
+  "town": "Bharwain",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Bharwain"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "49",
+  "name": "Hotel Jawalaji",
+  "town": "Jawalamukhi",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Jawalamukhi"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "50",
+  "name": "Hotel Geetanjali",
+  "town": "Dalhousie",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Dalhousie"
+  ],
+  "restaurant": true,
+  "drive_in": false,
+  "season": null
+ },
+ {
+  "slug": "51",
+  "name": "Hotel Manimahesh",
+  "town": "Dalhousie",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Dalhousie"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "52",
+  "name": "Hotel Baghal",
+  "town": "Darlaghat",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Darlaghat"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "53",
+  "name": "Hotel Dhauladhar",
+  "town": "Dharamshala",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Dharamshala"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "55",
+  "name": "Hotel Kunal",
+  "town": "Dharamshala",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Dharamshala"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "56",
+  "name": "Hotel Hamir",
+  "town": "Hamirpur",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Hamirpur"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "57",
+  "name": "Hotel Uhl",
+  "town": "Jogindernagar",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Jogindernagar"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "58",
+  "name": "Hotel Ros Common",
+  "town": "Kasauli",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kasauli"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "59",
+  "name": "Giriganga Resort",
+  "town": "Khara Pathar",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Khara Pathar"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "60",
+  "name": "Hotel Sarvari",
+  "town": "Kullu",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Kullu"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "62",
+  "name": "Hotel Kunzam",
+  "town": "Manali",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Manali"
+  ],
+  "restaurant": true,
+  "drive_in": false,
+  "season": null
+ },
+ {
+  "slug": "65",
+  "name": "Hotel Nupur",
+  "town": "Nurpur",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Nurpur"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "66",
+  "name": "Hotel Neugal",
+  "town": "Palampur",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Palampur"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "67",
+  "name": "Hotel Yamuna",
+  "town": "Paonta Sahib",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Paonta Sahib"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "68",
+  "name": "Hotel Shiwalik",
+  "town": "Parwanoo",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Parwanoo"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "69",
+  "name": "Camping Site",
+  "town": "Pong Dam",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Pong Dam"
+  ],
+  "restaurant": true,
+  "drive_in": false,
+  "season": null
+ },
+ {
+  "slug": "70",
+  "name": "Hotel Bushehr Regency",
+  "town": "Rampur",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Rampur"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "71",
+  "name": "Hotel Tourist Inn",
+  "town": "Rajgarh",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Rajgarh"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "72",
+  "name": "Hotel Tourist Inn",
+  "town": "Rewalsar",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Rewalsar"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "73",
+  "name": "Hotel Chanshal",
+  "town": "Rohru",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Rohru"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "74",
+  "name": "Hotel Willy's Park",
+  "town": "Shimla",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Shimla"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "75",
+  "name": "Hotel Suket",
+  "town": "Sundernagar",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Sundernagar"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "76",
+  "name": "Hotel Hilltop",
+  "town": "Swarghat",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Swarghat"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "77",
+  "name": "Hotel Champak",
+  "town": "Chamba",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Chamba"
+  ],
+  "restaurant": false,
+  "drive_in": false,
+  "season": null
+ },
+ {
+  "slug": "78",
+  "name": "Naldehra Cottages",
+  "town": "Naldehra",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Naldehra"
+  ],
+  "restaurant": true,
+  "drive_in": true,
+  "season": null
+ },
+ {
+  "slug": "79",
+  "name": "Himachal Bhawan",
+  "town": "Chandigarh",
+  "address": "",
+  "blurb": "",
+  "rooms": [],
+  "place_names": [
+   "Chandigarh"
+  ],
+  "restaurant": false,
+  "drive_in": false,
+  "season": null
+ }
+]

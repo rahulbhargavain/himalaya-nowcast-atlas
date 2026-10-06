@@ -182,8 +182,16 @@ def hptdc_hotels():
     allows them; fetched a second apart). Phone numbers and emails on the
     pages are not kept."""
     import html as htmllib
-    smap = get(f"{HPTDC_SITE}/sitemap.xml", timeout=60, cache_key="culture/hptdc/sitemap.xml", max_age=BIMONTHLY,
-               stale_ok=True).decode("utf-8", "ignore")
+    saved = os.path.join(HERE, "data", "corp", "hptdc.json")
+    try:
+        smap = get(f"{HPTDC_SITE}/sitemap.xml", timeout=60, cache_key="culture/hptdc/sitemap.xml",
+                   max_age=BIMONTHLY, stale_ok=True).decode("utf-8", "ignore")
+    except RuntimeError:
+        # The site doesn't resolve from outside India (GitHub's runners):
+        # use the list a local build last parsed and committed.
+        if os.path.exists(saved):
+            return json.load(open(saved, encoding="utf-8"))
+        raise
     ids = sorted({int(n) for n in re.findall(r"/hotel-detail/(\d+)", smap)})
     out = []
     for n in ids:
@@ -215,6 +223,10 @@ def hptdc_hotels():
                     "place_names": [town], "restaurant": bool(re.search(r"restaurant|dining|meals", fac, re.I)),
                     "drive_in": bool(re.search(r"drive[- ]in|parking", fac, re.I)),
                     "season": season[0].upper() + season[1:] if season else None})
+    if out:
+        os.makedirs(os.path.dirname(saved), exist_ok=True)
+        with open(saved, "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=1)
     return out
 
 
