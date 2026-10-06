@@ -14,7 +14,7 @@ on:
     inputs:
       regions:
         description: "Regions to rebuild (comma-separated)"
-        default: "kumaon,garhwal"
+        default: "kumaon,garhwal,himachal"
 
 permissions:
   contents: write   # to publish to the culture branch
@@ -62,7 +62,7 @@ jobs:
       - name: Build
         env:
           EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
-          REGIONS: ${{ inputs.regions || 'kumaon,garhwal' }}
+          REGIONS: ${{ inputs.regions || 'kumaon,garhwal,himachal' }}
         run: |
           rm -rf published/.git
           python -m nowcast.culture --region "$REGIONS" --publish published

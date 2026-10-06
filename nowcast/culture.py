@@ -51,6 +51,11 @@ class Corp:
     # OSM lodgings whose name or operator matches this (none are fetched).
     osm_match: re.Pattern | None = None
     cache_glob: str = ""      # its fetched pages under cache/, for the page's as-of date
+    kind: str = "tourist rest house"   # what it calls one of its lodgings
+    kinds: str = "rest houses"         # ... and several, for labels
+    meal_plans: bool = False  # its pages give EP/CP/MAP meal plans (KMVN)
+    town_alias: dict = dc_field(default_factory=dict)     # town on its pages -> OSM spellings
+    town_fallback: dict = dc_field(default_factory=dict)  # town -> approximate (lat, lon)
 
 
 @dataclass(frozen=True)
@@ -76,11 +81,21 @@ class Region:
     store: str = ""           # localStorage key prefix; the pages share an origin
     back: tuple = ()          # (href, label) links above the title
     nowcast: str = ""         # relative link to the region's weather nowcast, if any
+    state: str = "Uttarakhand"  # for the GI list and page wording
+    # Overpass area filter for the state (e.g. 'area["ISO3166-2"="IN-HP"]'):
+    # fetch only inside it, not the whole box, where the box takes in dense
+    # plains road networks across the state line.
+    osm_area: str = ""
+    visitors_note: str = ("Yearly visitor counts published by the Uttarakhand Tourism Development Board, "
+                          "2021–2025. 2021 was a Covid year. Counts are the board's own, from hotel and site "
+                          "registers; they aren't comparable to census-style surveys.")
+    visitors_fn: Callable | None = None  # the region's visitor source (default: UTDB via visitors())
+    z: int = 10               # zoom of the relief; 9 for a state-sized region
 
     @property
     def frame(self):
         w, s, e, n = self.box
-        return make_frame(w, e, s, n, z=10)
+        return make_frame(w, e, s, n, z=self.z)
 
     def ckey(self, name):
         """Cache key for a region-specific fetch."""
@@ -100,11 +115,17 @@ def _expired(key, max_age):
 
 
 def _overpass(R, q, key, max_age):
+    if R.osm_area:
+        # Every query starts "[out:json][timeout:N];": define the area after it.
+        head, rest = q.split(";", 1)
+        q = f"{head};{R.osm_area}->.region;{rest}"
     body = get(OVERPASS, params={"data": q}, timeout=400, cache_key=R.ckey(key), max_age=max_age, stale_ok=True)
     return json.loads(body)["elements"]
 
 
 def _bbox_ql(R):
+    if R.osm_area:
+        return "(area.region)"
     w, s, e, n = R.box
     return f"({s},{w},{n},{e})"
 
@@ -150,6 +171,51 @@ def _page_text(html):
     t = re.sub(r"<script.*?</script>|<style.*?</style>|<!--.*?-->", " ", html, flags=re.S)
     t = re.sub(r"<[^>]+>", "\n", t).replace("&nbsp;", " ").replace("&amp;", "&")
     return [ln.strip() for ln in t.splitlines() if ln.strip()]
+
+
+HPTDC_SITE = "https://hptdc.hp.gov.in"
+
+
+def hptdc_hotels():
+    """HPTDC's hotels: name, town, facilities and season, from
+    hptdc.hp.gov.in/hotel-detail/<n> (listed in its sitemap; robots.txt
+    allows them; fetched a second apart). Phone numbers and emails on the
+    pages are not kept."""
+    import html as htmllib
+    smap = get(f"{HPTDC_SITE}/sitemap.xml", timeout=60, cache_key="culture/hptdc/sitemap.xml", max_age=BIMONTHLY,
+               stale_ok=True).decode("utf-8", "ignore")
+    ids = sorted({int(n) for n in re.findall(r"/hotel-detail/(\d+)", smap)})
+    out = []
+    for n in ids:
+        key = f"culture/hptdc/{n}.html"
+        fresh = _expired(key, BIMONTHLY)
+        page = get(f"{HPTDC_SITE}/hotel-detail/{n}", timeout=60, cache_key=key, max_age=BIMONTHLY, stale_ok=True)
+        if fresh:
+            time.sleep(1.0)
+        if not page:
+            continue
+        lines = [re.sub(r"\s+", " ", htmllib.unescape(ln)).strip() for ln in _page_text(page.decode("utf-8", "ignore"))]
+        try:
+            g = lines.index("FullScreen Gallery")
+        except ValueError:
+            continue
+        # "Hotel Spiti, Kaza, Lahaul-Spiti": name, then town, then district.
+        parts = [p.strip() for p in lines[g + 1].split(",")]
+        if len(parts) < 2:
+            continue
+        name, town = parts[0], parts[1] if len(parts) > 2 else parts[-1]
+        try:
+            f0 = lines.index("Facilities") + 1
+            facilities = lines[f0:g]
+        except ValueError:
+            facilities = []
+        fac = " ".join(facilities)
+        season = next((m.group(0) for m in [re.search(r"open (?:from )?\w+ to \w+", fac, re.I)] if m), None)
+        out.append({"slug": str(n), "name": name, "town": town, "address": "", "blurb": "", "rooms": [],
+                    "place_names": [town], "restaurant": bool(re.search(r"restaurant|dining|meals", fac, re.I)),
+                    "drive_in": bool(re.search(r"drive[- ]in|parking", fac, re.I)),
+                    "season": season[0].upper() + season[1:] if season else None})
+    return out
 
 
 def kmvn_houses():
@@ -296,21 +362,27 @@ GIR = "https://search.ipindia.gov.in/GIRPublicSearch/"
 # Uttarakhand applications in the GI registry (application numbers), found by
 # searching its list for Uttarakhand products and places. Each is checked
 # against its registry page at build time (status, goods, area).
-GI_APPS = [415, 419, 520, 589, 648, 649, 650, 651, 652, 653, 654, 829, 832, 835, 841, 844, 852, 856, 860, 863,
+GI_APPS_UK = [415, 419, 520, 589, 648, 649, 650, 651, 652, 653, 654, 829, 832, 835, 841, 844, 852, 856, 860, 863,
            864, 866, 867, 873, 874, 905, 907, 919, 1082, 1188, 1189, 1206, 1390, 1703, 1704, 1705, 1706, 1850,
            2069, 2070, 2071]
+# Himachal Pradesh's, found the same way (Kullu and Kinnauri shawls, Kangra
+# tea and paintings, Chamba rumal, chappal and metal art, Lahauli socks,
+# Pangi thangi, Kinnauri apple and jewellery, and the 2023-24 batch).
+GI_APPS_HP = [19, 25, 79, 149, 381, 383, 412, 413, 416, 432, 468, 614, 647, 684, 862, 931, 985, 1029, 1074, 1075,
+              1103, 1418, 1419, 1513, 1514, 1520, 2172]
+GI_APPS = {"Uttarakhand": GI_APPS_UK, "Himachal Pradesh": GI_APPS_HP}
 GI_LABELS = {"application number", "geographical indications", "status", "applicant name", "applicant address",
              "date of filing", "class", "goods", "geographical area", "priority country", "journal number",
              "availability date", "certificate number", "certificate date", "registration valid upto"}
 
 
-def gi_products():
+def gi_products(state="Uttarakhand"):
     """Uttarakhand's GI applications, shared by every region (build() marks
     the ones named for a place in the region). Application-level fields
     only: the registry pages also list every authorised user's name and
     address; those are never kept."""
     out = []
-    for app in GI_APPS:
+    for app in GI_APPS[state]:
         key = f"culture/gi/{app}.html"
         fresh = _expired(key, QUARTERLY)
         html = get(f"{GIR}Application/Details/{app}", timeout=90, cache_key=key, max_age=QUARTERLY, stale_ok=True)
@@ -607,7 +679,8 @@ def sites(R, loc):
             continue
         tl = " | ".join(sorted(it["types"])).lower()
         for kind, pat in WD_KIND:
-            if re.search(pat, tl) and not re.search(r"bank|gas station|hotel|school|railway", tl):
+            if re.search(pat, tl) and not re.search(r"bank|gas station|hotel|school|railway|princely state|"
+                                                     r"historical country|former administrative", tl):
                 it["kind"] = kind
                 break
         if it["kind"] is None and re.search(r"\bmountain\b|\bhill\b|\bpeak\b", tl) and "hill station" not in tl:
@@ -799,7 +872,7 @@ def stays(R, loc, places, road_tree, road_cls, houses):
         if re.search(rf"\b{C.abbr}\b|tourist rest house|\btrh\b", name, re.I):
             rec["corp_osm"] = True
         if C.osm_match and C.osm_match.search(f"{name} {t.get('operator', '')}"):
-            rec.update({"corp": True, "type": f"{C.abbr} rest house", "placed": "OpenStreetMap"})
+            rec.update({"corp": True, "type": f"{C.abbr} {C.kind}", "placed": "OpenStreetMap"})
         rec.update(facts(lon, lat))
         out.append(rec)
     # One rest house is sometimes mapped twice (a hotel and a hostel node at
@@ -813,12 +886,12 @@ def stays(R, loc, places, road_tree, road_cls, houses):
 
     placed = []
     for h in houses:
-        names = C.place.get(h["slug"], [])
+        names = C.place.get(h["slug"]) or (C.town_alias.get(h.get("town"), []) + h.get("place_names", []))
         p = places.find(names, loc, C.district.get(h["slug"])) if names else None
         if p:
             lon, lat, how = p["lon"], p["lat"], f"at {p['name']} (village/town centre)"
-        elif h["slug"] in C.fallback:
-            lat, lon = C.fallback[h["slug"]]
+        elif h["slug"] in C.fallback or h.get("town") in C.town_fallback:
+            lat, lon = C.fallback.get(h["slug"]) or C.town_fallback[h["town"]]
             how = "approximate"
         else:
             continue
@@ -834,13 +907,19 @@ def stays(R, loc, places, road_tree, road_cls, houses):
             out.remove(best)
         district = loc.district(lon, lat) or min(loc.shapes, key=lambda k: loc.shapes[k].distance(
             __import__("shapely.geometry", fromlist=["Point"]).Point(lon, lat)))
-        rec = {"name": h["name"], "type": f"{C.abbr} tourist rest house", "lon": lon, "lat": lat,
+        rec = {"name": h["name"], "type": f"{C.abbr} {C.kind}", "lon": lon, "lat": lat,
                "district": district, "locality": places.locality(lon, lat)[0], "corp": True, "slug": h["slug"],
                "placed": how, "url": C.url(h["slug"]), "plan": _meal_plan(h["rooms"]),
                "room_types": len([r for r in h["rooms"] if not re.search(r"plan|\bEP\b|\bCP\b|\bMAP\b|C P", r, re.I)]),
                "meals": None, "stars": None, "rooms": None, "internet": False, "wheelchair": False}
         if rec["plan"] in ("CP", "MAP"):
             rec["meals"] = MEAL_PLANS[rec["plan"]]
+        elif h.get("restaurant"):
+            rec["meals"] = "restaurant on site"
+        if h.get("season"):
+            rec["season"] = h["season"]
+        if h.get("town"):
+            rec["town"] = h["town"]
         rec.update(facts(lon, lat))
         placed.append(rec)
     for r in out:
@@ -889,6 +968,86 @@ def visitors(R):
     with open(p, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=1)
     return res
+
+
+# --------------------------------------------------------------------------
+# Visitors (Himachal Pradesh Department of Tourism)
+# --------------------------------------------------------------------------
+
+HP_TOURISM_PDFS = [  # newest first; each holds several years' district tables
+    "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf",
+    "https://himachaltourism.gov.in/wp-content/uploads/2025/02/Tourist-Statistics.pdf",
+]
+HP_TOURISM_DISTRICTS = ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul and Spiti", "Mandi",
+                        "Shimla", "Sirmaur", "Solan", "Una"]  # the tables' column order
+
+
+def _hp_ca_bundle():
+    """himachaltourism.gov.in sends its certificate without the issuing
+    intermediate (Sectigo DV R36); browsers fetch it, Python doesn't. Verify
+    against the usual roots plus that public intermediate (certs/)."""
+    import certifi
+    p = os.path.join(CACHE, "ca_bundle_hp.pem")
+    if not os.path.exists(p):
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(open(certifi.where(), encoding="utf-8").read() + "\n" +
+                    open(os.path.join(HERE, "certs", "sectigo-dv-r36.pem"), encoding="utf-8").read())
+    return p
+
+
+def hp_visitors(R):
+    """Yearly Indian and foreign tourist arrivals per district, from the
+    Department of Tourism's published estimates. Each year's table has 12
+    monthly rows and a total row of (Indian, foreign) pairs for the 12
+    districts and the state; a year is kept only where the total row equals
+    the sum of the monthly rows and the districts sum to the state total."""
+    import subprocess
+    years = {}
+    for k, url in enumerate(HP_TOURISM_PDFS):
+        key = R.ckey(f"hptourism/{k}.pdf")
+        body = get(url, timeout=120, cache_key=key, max_age=QUARTERLY, stale_ok=True, verify=_hp_ca_bundle())
+        if not body:
+            continue
+        try:
+            txt = subprocess.run(["pdftotext", "-layout", os.path.join(CACHE, key), "-"], capture_output=True,
+                                 text=True, encoding="utf-8", errors="ignore").stdout
+        except FileNotFoundError:  # poppler's pdftotext isn't installed
+            continue
+        for sec in re.split(r"(?=ESTIMATE OF DOMESTIC AND FOREIGN TOURIST ARRIVAL FOR THE YEAR)", txt):
+            m = re.match(r"ESTIMATE OF DOMESTIC AND FOREIGN TOURIST ARRIVAL FOR THE YEAR (\d{4})", sec)
+            if not m or m.group(1) in years:
+                continue
+            yr = m.group(1)
+            rows = []
+            for ln in sec.splitlines():
+                nums = [int(x) for x in re.findall(r"\b\d+\b", ln)]
+                if len(nums) == 26:
+                    rows.append(("TOTAL" in ln, nums))
+            tot = next((n for is_t, n in rows if is_t), None)
+            months = [n for is_t, n in rows if not is_t]
+            if tot is None or len(months) != 12:
+                continue
+            if [sum(c) for c in zip(*months)] != tot:
+                continue
+            if sum(tot[0:24:2]) != tot[24] or sum(tot[1:24:2]) != tot[25]:
+                continue
+            years[yr] = {d: {"total": tot[2 * i] + tot[2 * i + 1], "foreign": tot[2 * i + 1]}
+                         for i, d in enumerate(HP_TOURISM_DISTRICTS)}
+            years[yr]["_source"] = url
+    saved = os.path.join(HERE, "data", "visitors", f"{R.id}.json")
+    if not years:  # no pdftotext, or the site is down: the last parsed copy
+        return json.load(open(saved, encoding="utf-8")) if os.path.exists(saved) else []
+    out = []
+    for d in HP_TOURISM_DISTRICTS:
+        ys = {y: v[d] for y, v in sorted(years.items())}
+        if ys:
+            out.append({"name": d, "district": d, "years": ys,
+                        "refs": sorted({years[y]["_source"] for y in ys})})
+    out = sorted(out, key=lambda r: -max(v["total"] for v in r["years"].values()))
+    os.makedirs(os.path.dirname(saved), exist_ok=True)
+    with open(saved, "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=1)
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -1002,7 +1161,7 @@ def _sources_asof(R, KF, vis):
         "ebird": _asof(*(f"culture/ebird/{k}_{code}.json" for code in R.ebird for k in ("spplist", "hotspots"))),
         "gbif": _asof(f"culture/gbif/aves_{KF.z - 2}_*.png"),
         "corp": osm if R.corp.osm_match else _asof(R.corp.cache_glob),
-        "gi": _asof(*(f"culture/gi/{a}.html" for a in GI_APPS)),
+        "gi": _asof(*(f"culture/gi/{a}.html" for a in GI_APPS[R.state])),
         "utdb": max((y for v in vis for y in v["years"]), default=None),
     }
 
@@ -1138,8 +1297,8 @@ def build(R, out_path, template_path, log=print, prev=None):
         protected.append({"name": name, "d": _svg_path(g, KF, 0.002), "km2": round(inter),
                           "kind": "National park" if t.get("boundary") == "national_park" or t.get("protect_class") == "2"
                           else "Wildlife sanctuary or reserve"})
-    gi = [dict(g, local=bool(R.gi_words.search(g["name"] + " " + g["area"]))) for g in gi_products()]
-    vis = visitors(R)
+    gi = [dict(g, local=bool(R.gi_words.search(g["name"] + " " + g["area"]))) for g in gi_products(R.state)]
+    vis = (R.visitors_fn or visitors)(R)
     if os.path.exists(PIT):
         missing = sorted(set(R.utdb) - {e for e, (n, _) in R.utdb.items() if n in {v["name"] for v in vis}})
         if missing:
@@ -1164,7 +1323,7 @@ def build(R, out_path, template_path, log=print, prev=None):
         add_dest(name, lon, lat, "town")
     for s in stay_list:
         if s["corp"]:
-            nm = R.corp.place[s["slug"]][0] if "slug" in s else s["locality"]
+            nm = (R.corp.place.get(s["slug"]) or [s.get("town") or s["locality"]])[0] if "slug" in s else s["locality"]
             add_dest(nm, s["lon"], s["lat"], "stay")
     for s in sorted(site_list, key=lambda s: -s["score"]):
         if s["kind"] != "peak" and s["score"] >= 6:
@@ -1196,7 +1355,7 @@ def build(R, out_path, template_path, log=print, prev=None):
         x, y = _grid(KF, s["lon"], s["lat"])
         r = {k: s.get(k) for k in ("name", "type", "district", "locality", "corp", "osm", "url", "plan", "meals",
                                    "stars", "rooms", "internet", "wheelchair", "food_1km", "road_km", "road_cls",
-                                   "checks", "placed", "room_types")}
+                                   "checks", "placed", "room_types", "season")}
         r.update({"x": x, "y": y, "lat": round(s["lat"], 4), "lon": round(s["lon"], 4)})
         return {k: v for k, v in r.items() if v is not None and v is not False}
 
@@ -1249,7 +1408,9 @@ def build(R, out_path, template_path, log=print, prev=None):
 def _region_info(R):
     """What the page needs to know about its region."""
     return {"id": R.id, "name": R.name, "districts": list(R.districts),
-            "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site, "osm": bool(R.corp.osm_match)},
+            "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site, "osm": bool(R.corp.osm_match),
+                     "kind": R.corp.kind, "kinds": R.corp.kinds, "meal_plans": R.corp.meal_plans},
+            "state": R.state, "visitors_note": R.visitors_note,
             "shade_alt": R.shade_alt, "gi_note": R.gi_note, "treks": R.treks, "store": R.store, "nowcast": R.nowcast,
             "back": [list(b) for b in R.back]}
 
@@ -1275,7 +1436,8 @@ def render(data, out_path, template_path):
     from html import escape
     G = data["region"]
     tpl = open(template_path, encoding="utf-8").read()
-    for k, v in {"REGION": escape(G["name"]), "CORP": escape(G["corp"]["abbr"]), "DISTRICTS": escape(_and(G["districts"])),
+    for k, v in {"REGION": escape(G["name"]), "CORP": escape(G["corp"]["abbr"]),
+                 "CORP_KINDS": escape(G["corp"].get("kinds", "rest houses")), "DISTRICTS": escape(_and(G["districts"])),
                  "SHADE_ALT": escape(G["shade_alt"]),
                  "BACK": "".join(f'<a href="{escape(h)}">← {escape(t)}</a>' for h, t in G["back"])}.items():
         tpl = tpl.replace("{{" + k + "}}", v)
@@ -1303,7 +1465,8 @@ def _kumaon_towns():
 KMVN = Corp(
     abbr="KMVN", name="Kumaon Mandal Vikas Nigam", site="kmvn.in", fetch=kmvn_houses,
     url=lambda slug: f"https://kmvn.in/hotels/{slug}",
-    place=KMVN_PLACE, fallback=KMVN_FALLBACK, district=KMVN_DISTRICT, cache_glob="culture/kmvn/*.html")
+    place=KMVN_PLACE, fallback=KMVN_FALLBACK, district=KMVN_DISTRICT, cache_glob="culture/kmvn/*.html",
+    meal_plans=True)
 
 KUMAON = Region(
     id="kumaon", name="Kumaon", box=(78.6, 28.6, 81.2, 30.7),  # the Kumaon nowcast frame
@@ -1397,7 +1560,64 @@ GARHWAL = Region(
     cache_dir="garhwal", store="gca:", back=(("../", "Garhwal nowcast"), ("../../", "Himalaya Nowcast Atlas")),
     nowcast="../")
 
-REGIONS = {R.id: R for R in (KUMAON, GARHWAL)}
+
+def _himachal_towns():
+    """Always-routable towns (the nowcast's list)."""
+    from .regional import HIMACHAL as nowcast_region
+    return nowcast_region.towns
+
+
+HIMACHAL_CIRCUITS = [
+    ("Shimla and the apple country", "From the old summer capital along the Hindustan-Tibet road through the Narkanda orchards to the Bhimakali temple at Sarahan and the Sutlej at Rampur.",
+     ["Shimla", "Chail", "Narkanda", "Sarahan", "Rampur", "Shimla"]),
+    ("Kinnaur and Spiti", "Up the Sutlej to the Baspa valley at Sangla and Kalpa under Kinner Kailash, across to the Spiti monasteries at Nako and Kaza, and over the Kunzum to Manali (open roughly June to October).",
+     ["Shimla", "Narkanda", "Sangla", "Kalpa", "Nako Lake", "Kaza", "Manali"]),
+    ("Kullu and the Parvati valley", "Up the Beas from Mandi's temples to Kullu, into the Parvati valley at Kasol, and on to Manali.",
+     ["Mandi", "Kullu", "Kasol", "Manali", "Mandi"]),
+    ("The Kangra valley", "Dharamshala and McLeod Ganj under the Dhauladhar, the Kangra fort, the Palampur tea gardens, and past Baijnath and the Bir paragliding ridge to Jogindernagar and Mandi.",
+     ["Dharamshala", "Kangra", "Palampur", "Jogindernagar", "Mandi"]),
+    ("Chamba and Dalhousie", "The colonial hill station at Dalhousie, the Khajjiar meadow, Chamba's temples and the Bharmour temple group on the Manimahesh route.",
+     ["Dharamshala", "Dalhousie", "Khajjiar", "Chamba", "Bharmour"]),
+    ("The Shivaliks and Sirmaur", "Kasauli's ridge, Solan, the old Sirmaur capital at Nahan, Renuka lake and the Yamuna gurdwara town of Paonta Sahib.",
+     ["Kasauli", "Solan", "Nahan", "Renuka Ji", "Paonta Sahib"]),
+]
+
+# HPTDC's hotels, from its own pages (robots.txt allows them): it calls them
+# hotels, not rest houses, and its pages list facilities rather than meal plans.
+HPTDC = Corp(
+    abbr="HPTDC", name="Himachal Pradesh Tourism Development Corporation", site="hptdc.hp.gov.in",
+    fetch=hptdc_hotels, url=lambda slug: f"{HPTDC_SITE}/hotel-detail/{slug}", place={},
+    cache_glob="culture/hptdc/*.html", kind="hotel", kinds="hotels",
+    town_alias={"Mcleodganj": ["McLeod Ganj"], "Jawalamukhi": ["Jwalamukhi"], "Sundernagar": ["Sundarnagar"]},
+    town_fallback={"Naldehra": (31.205, 77.193)})
+
+HIMACHAL = Region(
+    id="himachal", name="Himachal", box=(75.5, 30.35, 79.05, 33.3),
+    districts=["Chamba", "Kangra", "Lahaul and Spiti", "Kullu", "Mandi", "Hamirpur", "Una", "Bilaspur",
+               "Kinnaur", "Shimla", "Solan", "Sirmaur"],
+    ebird={"IN-HP-CH": "Chamba", "IN-HP-KA": "Kangra", "IN-HP-LS": "Lahaul and Spiti", "IN-HP-KU": "Kullu",
+           "IN-HP-MA": "Mandi", "IN-HP-HA": "Hamirpur", "IN-HP-UN": "Una", "IN-HP-BI": "Bilaspur",
+           "IN-HP-KI": "Kinnaur", "IN-HP-SH": "Shimla", "IN-HP-SO": "Solan", "IN-HP-SI": "Sirmaur"},
+    towns=_himachal_towns, corp=HPTDC,
+    gi_words=re.compile(r"kullu|kangra|chamba|kinnaur|lahaul|lahul|spiti|shimla|mandi|sirmour|sirmaur|"
+                        r"bilaspur|hamirpur|solan|pangi|karsog", re.I),
+    utdb={}, circuits=HIMACHAL_CIRCUITS,
+    shade_alt="Shaded relief of Himachal Pradesh, from the Shivalik foothills to the Dhauladhar, Pir Panjal "
+              "and the Spiti and Kinnaur ranges",
+    gi_note="the rest are registered for Himachal as a whole (Himachali caps, Gudma blankets, Chulli oil, wood carving and others)",
+    treks="Hampta Pass, Pin Parvati, Indrahar Pass, the Kinner Kailash parikrama",
+    cache_dir="himachal", store="hca:", back=(("../", "Himachal nowcast"), ("../../", "Himalaya Nowcast Atlas")),
+    nowcast="../", state="Himachal Pradesh", osm_area='area["ISO3166-2"="IN-HP"]',
+    visitors_fn=lambda R: hp_visitors(R),
+    visitors_note=("Estimated yearly tourist arrivals (Indian and foreign) by district, from the Himachal Pradesh "
+                   "Department of Tourism's published statistics; only years whose district figures add up to "
+                   "their monthly rows and to the state total are shown. The department's methods change between "
+                   "years: from 2025 it counts pilgrims at five major temples (16.7 million that year, in Kangra, "
+                   "Una and Hamirpur) separately, not by district, while earlier tables say they include religious "
+                   "tourists, so year-to-year changes for those districts are partly definitional."),
+    z=9)
+
+REGIONS = {R.id: R for R in (KUMAON, GARHWAL, HIMACHAL)}
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE = os.path.join(HERE, "culture_template.html")

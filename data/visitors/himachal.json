@@ -1,0 +1,590 @@
+[
+ {
+  "name": "Kullu",
+  "district": "Kullu",
+  "years": {
+   "2008": {
+    "total": 2114584,
+    "foreign": 112910
+   },
+   "2009": {
+    "total": 2344163,
+    "foreign": 119514
+   },
+   "2011": {
+    "total": 2798015,
+    "foreign": 138488
+   },
+   "2013": {
+    "total": 2886050,
+    "foreign": 119341
+   },
+   "2014": {
+    "total": 3291745,
+    "foreign": 104309
+   },
+   "2016": {
+    "total": 3637233,
+    "foreign": 122064
+   },
+   "2018": {
+    "total": 3008753,
+    "foreign": 96201
+   },
+   "2022": {
+    "total": 2880219,
+    "foreign": 3706
+   },
+   "2024": {
+    "total": 3551825,
+    "foreign": 13295
+   },
+   "2025": {
+    "total": 2752646,
+    "foreign": 10587
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Shimla",
+  "district": "Shimla",
+  "years": {
+   "2008": {
+    "total": 2174456,
+    "foreign": 112917
+   },
+   "2009": {
+    "total": 2284295,
+    "foreign": 108981
+   },
+   "2011": {
+    "total": 2952437,
+    "foreign": 134167
+   },
+   "2013": {
+    "total": 3156997,
+    "foreign": 164006
+   },
+   "2014": {
+    "total": 3349872,
+    "foreign": 156235
+   },
+   "2016": {
+    "total": 3582105,
+    "foreign": 165476
+   },
+   "2018": {
+    "total": 2995013,
+    "foreign": 123000
+   },
+   "2022": {
+    "total": 2575967,
+    "foreign": 10698
+   },
+   "2024": {
+    "total": 2603989,
+    "foreign": 27034
+   },
+   "2025": {
+    "total": 2700910,
+    "foreign": 26887
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Kangra",
+  "district": "Kangra",
+  "years": {
+   "2008": {
+    "total": 1345974,
+    "foreign": 70819
+   },
+   "2009": {
+    "total": 1479512,
+    "foreign": 75549
+   },
+   "2011": {
+    "total": 1912648,
+    "foreign": 98962
+   },
+   "2013": {
+    "total": 2200623,
+    "foreign": 102595
+   },
+   "2014": {
+    "total": 2333367,
+    "foreign": 102479
+   },
+   "2016": {
+    "total": 2652732,
+    "foreign": 123895
+   },
+   "2018": {
+    "total": 2225126,
+    "foreign": 107451
+   },
+   "2022": {
+    "total": 410843,
+    "foreign": 6538
+   },
+   "2024": {
+    "total": 800635,
+    "foreign": 26195
+   },
+   "2025": {
+    "total": 826292,
+    "foreign": 29755
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Solan",
+  "district": "Solan",
+  "years": {
+   "2008": {
+    "total": 482818,
+    "foreign": 2693
+   },
+   "2009": {
+    "total": 590199,
+    "foreign": 3811
+   },
+   "2011": {
+    "total": 807698,
+    "foreign": 6464
+   },
+   "2013": {
+    "total": 857301,
+    "foreign": 6476
+   },
+   "2014": {
+    "total": 919498,
+    "foreign": 5766
+   },
+   "2016": {
+    "total": 1124810,
+    "foreign": 6973
+   },
+   "2018": {
+    "total": 1149082,
+    "foreign": 5505
+   },
+   "2022": {
+    "total": 1755813,
+    "foreign": 1259
+   },
+   "2024": {
+    "total": 2395867,
+    "foreign": 2376
+   },
+   "2025": {
+    "total": 2398597,
+    "foreign": 3113
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Mandi",
+  "district": "Mandi",
+  "years": {
+   "2008": {
+    "total": 612240,
+    "foreign": 9154
+   },
+   "2009": {
+    "total": 877974,
+    "foreign": 8070
+   },
+   "2011": {
+    "total": 1194148,
+    "foreign": 9813
+   },
+   "2013": {
+    "total": 883802,
+    "foreign": 9663
+   },
+   "2014": {
+    "total": 945721,
+    "foreign": 9189
+   },
+   "2016": {
+    "total": 1163795,
+    "foreign": 11181
+   },
+   "2018": {
+    "total": 1115224,
+    "foreign": 4440
+   },
+   "2022": {
+    "total": 2271734,
+    "foreign": 720
+   },
+   "2024": {
+    "total": 1516742,
+    "foreign": 995
+   },
+   "2025": {
+    "total": 1356245,
+    "foreign": 769
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Bilaspur",
+  "district": "Bilaspur",
+  "years": {
+   "2008": {
+    "total": 683951,
+    "foreign": 190
+   },
+   "2009": {
+    "total": 886665,
+    "foreign": 170
+   },
+   "2011": {
+    "total": 1093421,
+    "foreign": 104
+   },
+   "2013": {
+    "total": 1145384,
+    "foreign": 172
+   },
+   "2014": {
+    "total": 1241423,
+    "foreign": 156
+   },
+   "2016": {
+    "total": 1432271,
+    "foreign": 440
+   },
+   "2018": {
+    "total": 1437537,
+    "foreign": 186
+   },
+   "2022": {
+    "total": 1844175,
+    "foreign": 0
+   },
+   "2024": {
+    "total": 1004480,
+    "foreign": 0
+   },
+   "2025": {
+    "total": 1027683,
+    "foreign": 0
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Sirmaur",
+  "district": "Sirmaur",
+  "years": {
+   "2008": {
+    "total": 577583,
+    "foreign": 1785
+   },
+   "2009": {
+    "total": 655758,
+    "foreign": 2090
+   },
+   "2011": {
+    "total": 875739,
+    "foreign": 3142
+   },
+   "2013": {
+    "total": 843643,
+    "foreign": 3009
+   },
+   "2014": {
+    "total": 902338,
+    "foreign": 3112
+   },
+   "2016": {
+    "total": 1063176,
+    "foreign": 3558
+   },
+   "2018": {
+    "total": 966254,
+    "foreign": 1873
+   },
+   "2022": {
+    "total": 1383841,
+    "foreign": 136
+   },
+   "2024": {
+    "total": 1577581,
+    "foreign": 415
+   },
+   "2025": {
+    "total": 1152865,
+    "foreign": 472
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Una",
+  "district": "Una",
+  "years": {
+   "2008": {
+    "total": 446911,
+    "foreign": 91
+   },
+   "2009": {
+    "total": 595019,
+    "foreign": 99
+   },
+   "2011": {
+    "total": 976619,
+    "foreign": 283
+   },
+   "2013": {
+    "total": 1186084,
+    "foreign": 141
+   },
+   "2014": {
+    "total": 1366425,
+    "foreign": 280
+   },
+   "2016": {
+    "total": 1507618,
+    "foreign": 207
+   },
+   "2018": {
+    "total": 1289720,
+    "foreign": 83
+   },
+   "2022": {
+    "total": 230306,
+    "foreign": 5
+   },
+   "2024": {
+    "total": 1232936,
+    "foreign": 35
+   },
+   "2025": {
+    "total": 461645,
+    "foreign": 34
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Chamba",
+  "district": "Chamba",
+  "years": {
+   "2008": {
+    "total": 648262,
+    "foreign": 3953
+   },
+   "2009": {
+    "total": 689489,
+    "foreign": 3353
+   },
+   "2011": {
+    "total": 819668,
+    "foreign": 2191
+   },
+   "2013": {
+    "total": 994686,
+    "foreign": 663
+   },
+   "2014": {
+    "total": 1091844,
+    "foreign": 970
+   },
+   "2016": {
+    "total": 1163090,
+    "foreign": 823
+   },
+   "2018": {
+    "total": 1043182,
+    "foreign": 1035
+   },
+   "2022": {
+    "total": 411099,
+    "foreign": 515
+   },
+   "2024": {
+    "total": 1192760,
+    "foreign": 993
+   },
+   "2025": {
+    "total": 632422,
+    "foreign": 899
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Lahaul and Spiti",
+  "district": "Lahaul and Spiti",
+  "years": {
+   "2008": {
+    "total": 214329,
+    "foreign": 41398
+   },
+   "2009": {
+    "total": 316516,
+    "foreign": 65101
+   },
+   "2011": {
+    "total": 543855,
+    "foreign": 73040
+   },
+   "2013": {
+    "total": 119623,
+    "foreign": 4897
+   },
+   "2014": {
+    "total": 90393,
+    "foreign": 5111
+   },
+   "2016": {
+    "total": 116037,
+    "foreign": 15278
+   },
+   "2018": {
+    "total": 133153,
+    "foreign": 13764
+   },
+   "2022": {
+    "total": 745850,
+    "foreign": 3792
+   },
+   "2024": {
+    "total": 1062743,
+    "foreign": 7504
+   },
+   "2025": {
+    "total": 496161,
+    "foreign": 7456
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Hamirpur",
+  "district": "Hamirpur",
+  "years": {
+   "2008": {
+    "total": 279798,
+    "foreign": 53
+   },
+   "2009": {
+    "total": 432467,
+    "foreign": 34
+   },
+   "2011": {
+    "total": 630112,
+    "foreign": 4
+   },
+   "2013": {
+    "total": 729182,
+    "foreign": 4
+   },
+   "2014": {
+    "total": 753193,
+    "foreign": 8
+   },
+   "2016": {
+    "total": 906926,
+    "foreign": 12
+   },
+   "2018": {
+    "total": 856111,
+    "foreign": 2
+   },
+   "2022": {
+    "total": 206255,
+    "foreign": 0
+   },
+   "2024": {
+    "total": 763829,
+    "foreign": 2
+   },
+   "2025": {
+    "total": 296344,
+    "foreign": 11
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ },
+ {
+  "name": "Kinnaur",
+  "district": "Kinnaur",
+  "years": {
+   "2008": {
+    "total": 168527,
+    "foreign": 20773
+   },
+   "2009": {
+    "total": 285098,
+    "foreign": 13811
+   },
+   "2011": {
+    "total": 485046,
+    "foreign": 17860
+   },
+   "2013": {
+    "total": 126460,
+    "foreign": 3282
+   },
+   "2014": {
+    "total": 28581,
+    "foreign": 2084
+   },
+   "2016": {
+    "total": 100727,
+    "foreign": 2863
+   },
+   "2018": {
+    "total": 231348,
+    "foreign": 3028
+   },
+   "2022": {
+    "total": 384175,
+    "foreign": 1964
+   },
+   "2024": {
+    "total": 421307,
+    "foreign": 3921
+   },
+   "2025": {
+    "total": 394345,
+    "foreign": 4845
+   }
+  },
+  "refs": [
+   "https://himachaltourism.gov.in/wp-content/uploads/2026/04/Tourist-Statistics.pdf"
+  ]
+ }
+]

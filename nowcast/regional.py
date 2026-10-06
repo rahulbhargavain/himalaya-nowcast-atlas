@@ -44,6 +44,8 @@ class Region:
     store: str              # localStorage key prefix (the pages share an origin)
     shade_alt: str
     station_note: str = ""  # appended to the observed-stations note
+    names: dict = field(default_factory=dict)       # IMD spelling -> display name, where .title() won't do
+    warn_names: dict = field(default_factory=dict)  # nowcast spelling -> 5-day warnings spelling, where they differ
     gauge_reach: float = 0.05
     z: int = 10
 
@@ -55,6 +57,11 @@ class Region:
     def in_box(self, lon, lat, pad=0.0):
         w, s, e, n = self.box
         return w - pad <= lon <= e + pad and s - pad <= lat <= n + pad
+
+    def display(self, imd_name):
+        u = imd_name.upper()
+        return self.names.get(u) or next((d for k, d in self.names.items() if self.warn_names.get(k) == u),
+                                         None) or imd_name.title()
 
     @property
     def last_path(self):
@@ -261,8 +268,8 @@ TEMPLATE = os.path.join(HERE, "regional_template.html")
 
 def _page_meta(R):
     """What the template needs to know about the region, and its links."""
-    names = [d.title() for d in R.districts]
-    return {"id": R.id, "name": R.name, "imd_districts": R.districts, "districts": names,
+    names = [R.display(d) for d in R.districts]
+    return {"id": R.id, "name": R.name, "imd_districts": [n.upper() for n in names], "districts": names,
             "district_list": ", ".join(names[:-1]) + " and " + names[-1], "home": R.home, "store": R.store,
             "shade_alt": R.shade_alt, "station_note": R.station_note,
             "radars": [imd_obs.RADARS[c]["name"] for c in R.radars],
@@ -323,10 +330,13 @@ def build(R, ctx, out_path, template_path=TEMPLATE, log=print):
     imd = {
         "districts": attempt("IMD district nowcast", lambda: imd_nowcast.districts(F, box, eps=0.003), []),
         "stations": attempt("IMD station nowcast", lambda: imd_nowcast.stations(F, box), []),
-        "warnings": attempt("IMD district warnings", lambda: imd_nowcast.district_warnings(R.districts), []),
+        "warnings": attempt("IMD district warnings", lambda: imd_nowcast.district_warnings(
+            [R.warn_names.get(d, d) for d in R.districts]), []),
         "synop": attempt("IMD SYNOP", lambda: imd_obs.synop(box, F), []),
     }
     imd["aws"], imd["aws_silent"] = attempt("IMD AWS", lambda: imd_obs.aws(box, F), ([], 0))
+    for r in imd["districts"] + imd["warnings"]:  # IMD's odd spellings, as people write them
+        r["district"] = R.display(r["district"])
 
     log(f"{R.id}: town forecasts and air quality")
     fc, aq = _forecasts(R)
@@ -430,7 +440,45 @@ GARHWAL = Region(
     shade_alt="Shaded relief of Garhwal, from the Doon valley and the Haridwar plains to Bandarpunch, "
               "the Gangotri peaks and Nanda Devi")
 
-REGIONS = {R.id: R for R in (KUMAON, GARHWAL)}
+HIMACHAL = Region(
+    id="himachal", name="Himachal", box=(75.5, 30.35, 79.05, 33.3),
+    # IMD spells three of these differently in its two layers (see names).
+    districts=["CHAMBA", "KANGRA", "LAHUL&SPITI", "KULLU", "MANDI", "HAMIRPURR", "UNA", "BILAASPUR",
+               "KINNAUR", "SHIMLA", "SOLAN", "SIRMAUR"],
+    # Mostly at their OSM place nodes; Rampur, Sundernagar, Jogindernagar
+    # and Reckong Peo, which OSM names ambiguously or not at all, by hand.
+    towns=[
+        ("Shimla", 31.104, 77.171, "Shimla"), ("Narkanda", 31.255, 77.461, "Shimla"),
+        ("Rampur", 31.450, 77.630, "Shimla"), ("Rohru", 31.203, 77.752, "Shimla"),
+        ("Solan", 30.908, 77.102, "Solan"), ("Kasauli", 30.900, 76.962, "Solan"),
+        ("Chail", 30.969, 77.198, "Solan"), ("Baddi", 30.934, 76.806, "Solan"),
+        ("Nahan", 30.560, 77.292, "Sirmaur"), ("Paonta Sahib", 30.438, 77.621, "Sirmaur"),
+        ("Bilaspur", 31.338, 76.761, "Bilaspur"), ("Hamirpur", 31.685, 76.525, "Hamirpur"),
+        ("Una", 31.467, 76.272, "Una"), ("Mandi", 31.708, 76.929, "Mandi"),
+        ("Sundernagar", 31.533, 76.896, "Mandi"), ("Jogindernagar", 31.987, 76.794, "Mandi"),
+        ("Kullu", 31.958, 77.109, "Kullu"), ("Manali", 32.245, 77.187, "Kullu"),
+        ("Kasol", 32.010, 77.317, "Kullu"), ("Keylong", 32.572, 77.028, "Lahaul and Spiti"),
+        ("Kaza", 32.224, 78.072, "Lahaul and Spiti"), ("Reckong Peo", 31.538, 78.272, "Kinnaur"),
+        ("Kalpa", 31.533, 78.250, "Kinnaur"), ("Sangla", 31.426, 78.264, "Kinnaur"),
+        ("Chamba", 32.557, 76.125, "Chamba"), ("Dalhousie", 32.536, 75.980, "Chamba"),
+        ("Bharmour", 32.442, 76.536, "Chamba"), ("Dharamshala", 32.214, 76.320, "Kangra"),
+        ("Palampur", 32.110, 76.536, "Kangra"), ("Kangra", 32.103, 76.272, "Kangra"),
+    ],
+    gauges=[
+        ("Sutlej", "Karcham", 31.500, 78.180), ("Sutlej", "Rampur", 31.450, 77.635),
+        ("Spiti", "Tabo", 32.090, 78.390), ("Chenab (Chandrabhaga)", "Udaipur", 32.725, 76.660),
+        ("Beas", "Manali", 32.240, 77.190), ("Parbati", "Kasol", 32.010, 77.310),
+        ("Beas", "Mandi", 31.710, 76.925), ("Beas", "Dehra", 31.880, 76.215),
+        ("Ravi", "Chamba", 32.555, 76.130), ("Yamuna", "Paonta Sahib", 30.435, 77.620),
+    ],
+    radars=["kuf", "mur", "jot"], home="Shimla", store="hna:",
+    shade_alt="Shaded relief of Himachal Pradesh, from the Shivalik foothills to the Dhauladhar, Pir Panjal "
+              "and the Spiti and Kinnaur ranges",
+    names={"LAHUL&SPITI": "Lahaul and Spiti", "HAMIRPURR": "Hamirpur", "BILAASPUR": "Bilaspur"},
+    warn_names={"LAHUL&SPITI": "LAHUL AND SPITI"},
+    z=9)
+
+REGIONS = {R.id: R for R in (KUMAON, GARHWAL, HIMACHAL)}
 
 if __name__ == "__main__":
     # Re-render the pages from the last build's data (template work).

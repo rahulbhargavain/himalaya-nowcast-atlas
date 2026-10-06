@@ -254,7 +254,7 @@ const D = DATA, F = D.frame, GW = F.gw, GH = F.gh;
 const RG = D.region;
 const RADAR_NAMES = RG.radars.length > 1 ? RG.radars.slice(0, -1).join(", ") + " and " + RG.radars[RG.radars.length - 1] : RG.radars[0];
 const RADAR_LABEL = RG.radars.length > 1 ? "IMD Doppler radars" : `${RG.radars[0]} radar (IMD)`;
-const COUNT_WORD = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"][RG.districts.length] || String(RG.districts.length);
+const COUNT_WORD = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"][RG.districts.length] || String(RG.districts.length);
 const $ = s => document.querySelector(s);
 const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
 const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };

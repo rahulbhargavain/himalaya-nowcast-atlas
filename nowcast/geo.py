@@ -115,7 +115,7 @@ def make_frame(w_lon=W_LON, e_lon=E_LON, s_lat=S_LAT, n_lat=N_LAT, z=ZOOM) -> Fr
 FRAME = make_frame()
 
 
-def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None, stale_ok=False):
+def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None, stale_ok=False, verify=True):
     """GET with retries. With cache_key, the body is cached on disk
     (forever, or for max_age seconds). With stale_ok, an expired copy is
     returned if the fetch fails - for slow-refresh pages, where last month's
@@ -129,7 +129,7 @@ def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None, sta
     last = None
     for attempt in range(tries):
         try:
-            r = _session.get(url, params=params, timeout=timeout)
+            r = _session.get(url, params=params, timeout=timeout, verify=verify)
             if r.status_code == 404:
                 return None
             if r.status_code == 429 or r.status_code >= 500:

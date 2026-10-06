@@ -12,6 +12,8 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | Kumaon cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ | monthly |
 | Garhwal nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/ | every 2 hours |
 | Garhwal cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ | monthly |
+| Himachal nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/ | every 2 hours |
+| Himachal cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/culture/ | monthly |
 | Winter chill in the apple belts, 1990–2026 | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/chill_report.html | static analysis |
 | Point-in-time archive | [`data` branch](https://github.com/rahulbhargavain/himalaya-nowcast-atlas/tree/data) | every 2 hours |
 
@@ -22,6 +24,10 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 **Kumaon cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/kumaon/culture/ — temples, forts, peaks, forests, birds, registered GI products and visitor numbers for the same six districts, with places to stay and a circuit planner that routes on OpenStreetMap's roads in the browser. Stays are described by checkable facts (state-run KMVN rest house, the road that reaches them, food on site or within 1 km), not ratings: open data can't judge hospitality or food hygiene. Only business names and localities are shown.
 
 **Garhwal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ — the same atlas for Uttarkashi, Chamoli, Rudraprayag, Tehri Garhwal, Pauri Garhwal, Dehradun and Haridwar, with GMVN rest houses in place of KMVN's (only those mapped on OpenStreetMap: GMVN's own site turns away scripted requests, so the list is partial).
+
+**Himachal nowcast:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/ — the same page for all 12 districts of Himachal Pradesh, with IMD's Kufri, Murari Devi and Jot Doppler radars merged into one layer, 30 towns, and GloFAS flow on the Sutlej, Spiti, Chenab, Beas, Parbati, Ravi and Yamuna. It covers a whole state, so its relief is at zoom 9 (about 0.5 km per pixel) rather than 10.
+
+**Himachal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/culture/ — the same atlas for Himachal, with HPTDC's hotels (from hptdc.hp.gov.in: town, restaurant, drive-in and seasonal opening; no contact details kept), Himachal's registered GI products, and district tourist arrivals from the state Department of Tourism's statistics (only years whose district figures add up to their monthly rows and the state total; the department's methods change between years, which the page explains).
 
 ## What it shows
 
@@ -69,8 +75,8 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/seismic.py` | USGS earthquake catalogue, restricted to the atlas's bounding box |
 | `nowcast/imd_nowcast.py` | IMD's district and station nowcasts and 5-day district warnings, via IMD's public GeoServer WFS |
 | `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and IMD's hill Doppler radar images (Mukteshwar, Lansdowne, Surkanda Devi), decoded to dBZ |
-| `nowcast/regional.py` + `regional_template.html` | The regional nowcast pages (Kumaon, Garhwal), one `Region` each (`python -m nowcast.regional` re-renders them from the last build's data) |
-| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon and Garhwal), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
+| `nowcast/regional.py` + `regional_template.html` | The regional nowcast pages (Kumaon, Garhwal, Himachal), one `Region` each (`python -m nowcast.regional` re-renders them from the last build's data) |
+| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon, Garhwal and Himachal), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 | `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2, CO and UV Aerosol Index via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
@@ -111,7 +117,7 @@ To build locally:
 ```bash
 pip install -r requirements.txt -r requirements-culture.txt
 python -m nowcast.culture                          # Kumaon (the default)
-python -m nowcast.culture --region kumaon,garhwal  # a comma-separated list of regions
+python -m nowcast.culture --region kumaon,garhwal,himachal  # a comma-separated list of regions
 ```
 
 Each region is a `Region` in `nowcast/culture.py` (`REGIONS` at the end of the file): its box, districts, eBird district codes, the state tourism corporation whose rest houses it lists, GI place words, UTDB destinations and suggested circuits. Region-specific fetches are cached under `cache/culture/<region>/` (Kumaon's, which predate regions, directly under `cache/culture/`); delete a file there to refresh it early.
@@ -135,16 +141,18 @@ All free; all but one keyless (the air-quality layers need a free Earthdata logi
 - **[aviationweather.gov](https://aviationweather.gov/data/api/)** (NOAA) — airport METARs.
 - **[ICIMOD](https://geoapps.icimod.org/icimodarcgis/rest/services)** (International Centre for Integrated Mountain Development) — the Regional Database System and SERVIR-HKH thematic layers, inventories and station network.
 
-For the Kumaon cultural atlas:
+For the cultural atlases:
 
 - **[OpenStreetMap](https://www.openstreetmap.org/copyright)** contributors (ODbL) — sites, lodging, restaurants, roads, protected areas and district boundaries, via the Overpass API.
 - **[Wikidata](https://www.wikidata.org/)** (CC0) and **[Wikimedia Commons](https://commons.wikimedia.org/)** — site notability, Wikipedia links and photos.
 - **[KMVN](https://kmvn.in/)** (Kumaon Mandal Vikas Nigam) — its tourist rest houses, room types and meal plans.
+- **[HPTDC](https://hptdc.hp.gov.in/)** (Himachal Pradesh Tourism Development Corporation) — its hotels, their towns, facilities and seasons.
 - **[eBird](https://ebird.org/)** (Cornell Lab of Ornithology) — hotspots and species per district (API key required).
 - **[GBIF](https://www.gbif.org/)** — bird occurrence density maps.
 - **[ESA WorldCover 2021](https://esa-worldcover.org/)** (CC BY 4.0) — tree cover and land cover by district.
 - **[GI Registry, Intellectual Property India](https://search.ipindia.gov.in/GIRPublicSearch/)** — geographical indications, application-level fields only (the registry's lists of authorised users' names and addresses are never kept).
 - **[Uttarakhand Tourism Development Board](https://uttarakhandtourism.gov.in/)** — yearly visitor statistics (its published reports for 2021–23, 2024 and 2025).
+- **[Himachal Pradesh Department of Tourism](https://himachaltourism.gov.in/)** — district-wise tourist arrival estimates (its published statistics PDFs).
 
 ICIMOD's Bhutan pastoral migration survey points include household names and ID numbers, so the atlas uses only the grazing-area maps from that service.
 

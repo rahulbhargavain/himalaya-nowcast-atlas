@@ -5,8 +5,9 @@ login, no key):
     WFS layer imd:aws_data_layer. Many stations stop reporting for months,
     so only reports newer than `max_age_h` are kept.
   * SYNOP: the staffed observatories (3-hourly), imd:synop_data_layer.
-  * IMD's Doppler weather radars in the Uttarakhand hills (Mukteshwar,
-    Lansdowne, Surkanda Devi): each one's latest MAX(Z) product image
+  * IMD's Doppler weather radars in the Uttarakhand and Himachal hills
+    (Mukteshwar, Lansdowne, Surkanda Devi, Kufri, Murari Devi, Jot): each
+    one's latest MAX(Z) product image
     (mausam.imd.gov.in/Radar/caz_<code>.gif), decoded back to dBZ and
     georeferenced so it can sit on the map under the other layers.
 
@@ -59,17 +60,28 @@ RADARS = {
             "affine": MKS_AFFINE},
     "ldn": {"name": "Lansdowne", "site": (29.85, 78.6767), "size": (1017, 787), "plan": (0, 187, 600, 787)},
     "sur": {"name": "Surkanda Devi", "site": (30.4117, 78.2883), "size": (1272, 1042), "plan": (0, 242, 800, 1042)},
+    "kuf": {"name": "Kufri", "site": (31.0983, 77.265), "size": (1250, 1020), "plan": (0, 220, 800, 1020)},
+    "mur": {"name": "Murari Devi", "site": (31.505, 76.8133), "size": (1250, 1020), "plan": (0, 220, 800, 1020)},
+    # IMD's radar page puts Jot at 76.267E, but the town markers on its own
+    # image put the radar at the Jot pass, about 20 km west. Its legend is
+    # also one bin higher for the same colours (<20, 20.0, 23.1 ... 60.0 dBZ).
+    "jot": {"name": "Jot", "site": (32.485, 76.045), "size": (1250, 1020), "plan": (0, 220, 800, 1020),
+            "values": [17.5, 20.0, 23.1, 26.2, 29.2, 32.3, 35.4, 38.5, 41.5, 44.6, 47.7, 50.8, 53.8, 56.9, 60.0]},
 }
 for _r in RADARS.values():
     _r.setdefault("affine", _geometric_affine(_r["site"], _r["plan"]))
 RANGE_KM = 100
 RADAR_URL = "https://mausam.imd.gov.in/Radar/caz_{code}.gif"
 
-# IMD's MAX(Z) legend: lower bound of each bin (dBZ) and its colour.
+# IMD's MAX(Z) legend: lower bound of each bin (dBZ) and its colour. The
+# older "IMD-B" images (Kufri, Murari Devi, Jot) draw a few bins in slightly
+# different shades; those go in LEGEND_ALT, matched exactly like the rest.
 LEGEND = [(20.0, (0, 0, 127)), (22.7, (0, 0, 160)), (25.3, (0, 0, 199)), (28.0, (0, 52, 255)),
-              (30.7, (0, 121, 255)), (33.3, (26, 162, 255)), (36.0, (83, 208, 255)), (38.7, (135, 240, 255)),
-              (41.3, (255, 255, 255)), (44.0, (255, 248, 196)), (46.7, (255, 229, 1)), (49.3, (254, 188, 0)),
-              (52.0, (250, 111, 4)), (54.7, (255, 63, 0)), (57.3, (199, 1, 0))]
+          (30.7, (0, 121, 255)), (33.3, (26, 162, 255)), (36.0, (83, 208, 255)), (38.7, (135, 240, 255)),
+          (41.3, (255, 255, 255)), (44.0, (255, 248, 196)), (46.7, (255, 229, 1)), (49.3, (254, 188, 0)),
+          (52.0, (250, 111, 4)), (54.7, (255, 63, 0)), (57.3, (199, 1, 0))]
+LEGEND_ALT = {20.0: [(58, 0, 121)], 38.7: [(134, 240, 255)], 44.0: [(255, 246, 193)], 46.7: [(255, 229, 0)],
+              49.3: [(255, 188, 0)], 52.0: [(255, 115, 0)], 57.3: [(199, 0, 0), (200, 1, 1)]}
 
 
 def _wfs_all(typename):
@@ -154,7 +166,7 @@ def synop(box, frame, max_age_h=6):
     return sorted(out, key=lambda s: s["name"])
 
 
-def _decode(a, plan):
+def _decode(a, plan, values=None):
     """IMD MAX(Z) plan view -> dBZ (float32, NaN where no echo).
 
     IMD also draws range rings, labels and town dots in some of the legend's
@@ -171,8 +183,9 @@ def _decode(a, plan):
     dbz = np.full(packed.shape, np.nan, np.float32)
     bins = np.full(packed.shape, -1, np.int16)
     low = np.zeros(packed.shape, bool)
-    for k, (v, (r, g, b)) in enumerate(LEGEND):
-        m = packed == ((r << 16) | (g << 8) | b)
+    for k, (v0, rgb) in enumerate(LEGEND):
+        m = np.isin(packed, [(r << 16) | (g << 8) | b for r, g, b in [rgb] + LEGEND_ALT.get(v0, [])])
+        v = values[k] if values else v0
         dbz[m] = v
         bins[m] = k
         if v < 41:
@@ -232,7 +245,7 @@ def radar(code, frame):
         out["note"] = f"image size {im.size} differs from the layout this decoder was fitted to"
         return out
     plan = R["plan"]
-    pv = _decode(np.asarray(im.convert("RGB")), plan)
+    pv = _decode(np.asarray(im.convert("RGB")), plan, R.get("values"))
     lon, lat = frame.grid_lonlat()
     A = R["affine"]
     px = lon * A[0, 0] + lat * A[1, 0] + A[2, 0] - plan[0]
