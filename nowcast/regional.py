@@ -23,12 +23,16 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from . import icimod, imd_nowcast, imd_obs, land, model, radar, satimg, satrain, water
+from . import icimod, imd_nowcast, imd_obs, land, model, radar, satimg, satrain, seismic, water
 from .geo import CACHE, FRAME, get_json, make_frame, world_lonlat
 
 HOURLY = ["temperature_2m", "precipitation", "precipitation_probability", "weather_code",
           "cloud_cover", "wind_gusts_10m", "freezing_level_height", "cape"]
 AQ_HOURLY = ["pm2_5", "pm10", "us_aqi"]
+# Town forecasts are reused by the next build (2 h later) and fetched again
+# by the one after: Open-Meteo's free tier is about 10,000 calls a day, and
+# the atlas's own grid takes most of it.
+FORECAST_MAX_AGE = 3.5 * 3600
 
 
 @dataclass
@@ -47,12 +51,21 @@ class Region:
     names: dict = field(default_factory=dict)       # IMD spelling -> display name, where .title() won't do
     warn_names: dict = field(default_factory=dict)  # nowcast spelling -> 5-day warnings spelling, where they differ
     gauge_reach: float = 0.05
+    alpine: bool = True     # False: no snow layers (MODIS reads cloud as snow in the tropical hills)
     z: int = 10
 
     @property
     def frame(self):
         w, s, e, n = self.box
         return make_frame(w, e, s, n, z=self.z)
+
+    @property
+    def outside(self):
+        """Beyond the atlas's map (Manipur): no tracked radar, and its own
+        model grid and earthquake query."""
+        from .geo import E_LON, N_LAT, S_LAT, W_LON
+        w, s, e, n = self.box
+        return w < W_LON or s < S_LAT or e > E_LON or n > N_LAT
 
     def in_box(self, lon, lat, pad=0.0):
         w, s, e, n = self.box
@@ -158,12 +171,14 @@ def _forecasts(R):
     lons = ",".join(f"{t[2]:.3f}" for t in R.towns)
     fc = get_json("https://api.open-meteo.com/v1/forecast", params=dict(
         latitude=lats, longitude=lons, hourly=",".join(HOURLY), daily="sunrise,sunset",
-        forecast_hours=72, past_hours=1, timeformat="unixtime", timezone="Asia/Kolkata"), timeout=120)
+        forecast_hours=72, past_hours=1, timeformat="unixtime", timezone="Asia/Kolkata"), timeout=120,
+        cache_key=f"regional/{R.id}_forecast.json", max_age=FORECAST_MAX_AGE)
     fc = fc if isinstance(fc, list) else [fc]
     try:
         aq = get_json("https://air-quality-api.open-meteo.com/v1/air-quality", params=dict(
             latitude=lats, longitude=lons, hourly=",".join(AQ_HOURLY), forecast_hours=48, past_hours=1,
-            timeformat="unixtime", timezone="Asia/Kolkata"), timeout=120)
+            timeformat="unixtime", timezone="Asia/Kolkata"), timeout=120,
+            cache_key=f"regional/{R.id}_aq.json", max_age=FORECAST_MAX_AGE)
         aq = aq if isinstance(aq, list) else [aq]
     except Exception:  # air quality is a nice-to-have
         aq = [None] * len(R.towns)
@@ -174,13 +189,14 @@ def _clean(vals, nd=1):
     return [None if v is None else round(float(v), nd) for v in vals]
 
 
-def _towns(R, F, fc, aq, frames_all, t_all, t0_index, t0, imd_dbz):
+def _towns(R, F, fc, aq, frames_all, t_all, t0_index, t0, imd_dbz, tracked=True):
     out = []
     for k, (name, lat, lon, district) in enumerate(R.towns):
         x, y = F.to_grid(lon, lat)
         hx, hy = FRAME.to_grid(lon, lat)
         ix, iy = int(round(float(hx))), int(round(float(hy)))
-        dbz = [float(f[iy - 3:iy + 4, ix - 3:ix + 4].max()) for f in frames_all]
+        dbz = ([float(f[iy - 3:iy + 4, ix - 3:ix + 4].max()) for f in frames_all] if tracked
+               else [0.0] * len(frames_all))
         onset = next((int((t_all[j] - t0) / 60) for j in range(t0_index + 1, len(dbz)) if dbz[j] >= 25), None)
         imd_now = None
         if imd_dbz is not None:
@@ -273,6 +289,7 @@ def _page_meta(R):
             "district_list": ", ".join(names[:-1]) + " and " + names[-1], "home": R.home, "store": R.store,
             "shade_alt": R.shade_alt, "station_note": R.station_note,
             "radars": [imd_obs.RADARS[c]["name"] for c in R.radars],
+            "outside": R.outside, "alpine": R.alpine,
             "others": [{"href": f"../{o.id}/", "name": o.name} for o in REGIONS.values() if o.id != R.id]}
 
 
@@ -312,7 +329,14 @@ def build(R, ctx, out_path, template_path=TEMPLATE, log=print):
     dem_g, shade = _terrain(F)
 
     log(f"{R.id}: radar crop, IMD radars")
-    crops, place, cov_frac = _radar_crop(R, F, ctx["frames_all"], ctx["covered"])
+    if R.outside:
+        # The atlas tracks no radar here: blank frames keep the timeline.
+        blank = np.zeros((2, 2), np.float32)
+        crops, place, cov_frac = [blank for _ in ctx["frames_all"]], {"x": 0, "y": 0, "w": F.gw, "h": F.gh}, 0.0
+        g = attempt("model grid", lambda: model.fetch_grid(box=(R.box[0] - 0.75, R.box[1] - 0.75,
+                                                                 R.box[2] + 0.75, R.box[3] + 0.75)), g)
+    else:
+        crops, place, cov_frac = _radar_crop(R, F, ctx["frames_all"], ctx["covered"])
     radar_frames = [{"t": int(t), "obs": k <= ctx["t0_index"], "src": _png(radar.colorize(f), quantize=48)}
                     for k, (t, f) in enumerate(zip(ctx["t_all"], crops))]
     radars, imd_layer, imd_dbz = _imd_radars(R, F, attempt)
@@ -322,7 +346,8 @@ def build(R, ctx, out_path, template_path=TEMPLATE, log=print):
     truecolor = attempt("true colour", lambda: satimg.true_color(frame=F), {"src": None})
     fires = attempt("fires", lambda: icimod.live_fires(2, frame=F), {"src": None, "pixels": 0, "dates": []})
     fires["clusters"] = _fire_clusters(R, F, fires)
-    snow, snow_dates = attempt("snow", lambda: land.recent_snow(8, frame=F), (np.zeros((F.gh, F.gw)), (None, None)))
+    snow, snow_dates = (attempt("snow", lambda: land.recent_snow(8, frame=F), (np.zeros((F.gh, F.gw)), (None, None)))
+                        if R.alpine else (np.zeros((F.gh, F.gw)), (None, None)))
     snow_km2 = int((snow >= 40).sum() * F.km_per_grid_px ** 2)
 
     log(f"{R.id}: IMD warnings, nowcasts and stations")
@@ -340,13 +365,18 @@ def build(R, ctx, out_path, template_path=TEMPLATE, log=print):
 
     log(f"{R.id}: town forecasts and air quality")
     fc, aq = _forecasts(R)
-    towns = _towns(R, F, fc, aq, ctx["frames_all"], ctx["t_all"], ctx["t0_index"], t0, imd_dbz)
+    towns = _towns(R, F, fc, aq, ctx["frames_all"], ctx["t_all"], ctx["t0_index"], t0, imd_dbz,
+                   tracked=not R.outside)
 
     log(f"{R.id}: rivers")
     gauges = attempt("gauges", lambda: water.gauges(R.gauges, tag=f"_{R.id}", reach=R.gauge_reach, frame=F), [])
 
     quakes = []
-    for q in ctx.get("quakes") or []:
+    src_quakes = ctx.get("quakes") or []
+    if R.outside:
+        w, s, e, n = R.box
+        src_quakes = attempt("earthquakes", lambda: seismic.earthquakes(box=(w - 1, s - 1, e + 1, n + 1), frame=F), [])
+    for q in src_quakes:
         if R.in_box(q["lon"], q["lat"], pad=1.0):
             x, y = F.to_grid(q["lon"], q["lat"])
             quakes.append({**q, "x": float(x), "y": float(y), "inside": R.in_box(q["lon"], q["lat"])})
@@ -478,7 +508,54 @@ HIMACHAL = Region(
     warn_names={"LAHUL&SPITI": "LAHUL AND SPITI"},
     z=9)
 
-REGIONS = {R.id: R for R in (KUMAON, GARHWAL, HIMACHAL)}
+# No IMD Doppler radar reaches Sikkim or Manipur (the nearest, Sohra and
+# Jorhat, are 200-300 km away), so both pages lean on IMERG and the model.
+SIKKIM = Region(
+    id="sikkim", name="Sikkim", box=(87.95, 27.0, 89.0, 28.2),
+    districts=["MANGAN", "GYALSHING", "SORENG", "NAMCHI", "GANGTOK", "PAKYONG"],
+    towns=[  # at their OSM place nodes
+        ("Gangtok", 27.329, 88.612, "Gangtok"), ("Pakyong", 27.244, 88.598, "Pakyong"),
+        ("Rangpo", 27.174, 88.530, "Pakyong"), ("Rongli", 27.204, 88.701, "Pakyong"),
+        ("Singtam", 27.232, 88.497, "Gangtok"), ("Namchi", 27.166, 88.365, "Namchi"),
+        ("Ravangla", 27.305, 88.364, "Namchi"), ("Jorethang", 27.132, 88.283, "Namchi"),
+        ("Soreng", 27.171, 88.199, "Soreng"), ("Gyalshing", 27.290, 88.257, "Gyalshing"),
+        ("Pelling", 27.300, 88.236, "Gyalshing"), ("Yuksom", 27.369, 88.218, "Gyalshing"),
+        ("Mangan", 27.501, 88.536, "Mangan"), ("Chungthang", 27.604, 88.647, "Mangan"),
+        ("Lachung", 27.690, 88.743, "Mangan"), ("Lachen", 27.731, 88.550, "Mangan"),
+    ],
+    gauges=[
+        ("Teesta", "Chungthang", 27.600, 88.645), ("Teesta", "Dikchu", 27.400, 88.525),
+        ("Teesta", "Rangpo", 27.175, 88.530), ("Rangit", "Legship", 27.280, 88.280),
+        ("Teesta (with Rangit)", "Melli", 27.085, 88.450),
+    ],
+    radars=[], home="Gangtok", store="sna:",
+    shade_alt="Shaded relief of Sikkim, from the Teesta and Rangit valleys to Kangchenjunga and the "
+              "plateau north of Lachen")
+
+MANIPUR = Region(
+    id="manipur", name="Manipur", box=(92.9, 23.75, 94.85, 25.75),
+    districts=["SENAPATI", "KANGPOKPI", "UKHRUL", "KAMJONG", "TAMENGLONG", "NONEY", "JIRBAM", "IMPHAL WEST",
+               "IMPHAL EAST", "BISHNUPUR", "THOUBAL", "KAKCHING", "CHURACHANDPUR", "PHERZAWL", "CHANDEL",
+               "TENGNOUPAL"],
+    towns=[  # at their OSM place nodes
+        ("Imphal", 24.799, 93.936, "Imphal West"), ("Thoubal", 24.639, 93.997, "Thoubal"),
+        ("Kakching", 24.497, 93.984, "Kakching"), ("Bishnupur", 24.627, 93.760, "Bishnupur"),
+        ("Moirang", 24.501, 93.777, "Bishnupur"), ("Churachandpur", 24.347, 93.699, "Churachandpur"),
+        ("Ukhrul", 25.098, 94.361, "Ukhrul"), ("Kamjong", 24.858, 94.510, "Kamjong"),
+        ("Senapati", 25.273, 94.027, "Senapati"), ("Kangpokpi", 25.153, 93.971, "Kangpokpi"),
+        ("Tamenglong", 24.986, 93.504, "Tamenglong"), ("Noney", 24.860, 93.624, "Noney"),
+        ("Jiribam", 24.810, 93.114, "Jiribam"), ("Chandel", 24.331, 94.001, "Chandel"),
+        ("Moreh", 24.248, 94.303, "Tengnoupal"), ("Pherzawl", 24.260, 93.191, "Pherzawl"),
+    ],
+    gauges=[
+        ("Barak", "Jiribam", 24.800, 93.110), ("Imphal (Manipur) River", "Imphal", 24.790, 93.945),
+        ("Manipur River", "Sugnu", 24.290, 93.880), ("Iril", "Kangpokpi", 25.050, 94.000),
+    ],
+    radars=[], home="Imphal", store="mna:",
+    shade_alt="Shaded relief of Manipur: the Imphal valley and Loktak lake ringed by the Naga and Kuki hills",
+    names={"JIRBAM": "Jiribam"}, alpine=False)
+
+REGIONS = {R.id: R for R in (KUMAON, GARHWAL, HIMACHAL, SIKKIM, MANIPUR)}
 
 if __name__ == "__main__":
     # Re-render the pages from the last build's data (template work).

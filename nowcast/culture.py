@@ -90,6 +90,8 @@ class Region:
                           "2021–2025. 2021 was a Covid year. Counts are the board's own, from hotel and site "
                           "registers; they aren't comparable to census-style surveys.")
     visitors_fn: Callable | None = None  # the region's visitor source (default: UTDB via visitors())
+    visitors_source: str = "Uttarakhand Tourism Development Board statistics, 2021–2025"
+    travel_note: str = ""     # HTML: permits, advisories, closures specific to the region
     z: int = 10               # zoom of the relief; 9 for a state-sized region
 
     @property
@@ -382,7 +384,16 @@ GI_APPS_UK = [415, 419, 520, 589, 648, 649, 650, 651, 652, 653, 654, 829, 832, 8
 # Pangi thangi, Kinnauri apple and jewellery, and the 2023-24 batch).
 GI_APPS_HP = [19, 25, 79, 149, 381, 383, 412, 413, 416, 432, 468, 614, 647, 684, 862, 931, 985, 1029, 1074, 1075,
               1103, 1418, 1419, 1513, 1514, 1520, 2172]
-GI_APPS = {"Uttarakhand": GI_APPS_UK, "Himachal Pradesh": GI_APPS_HP}
+# Sikkim's and Manipur's, found the same way. A few names don't say where
+# they are from (Yongchak, Maimi Hunger, Thangka): build() keeps only those
+# whose registered area or name is the region's state.
+GI_APPS_SK = [376, 461, 462, 463, 636, 796, 851, 896, 900, 906, 925, 1549, 1650, 1651, 1736, 1737, 1738, 1739, 1740,
+              1745, 1746, 1747, 1765, 1766, 1856, 1857, 1858, 1859, 1860, 1885, 1886, 1887, 1888, 1889, 1890, 1891,
+              1892, 1893, 1894, 1944]
+GI_APPS_MN = [371, 372, 373, 446, 447, 466, 590, 592, 601, 602, 912, 1469, 1470, 1471, 1485, 1486, 1495, 1496, 1678,
+              1733, 1734, 1735, 1744, 1753, 1754, 1755, 1760, 1761, 1911, 1912, 1913, 1914, 1916, 1917, 1918, 1919,
+              1924, 1925, 1951, 1952, 1953, 2123]
+GI_APPS = {"Uttarakhand": GI_APPS_UK, "Himachal Pradesh": GI_APPS_HP, "Sikkim": GI_APPS_SK, "Manipur": GI_APPS_MN}
 GI_LABELS = {"application number", "geographical indications", "status", "applicant name", "applicant address",
              "date of filing", "class", "goods", "geographical area", "priority country", "journal number",
              "availability date", "certificate number", "certificate date", "registration valid upto"}
@@ -881,7 +892,7 @@ def stays(R, loc, places, road_tree, road_cls, houses):
                else None,
                "internet": t.get("internet_access") in ("wlan", "yes", "wifi"),
                "wheelchair": t.get("wheelchair") == "yes"}
-        if re.search(rf"\b{C.abbr}\b|tourist rest house|\btrh\b", name, re.I):
+        if C.abbr and re.search(rf"\b{C.abbr}\b|tourist rest house|\btrh\b", name, re.I):
             rec["corp_osm"] = True
         if C.osm_match and C.osm_match.search(f"{name} {t.get('operator', '')}"):
             rec.update({"corp": True, "type": f"{C.abbr} {C.kind}", "placed": "OpenStreetMap"})
@@ -1175,7 +1186,7 @@ def _sources_asof(R, KF, vis):
         "wikidata": _asof(R.ckey("wikidata.json")),
         "ebird": _asof(*(f"culture/ebird/{k}_{code}.json" for code in R.ebird for k in ("spplist", "hotspots"))),
         "gbif": _asof(f"culture/gbif/aves_{KF.z - 2}_*.png"),
-        "corp": osm if R.corp.osm_match else _asof(R.corp.cache_glob),
+        "corp": None if not R.corp.abbr else osm if R.corp.osm_match else _asof(R.corp.cache_glob),
         "gi": _asof(*(f"culture/gi/{a}.html" for a in GI_APPS[R.state])),
         "utdb": max((y for v in vis for y in v["years"]), default=None),
     }
@@ -1312,7 +1323,8 @@ def build(R, out_path, template_path, log=print, prev=None):
         protected.append({"name": name, "d": _svg_path(g, KF, 0.002), "km2": round(inter),
                           "kind": "National park" if t.get("boundary") == "national_park" or t.get("protect_class") == "2"
                           else "Wildlife sanctuary or reserve"})
-    gi = [dict(g, local=bool(R.gi_words.search(g["name"] + " " + g["area"]))) for g in gi_products(R.state)]
+    gi = [dict(g, local=bool(R.gi_words.search(g["name"] + " " + g["area"]))) for g in gi_products(R.state)
+          if R.state.lower() in (g["area"] + " " + g["name"]).lower() or R.state in ("Uttarakhand", "Himachal Pradesh")]
     vis = (R.visitors_fn or visitors)(R)
     if os.path.exists(PIT):
         missing = sorted(set(R.utdb) - {e for e, (n, _) in R.utdb.items() if n in {v["name"] for v in vis}})
@@ -1416,7 +1428,7 @@ def build(R, out_path, template_path, log=print, prev=None):
     with open(last, "w", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"))
     return (f"{R.name}: {size / 1e6:.1f} MB, {len(data['sites'])} sites, {len(data['stays'])} stays "
-            f"({sum(s['corp'] for s in stay_list)} {R.corp.abbr}), {len(edges)} road links, {len(hotspots)} eBird hotspots, "
+            f"({sum(s['corp'] for s in stay_list)} {R.corp.abbr or 'state-run'}), {len(edges)} road links, {len(hotspots)} eBird hotspots, "
             f"{len(protected)} protected areas, {len(destinations)} destinations, {len(circuits)} circuits")
 
 
@@ -1425,7 +1437,8 @@ def _region_info(R):
     return {"id": R.id, "name": R.name, "districts": list(R.districts),
             "corp": {"abbr": R.corp.abbr, "name": R.corp.name, "site": R.corp.site, "osm": bool(R.corp.osm_match),
                      "kind": R.corp.kind, "kinds": R.corp.kinds, "meal_plans": R.corp.meal_plans},
-            "state": R.state, "visitors_note": R.visitors_note,
+            "state": R.state, "visitors_note": R.visitors_note, "visitors_source": R.visitors_source,
+            "travel_note": R.travel_note,
             "shade_alt": R.shade_alt, "gi_note": R.gi_note, "treks": R.treks, "store": R.store, "nowcast": R.nowcast,
             "back": [list(b) for b in R.back]}
 
@@ -1434,8 +1447,9 @@ def _upgrade(data, R):
     """Bring a culture_last.json from before regions up to date, so
     --render works without a rebuild."""
     if "region" in data:
-        return data
-    data = {"generated": data["generated"], "region": _region_info(R), **data}
+        # Wording and links come from the code, so a re-render picks up changes.
+        return {**data, "region": _region_info(R)}
+    data = {"generated": data["generated"], **data, "region": _region_info(R)}
     for s in data["stays"]:
         if "kmvn" in s:
             s["corp"] = s.pop("kmvn")
@@ -1624,6 +1638,7 @@ HIMACHAL = Region(
     cache_dir="himachal", store="hca:", back=(("../", "Himachal nowcast"), ("../../", "Himalaya Nowcast Atlas")),
     nowcast="../", state="Himachal Pradesh", osm_area='area["ISO3166-2"="IN-HP"]',
     visitors_fn=lambda R: hp_visitors(R),
+    visitors_source="Himachal Pradesh Department of Tourism statistics",
     visitors_note=("Estimated yearly tourist arrivals (Indian and foreign) by district, from the Himachal Pradesh "
                    "Department of Tourism's published statistics; only years whose district figures add up to "
                    "their monthly rows and to the state total are shown. The department's methods change between "
@@ -1632,7 +1647,87 @@ HIMACHAL = Region(
                    "tourists, so year-to-year changes for those districts are partly definitional."),
     z=9)
 
-REGIONS = {R.id: R for R in (KUMAON, GARHWAL, HIMACHAL)}
+
+# Regions without a state tourism corporation list that can be read and
+# placed: their stays are OpenStreetMap's only.
+NO_CORP = Corp(abbr="", name="", site="", fetch=list, url=lambda slug: "", place={})
+
+
+def _sikkim_towns():
+    from .regional import SIKKIM as nowcast_region
+    return nowcast_region.towns
+
+
+def _manipur_towns():
+    from .regional import MANIPUR as nowcast_region
+    return nowcast_region.towns
+
+
+SIKKIM_CIRCUITS = [
+    ("North Sikkim: Lachung and Lachen", "Up the Teesta past Mangan to Lachung for the Yumthang valley, across by Chungthang to Lachen for Gurudongmar lake. Permits needed; check the road first (see below).",
+     ["Gangtok", "Mangan", "Lachung", "Lachen", "Gangtok"]),
+    ("The west: Ravangla, Pelling and Yuksom", "The Buddha park at Ravangla, the Pemayangtse and Rabdentse ridge at Pelling, and Yuksom, Sikkim's first capital and the start of the Dzongri trail.",
+     ["Gangtok", "Ravangla", "Pelling", "Yuksom", "Gyalshing"]),
+    ("The south: Namchi and the Rangit", "Namchi's Char Dham and Samdruptse, down to the Rangit at Jorethang and up to the Soreng ridge.",
+     ["Gangtok", "Namchi", "Jorethang", "Soreng", "Pelling"]),
+]
+
+MANIPUR_CIRCUITS = [
+    ("The Imphal valley and Loktak", "Imphal's Kangla fort and Ima Keithel, the Bishnupur temples, Moirang and the floating phumdis of Loktak lake, and Kakching's gardens.",
+     ["Imphal", "Bishnupur", "Moirang", "Kakching", "Thoubal", "Imphal"]),
+    ("Ukhrul and the Shirui hills", "Up into the Tangkhul Naga hills at Ukhrul, home of the Shirui lily and Longpi pottery.",
+     ["Imphal", "Ukhrul", "Kamjong"]),
+    ("South to Moreh", "Through Kakching and the Tengnoupal hills to Moreh on the Myanmar border.",
+     ["Imphal", "Kakching", "Moreh"]),
+]
+
+SIKKIM = Region(
+    id="sikkim", name="Sikkim", box=(87.95, 27.0, 89.0, 28.2),
+    districts=["Mangan", "Gyalshing", "Soreng", "Namchi", "Gangtok", "Pakyong"],
+    # eBird still uses the four districts before the 2021 split.
+    ebird={"IN-SK-NS": "North Sikkim", "IN-SK-WS": "West Sikkim", "IN-SK-SS": "South Sikkim", "IN-SK-ES": "East Sikkim"},
+    towns=_sikkim_towns, corp=NO_CORP,
+    gi_words=re.compile(r"temi|gangtok|namchi|pelling|lachung|lachen|ravangla|yuksom|mangan", re.I),
+    utdb={}, circuits=SIKKIM_CIRCUITS,
+    shade_alt="Shaded relief of Sikkim, from the Teesta and Rangit valleys to Kangchenjunga and the plateau north "
+              "of Lachen",
+    gi_note="the rest are registered for Sikkim as a whole (Lepcha and Limbu crafts, large cardamom, Dalle "
+            "Khursani, churpi, sel roti and others)",
+    treks="Goecha La, Dzongri, Green Lake",
+    cache_dir="sikkim", store="sca:", back=(("../", "Sikkim nowcast"), ("../../", "Himalaya Nowcast Atlas")),
+    nowcast="../", state="Sikkim", osm_area='area["ISO3166-2"="IN-SK"]',
+    travel_note="Most of Sikkim needs no permit for Indian visitors, but North Sikkim (Lachung, Lachen, Yumthang, "
+                "Gurudongmar), Tsomgo and Nathu La need permits arranged through registered tour operators, and "
+                "foreign visitors need a Restricted Area Permit. The October 2023 glacial lake outburst from South "
+                "Lhonak washed out stretches of the Teesta valley road and the Chungthang dam: check the road "
+                "status with the district administration before planning the north.")
+
+MANIPUR = Region(
+    id="manipur", name="Manipur", box=(92.9, 23.75, 94.85, 25.75),
+    districts=["Senapati", "Kangpokpi", "Ukhrul", "Kamjong", "Tamenglong", "Noney", "Jiribam", "Imphal West",
+               "Imphal East", "Bishnupur", "Thoubal", "Kakching", "Churachandpur", "Pherzawl", "Chandel",
+               "Tengnoupal"],
+    ebird={"IN-MN-SE": "Senapati", "IN-MN-KN": "Kangpokpi", "IN-MN-UK": "Ukhrul", "IN-MN-KM": "Kamjong",
+           "IN-MN-TA": "Tamenglong", "IN-MN-NO": "Noney", "IN-MN-JI": "Jiribam", "IN-MN-WI": "Imphal West",
+           "IN-MN-EI": "Imphal East", "IN-MN-BI": "Bishnupur", "IN-MN-TH": "Thoubal", "IN-MN-KK": "Kakching",
+           "IN-MN-CC": "Churachandpur", "IN-MN-PE": "Pherzawl", "IN-MN-CD": "Chandel", "IN-MN-TE": "Tengnoupal"},
+    towns=_manipur_towns, corp=NO_CORP,
+    gi_words=re.compile(r"tamenglong|kachai|ukhrul|sirarakhong|moirang|bishnupur|chandel|longpi|loktak|imphal|"
+                        r"thongjao|tangkhul|wangkhei|kauna", re.I),
+    utdb={}, circuits=MANIPUR_CIRCUITS,
+    shade_alt="Shaded relief of Manipur: the Imphal valley and Loktak lake ringed by the Naga and Kuki hills",
+    gi_note="the rest are registered for Manipur as a whole (Chak-Hao black rice, the phanek and innaphi, "
+            "Shaphee Lanphee, Manipuri dolls and others)",
+    treks="Dzükou valley, Shirui peak, Mount Iso",
+    cache_dir="manipur", store="mca:", back=(("../", "Manipur nowcast"), ("../../", "Himalaya Nowcast Atlas")),
+    nowcast="../", state="Manipur", osm_area='area["ISO3166-2"="IN-MN"]',
+    travel_note="Manipur has seen ethnic violence since May 2023. Movement between the Imphal valley and the hill "
+                "districts can be restricted, and curfews and internet shutdowns have been imposed at short notice. "
+                "Check the state government's and your own government's current advisories before travelling; the "
+                "circuits and drive times here assume open roads and are not travel advice. Indian visitors from "
+                "other states need an Inner Line Permit.")
+
+REGIONS = {R.id: R for R in (KUMAON, GARHWAL, HIMACHAL, SIKKIM, MANIPUR)}
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE = os.path.join(HERE, "culture_template.html")

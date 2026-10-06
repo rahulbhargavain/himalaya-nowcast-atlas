@@ -95,11 +95,11 @@ def _epoch(s):
         return None
 
 
-def _wfs(typename, extra=None):
+def _wfs(typename, extra=None, key=None):
     j = get_json(WFS, params=dict(
         service="WFS", version="1.1.0", request="GetFeature", typename=typename,
         srsname="EPSG:4326", outputFormat="application/json", **(extra or {})),
-        timeout=90, cache_key=f"imd_nowcast/{typename.split(':')[1]}.json", max_age=CACHE_S)
+        timeout=90, cache_key=f"imd_nowcast/{key or typename.split(':')[1]}.json", max_age=CACHE_S)
     return (j or {}).get("features", [])
 
 
@@ -137,8 +137,15 @@ def districts(frame=FRAME, box=None, eps=SIMPLIFY_DEG):
     """box = (w, s, e, n) to keep only districts touching it (defaults to the
     main map). Always fetched for the main map's box, so other maps inside it
     reuse the same cached response."""
-    feats = _wfs("imd:NowcastWarningDistrict", dict(
-        bbox=f"{S_LAT - PAD},{W_LON - PAD},{N_LAT + PAD},{E_LON + PAD},urn:ogc:def:crs:EPSG::4326"))
+    if box and not (box[0] >= W_LON - PAD and box[1] >= S_LAT - PAD and box[2] <= E_LON + PAD
+                    and box[3] <= N_LAT + PAD):
+        w, s, e, n = box
+        feats = _wfs("imd:NowcastWarningDistrict", dict(
+            bbox=f"{s - PAD},{w - PAD},{n + PAD},{e + PAD},urn:ogc:def:crs:EPSG::4326"),
+            key=f"NowcastWarningDistrict_{w}_{s}")
+    else:
+        feats = _wfs("imd:NowcastWarningDistrict", dict(
+            bbox=f"{S_LAT - PAD},{W_LON - PAD},{N_LAT + PAD},{E_LON + PAD},urn:ogc:def:crs:EPSG::4326"))
     out = []
     for f in feats:
         geom = f.get("geometry")

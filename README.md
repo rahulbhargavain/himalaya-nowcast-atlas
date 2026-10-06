@@ -14,6 +14,10 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | Garhwal cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/garhwal/culture/ | monthly |
 | Himachal nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/ | every 2 hours |
 | Himachal cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/culture/ | monthly |
+| Sikkim nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/sikkim/ | every 2 hours |
+| Sikkim cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/sikkim/culture/ | monthly |
+| Manipur nowcast | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/manipur/ | every 2 hours |
+| Manipur cultural atlas | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/manipur/culture/ | monthly |
 | Winter chill in the apple belts, 1990–2026 | https://rahulbhargavain.github.io/himalaya-nowcast-atlas/chill_report.html | static analysis |
 | Point-in-time archive | [`data` branch](https://github.com/rahulbhargavain/himalaya-nowcast-atlas/tree/data) | every 2 hours |
 
@@ -28,6 +32,10 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 **Himachal nowcast:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/ — the same page for all 12 districts of Himachal Pradesh, with IMD's Kufri, Murari Devi and Jot Doppler radars merged into one layer, 30 towns, and GloFAS flow on the Sutlej, Spiti, Chenab, Beas, Parbati, Ravi and Yamuna. It covers a whole state, so its relief is at zoom 9 (about 0.5 km per pixel) rather than 10.
 
 **Himachal cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/himachal/culture/ — the same atlas for Himachal, with HPTDC's hotels (from hptdc.hp.gov.in: town, restaurant, drive-in and seasonal opening; no contact details kept), Himachal's registered GI products, and district tourist arrivals from the state Department of Tourism's statistics (only years whose district figures add up to their monthly rows and the state total; the department's methods change between years, which the page explains).
+
+**Sikkim nowcast and cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/sikkim/ and https://rahulbhargavain.github.io/himalaya-nowcast-atlas/sikkim/culture/ — the six districts created in 2021, 16 towns and GloFAS flow on the Teesta and Rangit. No IMD Doppler radar reaches Sikkim, so rain comes from the tracked RainViewer composite, IMERG and the forecast. The atlas has no state-corporation list (none can be read and placed), so its stays are OpenStreetMap's, and it notes the North Sikkim permits and the 2023 Teesta flood damage.
+
+**Manipur nowcast and cultural atlas:** https://rahulbhargavain.github.io/himalaya-nowcast-atlas/manipur/ and https://rahulbhargavain.github.io/himalaya-nowcast-atlas/manipur/culture/ — all 16 districts. Manipur lies south of the atlas's map, so its page fetches its own small model grid and earthquake list and has no tracked radar; IMD has no Doppler radar within range either, so rain comes from IMERG and the forecast. Snow layers are off (MODIS reads cloud as snow there). The cultural atlas carries a travel note on the violence since May 2023 and the Inner Line Permit; its circuits are not travel advice.
 
 ## What it shows
 
@@ -75,8 +83,8 @@ A single-page atlas of weather and seasons over the Himalaya, Kashmir to Arunach
 | `nowcast/seismic.py` | USGS earthquake catalogue, restricted to the atlas's bounding box |
 | `nowcast/imd_nowcast.py` | IMD's district and station nowcasts and 5-day district warnings, via IMD's public GeoServer WFS |
 | `nowcast/imd_obs.py` | IMD automatic stations and observatories (GeoServer WFS) and IMD's hill Doppler radar images (Mukteshwar, Lansdowne, Surkanda Devi), decoded to dBZ |
-| `nowcast/regional.py` + `regional_template.html` | The regional nowcast pages (Kumaon, Garhwal, Himachal), one `Region` each (`python -m nowcast.regional` re-renders them from the last build's data) |
-| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon, Garhwal and Himachal), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
+| `nowcast/regional.py` + `regional_template.html` | The regional nowcast pages (Kumaon, Garhwal, Himachal, Sikkim, Manipur), one `Region` each (`python -m nowcast.regional` re-renders them from the last build's data) |
+| `nowcast/culture.py` + `culture_template.html` | The regional cultural atlases (Kumaon, Garhwal, Himachal, Sikkim and Manipur), one `Region` config each, rebuilt monthly by the `culture` workflow (see below) onto the `culture` branch, which the Pages build copies into `dist/` |
 | `nowcast/satrain.py` | NASA/JAXA GPM IMERG near-real-time precipitation via NASA GIBS |
 | `nowcast/satimg.py` | MODIS true colour imagery and MODIS Combined Flood extent via NASA GIBS |
 | `nowcast/airquality.py` | Sentinel-5P TROPOMI NO2, CO and UV Aerosol Index via NASA GES DISC (needs `EARTHDATA_TOKEN`) |
@@ -117,7 +125,7 @@ To build locally:
 ```bash
 pip install -r requirements.txt -r requirements-culture.txt
 python -m nowcast.culture                          # Kumaon (the default)
-python -m nowcast.culture --region kumaon,garhwal,himachal  # a comma-separated list of regions
+python -m nowcast.culture --region kumaon,garhwal,himachal,sikkim,manipur  # a comma-separated list
 ```
 
 Each region is a `Region` in `nowcast/culture.py` (`REGIONS` at the end of the file): its box, districts, eBird district codes, the state tourism corporation whose rest houses it lists, GI place words, UTDB destinations and suggested circuits. Region-specific fetches are cached under `cache/culture/<region>/` (Kumaon's, which predate regions, directly under `cache/culture/`); delete a file there to refresh it early.

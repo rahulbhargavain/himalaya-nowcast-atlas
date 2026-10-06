@@ -15,18 +15,21 @@ DAYS = 30
 MIN_MAGNITUDE = 3.0
 
 
-def earthquakes(days=DAYS, min_magnitude=MIN_MAGNITUDE):
+def earthquakes(days=DAYS, min_magnitude=MIN_MAGNITUDE, box=None, frame=FRAME):
+    """box = (w, s, e, n) and its frame for a regional page outside the
+    atlas's map; default the atlas's own."""
+    w, s, e, n = box or (W_LON, S_LAT, E_LON, N_LAT)
     end = dt.datetime.now(dt.timezone.utc)
     start = end - dt.timedelta(days=days)
     j = get_json(USGS, params=dict(
         format="geojson", starttime=start.date().isoformat(), endtime=end.date().isoformat(),
-        minlatitude=S_LAT, maxlatitude=N_LAT, minlongitude=W_LON, maxlongitude=E_LON,
+        minlatitude=s, maxlatitude=n, minlongitude=w, maxlongitude=e,
         minmagnitude=min_magnitude, orderby="time"), timeout=60)
     out = []
     for f in (j or {}).get("features", []):
         lon, lat, depth = f["geometry"]["coordinates"]
-        x, y = FRAME.to_grid(lon, lat)
-        if not (0 <= x < FRAME.gw and 0 <= y < FRAME.gh):
+        x, y = frame.to_grid(lon, lat)
+        if box is None and not (0 <= x < frame.gw and 0 <= y < frame.gh):
             continue
         a = f["properties"]
         out.append({

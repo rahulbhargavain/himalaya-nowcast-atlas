@@ -21,9 +21,12 @@ VARS = ["pressure_msl", "precipitation", "freezing_level_height", "snowfall",
         "wind_speed_500hPa", "wind_direction_500hPa", "wind_speed_700hPa", "wind_direction_700hPa"]
 
 
-def fetch_grid(past_hours=2, forecast_hours=9):
-    lats = np.arange(S_LAT, N_LAT + 1e-6, STEP)
-    lons = np.arange(W_LON, E_LON + 1e-6, STEP)
+def fetch_grid(past_hours=2, forecast_hours=9, box=None):
+    """box = (w, s, e, n) for a grid over another area (a regional page
+    outside the atlas's map); default the atlas's own."""
+    w, s, e, n = box or (W_LON, S_LAT, E_LON, N_LAT)
+    lats = np.arange(s, n + 1e-6, STEP)
+    lons = np.arange(w, e + 1e-6, STEP)
     pts = [(la, lo) for la in lats for lo in lons]
     chunks = [pts[i:i + 100] for i in range(0, len(pts), 100)]
     results = []

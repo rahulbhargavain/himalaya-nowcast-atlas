@@ -223,7 +223,7 @@ tr.sel td{background:var(--chip)}
     </section>
 
     <section class="card">
-      <h2>IMD Doppler radar</h2>
+      <h2 id="radarHead">IMD Doppler radar</h2>
       <div id="radarCards" style="display:flex;flex-direction:column;gap:10px"></div>
       <p class="note" id="mksNote"></p>
     </section>
@@ -252,8 +252,9 @@ const DATA = /*__DATA__*/null;
 "use strict";
 const D = DATA, F = D.frame, GW = F.gw, GH = F.gh;
 const RG = D.region;
-const RADAR_NAMES = RG.radars.length > 1 ? RG.radars.slice(0, -1).join(", ") + " and " + RG.radars[RG.radars.length - 1] : RG.radars[0];
+const RADAR_NAMES = RG.radars.length > 1 ? RG.radars.slice(0, -1).join(", ") + " and " + RG.radars[RG.radars.length - 1] : (RG.radars[0] || "");
 const RADAR_LABEL = RG.radars.length > 1 ? "IMD Doppler radars" : `${RG.radars[0]} radar (IMD)`;
+const HAS_IMD_RADAR = RG.radars.length > 0, TRACKED = !RG.outside;
 const COUNT_WORD = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"][RG.districts.length] || String(RG.districts.length);
 const $ = s => document.querySelector(s);
 const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
@@ -274,13 +275,14 @@ function gridToLonLat(gx, gy){
 /* ---------------- state ---------------- */
 const state = {
   step: D.radar.t0_index,
-  layers: Object.assign({rv: D.radar.coverage > .2, mks: true, imerg: false, model: false, snowline: true, snow: true,
+  layers: Object.assign({rv: D.radar.coverage > .2, mks: true, imerg: !HAS_IMD_RADAR && !(D.radar.coverage > .2), model: !HAS_IMD_RADAR && !(D.radar.coverage > .2), snowline: true, snow: true,
     truecolor: false, towns: true, districts: true, stations: true, rivers: true, fires: true, quakes: true}, store.get("layers", {})),
   town: store.get("town", RG.home),
   legendCollapsed: store.get("legendCollapsed", false),
   zoom: 1, tx: 0, ty: 0,
 };
 if (!D.towns.some(t => t.name === state.town)) state.town = RG.home;
+if (RG.alpine === false) { state.layers.snow = false; state.layers.snowline = false; }
 
 /* ---------------- colours and scales ---------------- */
 const IMD_COLORS = {1:[70,130,90], 2:[196,150,30], 3:[204,102,28], 4:[178,36,36]};
@@ -566,8 +568,8 @@ function readout(e){
 
 /* ---------------- controls ---------------- */
 const LAYER_GROUPS = [
-  ["radar & rain", [["mks",RADAR_LABEL,[48,170,160]],["rv","Radar, tracked 8 h",[150,196,70]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Forecast rain",[70,90,200]]]],
-  ["ground", [["districts","IMD nowcast",[204,102,28]],["stations","IMD stations now",[47,111,143]],["towns","Towns",[31,42,46]],["snowline","Snow line",[29,79,115]],["snow","Snow, last 8 days",[200,225,240]],["truecolor","True colour photo",[120,140,100]]]],
+  ["radar & rain", [HAS_IMD_RADAR && ["mks",RADAR_LABEL,[48,170,160]],TRACKED && ["rv","Radar, tracked 8 h",[150,196,70]],["imerg","Satellite rain (IMERG)",[70,150,210]],["model","Forecast rain",[70,90,200]]].filter(Boolean)],
+  ["ground", [["districts","IMD nowcast",[204,102,28]],["stations","IMD stations now",[47,111,143]],["towns","Towns",[31,42,46]],...(RG.alpine === false ? [] : [["snowline","Snow line",[29,79,115]],["snow","Snow, last 8 days",[200,225,240]]]),["truecolor","True colour photo",[120,140,100]]]],
   ["hazards", [["rivers","River flow",[52,110,150]],["fires","Fires, 48 h",[224,80,26]],["quakes","Earthquakes",[212,84,30]]]],
 ];
 function buildControls(){
@@ -840,7 +842,9 @@ function buildEvents(){
   $("#events").innerHTML = D.events.length ? D.events.map(e => `<li><span class="mono">+${fmtLead(e.t)}</span><span class="dot" style="background:${colors[e.kind]}"></span><span>${esc(e.text)}</span></li>`).join("") :
     `<li><span></span><span></span><span class="muted">Neither the tracked radar nor the forecast brings rain of 1 mm/h or more to a ${esc(RG.name)} town in the next 8 hours.</span></li>`;
   const cov = D.radar.coverage;
-  $("#radarNote").innerHTML = `Tracked radar: RainViewer's composite, carried forward by the Himalaya atlas's optical-flow extrapolation (computed for the whole Himalaya, so storms moving in from outside ${esc(RG.name)} are already tracked). It is coarse here (about 2 km pixels) and useful for roughly the first two hours. ${cov < .2 ? `RainViewer has little radar coverage over ${esc(RG.name)}, so this layer starts switched off; use IMD's ${esc(RADAR_NAMES)} radar instead.` : ""}`;
+  if (!TRACKED) { $("#radarNote").innerHTML = `${esc(RG.name)} lies beyond the Himalaya atlas's map, so there is no tracked ground radar here, and IMD has no Doppler radar within range. Rain comes from NASA/JAXA's IMERG satellite estimate (half-hourly, about 10 km) and the Open-Meteo forecast; both start switched on.`; }
+  else $("#radarNote").innerHTML = `Tracked radar: RainViewer's composite, carried forward by the Himalaya atlas's optical-flow extrapolation (computed for the whole Himalaya, so storms moving in from outside ${esc(RG.name)} are already tracked). It is coarse here (about 2 km pixels) and useful for roughly the first two hours. ${cov < .2 ? `RainViewer has little radar coverage over ${esc(RG.name)}, so this layer starts switched off; ${HAS_IMD_RADAR ? `use IMD's ${esc(RADAR_NAMES)} radar instead` : "use satellite rain (IMERG) and the forecast instead"}.` : ""}`;
+  if (!HAS_IMD_RADAR) $("#radarHead").closest(".card").hidden = true;
   const rs = (D.radars || []).filter(m => m.image);
   $("#radarCards").innerHTML = rs.map(m => `<figure style="margin:0"><img class="mksimg" src="${m.image}" alt="IMD's latest maximum-reflectivity image from the ${esc(m.name)} Doppler weather radar"><figcaption class="note">${esc(m.name)}${m.t ? `, file updated ${fmtDay(m.t)} ${fmtIST(m.t)} IST` : ""}${m.echo_px != null ? ` · echo about ${num(m.echo_px * F.km_px * F.km_px)} km²` : ""}${m.note ? " · " + esc(m.note) : ""}</figcaption></figure>`).join("");
   const missing = RG.radars.filter(n => !rs.some(m => m.name === n));
@@ -873,8 +877,8 @@ function buildHazards(){
   const fc = D.fires.clusters || [], q = D.quakes, sn = D.snow;
   let h = `<div class="kv">`;
   h += `<span class="sc">fires</span><span>${fc.length ? `${fc.length} cluster${fc.length > 1 ? "s" : ""} of VIIRS fire detections in the last 48 hours${D.fires.dates && D.fires.dates.length ? ` (${D.fires.dates.join(", ")})` : ""}: ` +
-    fc.slice(0, 8).map((c, i) => `<a href="#" data-f="${i}">${c.near_km} km from ${esc(c.near)}</a>`).join(", ") + (fc.length > 8 ? ", …" : "") + "." : `No VIIRS fire detections in ${esc(RG.name)} in the last 48 hours.`}</span>`;
-  h += `<span class="sc">snow</span><span>${sn.km2 ? `About ${num(Math.round(sn.km2 / 100) * 100)} km² seen snow-covered (MODIS, at least 40%)` : "No snow seen"}${sn.dates && sn.dates[0] ? ` between ${esc(sn.dates[0])} and ${esc(sn.dates[1])}` : ""}; cloud hides some passes, so the layer combines the last 8 days.</span>`;
+    fc.slice(0, 8).map((c, i) => `<a href="#" data-f="${i}">${c.near_km} km from ${esc(c.near)}</a>`).join(", ") + (fc.length > 8 ? ", …" : "") + "." : ((D.failed || []).includes("fires") ? "VIIRS fire detections were unavailable when this page was built." : `No VIIRS fire detections in ${esc(RG.name)} in the last 48 hours.`)}</span>`;
+  if (RG.alpine !== false) h += `<span class="sc">snow</span><span>${sn.km2 ? `About ${num(Math.round(sn.km2 / 100) * 100)} km² seen snow-covered (MODIS, at least 40%)` : "No snow seen"}${sn.dates && sn.dates[0] ? ` between ${esc(sn.dates[0])} and ${esc(sn.dates[1])}` : ""}; cloud hides some passes, so the layer combines the last 8 days.</span>`;
   h += `<span class="sc">earthquakes</span><span>${q.length ? q.map(x => `M${x.mag} ${esc(x.place)}, ${fmtDay(x.t)}${x.inside ? "" : " (just outside the map)"}`).join("; ") + "." : `None of magnitude 3 or more within about 100 km of ${esc(RG.name)} in the last 30 days (USGS).`}</span>`;
   h += `</div>`;
   $("#hazards").innerHTML = h;
@@ -890,7 +894,7 @@ function buildStamp(){
 function buildMethod(){
   const fail = D.failed && D.failed.length ? `<p style="margin-top:8px">Unavailable in this build: ${esc(D.failed.join(", "))}.</p>` : "";
   $("#method").innerHTML = `<div class="kv">
-    <span class="sc">IMD</span><span>India Meteorological Department's public map service (reactjs.imd.gov.in): district and station nowcasts, 5-day district-wise warnings, automatic stations and observatories; the ${esc(RADAR_NAMES)} radar images from mausam.imd.gov.in. Category and colour meanings from IMD's API field reference.</span>
+    <span class="sc">IMD</span><span>India Meteorological Department's public map service (reactjs.imd.gov.in): district and station nowcasts, 5-day district-wise warnings, automatic stations and observatories${HAS_IMD_RADAR ? `; the ${esc(RADAR_NAMES)} radar images from mausam.imd.gov.in` : ""}. Category and colour meanings from IMD's API field reference.</span>
     <span class="sc">tracked radar</span><span>RainViewer composite and the Himalaya Nowcast Atlas's optical-flow extrapolation, cropped to ${esc(RG.name)}.</span>
     <span class="sc">forecast</span><span>Open-Meteo best-match forecast: per town hourly (temperature, rain and its chance, weather, cloud, gusts, freezing level, CAPE), and the atlas's 0.75° grid for the rain and snow-line layers.${M.snow_offset ? ` Snow line = freezing level − ${M.snow_offset} m.` : ""}</span>
     <span class="sc">air quality</span><span>Open-Meteo's air-quality API (Copernicus CAMS model): PM2.5, PM10 and US AQI.</span>
@@ -905,7 +909,7 @@ function buildMethod(){
 /* ---------------- boot ---------------- */
 function buildHeader(){
   $("#pageTitle").textContent = `${RG.name} Nowcast`;
-  $("#pageSub").textContent = `Radar tracked forward for eight hours, IMD's ${RADAR_NAMES} Doppler radar${RG.radars.length > 1 ? "s" : ""}, IMD's live warnings and stations, town forecasts and air quality, river flow, fires and snow, for ${RG.district_list}.`;
+  $("#pageSub").textContent = `${TRACKED ? "Radar tracked forward for eight hours, " : "Satellite and forecast rain, "}${HAS_IMD_RADAR ? `IMD's ${RADAR_NAMES} Doppler radar${RG.radars.length > 1 ? "s" : ""}, ` : ""}IMD's live warnings and stations, town forecasts and air quality, river flow, fires and snow, for ${RG.district_list}.`;
   $("#shadeImg").alt = RG.shade_alt;
   $("#backLinks").innerHTML = `<a href="../">← Himalaya Nowcast Atlas</a> · <a href="culture/">${esc(RG.name)} cultural atlas →</a>` +
     RG.others.map(o => ` · <a href="${esc(o.href)}">${esc(o.name)} nowcast →</a>`).join("");

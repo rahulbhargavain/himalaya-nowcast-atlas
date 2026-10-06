@@ -192,6 +192,7 @@ tr[tabindex]:hover td{background:var(--chip)}
             <button class="pbtn ghost" id="clearBtn">Clear</button>
             <button class="pbtn ghost" id="shareBtn">Copy link</button>
           </div>
+          <p class="note" id="travelNoteTop" hidden></p>
           <p class="note">Each stop is a night's base. Add any marker from the map with its <b>Add to trip</b> button. Drive times come from OpenStreetMap's road network at rough hill-road speeds; they leave out breaks, traffic and the monsoon landslides that close roads most years from July to September.</p>
         </div>
         <div>
@@ -205,7 +206,7 @@ tr[tabindex]:hover td{background:var(--chip)}
       <h2>Places to stay</h2>
       <div class="filters">
         <label>District <select id="stDist"></select></label>
-        <label><input type="checkbox" id="stCorp"> {{CORP}} {{CORP_KINDS}} only</label>
+        <label id="stCorpLabel"><input type="checkbox" id="stCorp"> {{CORP}} {{CORP_KINDS}} only</label>
         <label><input type="checkbox" id="stChecks"> On a good road, with food nearby</label>
         <span class="muted" id="stCount"></span>
       </div>
@@ -566,7 +567,7 @@ function readout(e){
 /* ---------------- controls and legend ---------------- */
 const LAYER_GROUPS = [
   ["places", [["temple","Temples","--temple"],["heritage","Heritage","--heritage"],["nature","Nature","--nature"],["attraction","Other attractions","--attraction"],["peak","Peaks","--peak"]]],
-  ["stay", [["corp",`${CORP} ${RG.corp.kinds || "rest houses"}`,"--corp"],["stays","Other stays","--stay"]]],
+  ["stay", [CORP && ["corp",`${CORP} ${RG.corp.kinds || "rest houses"}`,"--corp"],["stays","Other stays","--stay"]].filter(Boolean)],
   ["land", [["forest","Forest",null,"rgb(28,112,58)"],["protected","Protected areas",null,"rgb(47,127,79)"],["roads","Roads",null,"rgb(154,74,36)"]]],
   ["birds", [["hotspots","eBird hotspots","--bird"],["birds","Bird records (GBIF)",null,"rgb(255,152,0)"]]],
 ];
@@ -626,7 +627,7 @@ function buildPlanner(){
   cs.appendChild(el("option", {value:""}, "My own circuit"));
   D.circuits.forEach((c, i) => cs.appendChild(el("option", {value:String(i)}, esc(c.name))));
   cs.onchange = () => { if (cs.value !== "") { stops = D.circuits[+cs.value].stops.map(n => mkStop({name:n})); planChanged(true); } };
-  const as = $("#addSel"), groupsDef = [["town","Towns"],["stay",`${CORP} rest-house places`],["temple","Temples"],["heritage","Heritage"],["nature","Nature"]];
+  const as = $("#addSel"), groupsDef = [["town","Towns"],["stay",`${CORP || "Rest-house"} places`],["temple","Temples"],["heritage","Heritage"],["nature","Nature"]];
   groupsDef.forEach(([k, lab]) => {
     const og = el("optgroup", {label:lab});
     D.destinations.filter(d => d.kind === k).forEach(d => og.appendChild(el("option", {value:d.name}, esc(d.name) + (d.snap_km > 2 ? (d.via ? ` (trek from ${d.via})` : " (trek)") : ""))));
@@ -764,7 +765,8 @@ function buildStayTable(){
   ["#stDist", "#stCorp", "#stChecks"].forEach(s => $(s).onchange = draw);
   draw();
   const nk = D.stays.filter(s => s.corp).length, ok = D.stays.filter(stayOk).length;
-  $("#stayNote").innerHTML = `${nk} ${CORP} ${RG.corp.kind ? RG.corp.kinds : "tourist rest houses"} (${esc(RG.corp.name)}, the state's tourism corporation; ${RG.corp.osm ? `those mapped on OpenStreetMap, a partial list: ${esc(RG.corp.site)} turns away automated reading` : `from ${esc(RG.corp.site)}`}) and ${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book.${!RG.corp.meal_plans ? "" : ` ${CORP} meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a ${CORP} rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (${CORP} publishes no coordinates) are marked as such in their details.`} Only business names and places are shown: no phone numbers or personal names.`;
+  if (!CORP) $("#stCorpLabel").hidden = true;
+  $("#stayNote").innerHTML = `${CORP ? `${nk} ${CORP} ${RG.corp.kind ? RG.corp.kinds : "tourist rest houses"} (${esc(RG.corp.name)}, the state's tourism corporation; ${RG.corp.osm ? `those mapped on OpenStreetMap, a partial list: ${esc(RG.corp.site)} turns away automated reading` : `from ${esc(RG.corp.site)}`}) and ` : ""}${D.stays.length - nk} hotels, guest houses, homestays and camps mapped on OpenStreetMap${CORP ? "" : ` (the state's tourism department publishes no list of its own lodges that can be read and placed, so none are singled out)`}; ${ok} of all pass both checks. <b>These are checks, not ratings.</b> Open data can't tell you whether a place is clean, welcoming or serves good food, and review sites don't allow their reviews to be copied, so read recent reviews before you book.${!RG.corp.meal_plans ? "" : ` ${CORP} meal plans: EP room only, CP with breakfast, MAP with breakfast and dinner; a ${CORP} rest house on EP usually still has a dining room, but its page doesn't say. Rest houses placed at the village centre (${CORP} publishes no coordinates) are marked as such in their details.`} Only business names and places are shown: no phone numbers or personal names.`;
 }
 function buildSiteTable(){
   fillSelect($("#siKind"), [["", "All but peaks"]].concat(Object.entries(D.kinds).map(([k, v]) => [k, v])), store.get("siKind", ""));
@@ -835,7 +837,9 @@ function buildVisitors(){
   }).join("");
 }
 function buildLimits(){
-  $("#limits").innerHTML = `<ul style="margin:0;padding-left:18px">
+  if (RG.travel_note) { const p = $("#travelNoteTop"); p.innerHTML = `<b>Before you travel:</b> ${RG.travel_note}`; p.hidden = false; }
+  $("#limits").innerHTML = `<ul style="margin:0;padding-left:18px">${RG.travel_note ? `
+    <li><b>Before you travel.</b> ${RG.travel_note}</li>` : ""}
     <li><b>Hospitality and food hygiene.</b> No open dataset rates them, and the review sites that do don't allow copying. Stays here pass or fail checkable facts only.</li>
     <li><b>Road conditions.</b> OpenStreetMap shows which roads exist, not whether they're open, paved or under repair. Monsoon landslides and winter snow (above about 2,000 m) close roads; check with the district administration or your host.</li>
     <li><b>Drive times.</b> Estimated from road class and terrain, not traffic. They are for planning a day, not to the minute.</li>
@@ -863,8 +867,8 @@ function buildChanges(){
 function buildMethod(){
   const t = new Date(D.generated * 1000).toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"});
   $("#stamp").innerHTML = `<span>Built <b>${t}</b></span><span>Refreshed monthly</span>`;
-  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging and ${CORP}'s tourist rest houses (${RG.corp.osm ? "those mapped on OpenStreetMap" : esc(RG.corp.site)}). <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m${D.roads.flat_slope ? ` or where the ground within ${D.roads.flat_km} km averages under ${D.roads.flat_slope}° (broad valley floors such as the Doon)` : ""}. Routes are computed in your browser.</p>
-  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. <b>Visitors</b>: Uttarakhand Tourism Development Board statistics, 2021–2025. <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt monthly, so it changes when those sources do, not hour by hour${RG.nowcast ? ` like the <a href="${esc(RG.nowcast)}">${esc(RG.name)} nowcast</a>` : ""}.</p>${D.asof ? `<p style="margin-top:6px"><b>Data as of</b>: ${[["OpenStreetMap sites and stays", D.asof.osm], ["roads and protected areas", D.asof.roads], ["Wikidata", D.asof.wikidata], ["eBird", D.asof.ebird], ["GBIF", D.asof.gbif], [RG.corp.osm ? null : `${CORP} rest houses`, D.asof.corp], ["GI registry", D.asof.gi]].filter(([k, d]) => k && d).map(([k, d]) => `${k} ${fmtDay(d)}`).join("; ")}${D.asof.utdb ? `; visitor counts to ${D.asof.utdb}` : ""}. Each source is fetched again when its copy is a month old (two months for roads, protected areas and rest houses; three for district outlines and the GI registry).</p>` : ""}`;
+  $("#method").innerHTML = `<p><b>Sites</b>: OpenStreetMap (places of worship, historic sites, viewpoints, caves, museums, peaks; © OpenStreetMap contributors, ODbL) and Wikidata (CC0), with photos from Wikimedia Commons. <b>Stays</b>: OpenStreetMap lodging${CORP ? ` and ${CORP}'s ${RG.corp.kinds || "tourist rest houses"} (${RG.corp.osm ? "those mapped on OpenStreetMap" : esc(RG.corp.site)})` : ""}. <b>Roads and drive times</b>: OpenStreetMap highways from national highways to minor roads, joined into a network; times assume about ${D.roads.speed_hill.join(", ")} km/h on hill highways, primary, secondary, tertiary and minor roads, and ${D.roads.speed_plains.join(", ")} km/h below ${D.roads.plains_m} m${D.roads.flat_slope ? ` or where the ground within ${D.roads.flat_km} km averages under ${D.roads.flat_slope}° (broad valley floors such as the Doon)` : ""}. Routes are computed in your browser.</p>
+  <p style="margin-top:6px"><b>Birds</b>: eBird API 2.0 (Cornell Lab of Ornithology) and GBIF's occurrence maps (class Aves). <b>Forest and land cover</b>: ESA WorldCover 2021 v200 (CC BY 4.0). <b>Protected areas and district boundaries</b>: OpenStreetMap. <b>GI products</b>: the Geographical Indications Registry, Intellectual Property India. ${D.visitors && D.visitors.length ? `<b>Visitors</b>: ${esc(RG.visitors_source || "Uttarakhand Tourism Development Board statistics, 2021–2025")}.` : ""} <b>Relief</b>: AWS Terrain Tiles (SRTM). The page is static and rebuilt monthly, so it changes when those sources do, not hour by hour${RG.nowcast ? ` like the <a href="${esc(RG.nowcast)}">${esc(RG.name)} nowcast</a>` : ""}.</p>${D.asof ? `<p style="margin-top:6px"><b>Data as of</b>: ${[["OpenStreetMap sites and stays", D.asof.osm], ["roads and protected areas", D.asof.roads], ["Wikidata", D.asof.wikidata], ["eBird", D.asof.ebird], ["GBIF", D.asof.gbif], [RG.corp.osm ? null : `${CORP} rest houses`, D.asof.corp], ["GI registry", D.asof.gi]].filter(([k, d]) => k && d).map(([k, d]) => `${k} ${fmtDay(d)}`).join("; ")}${D.asof.utdb ? `; visitor counts to ${D.asof.utdb}` : ""}. Each source is fetched again when its copy is a month old (two months for roads, protected areas and rest houses; three for district outlines and the GI registry).</p>` : ""}`;
 }
 
 /* ---------------- boot ---------------- */
