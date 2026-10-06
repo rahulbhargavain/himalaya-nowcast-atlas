@@ -1017,7 +1017,10 @@ def hp_visitors(R):
     years = {}
     for k, url in enumerate(HP_TOURISM_PDFS):
         key = R.ckey(f"hptourism/{k}.pdf")
-        body = get(url, timeout=120, cache_key=key, max_age=QUARTERLY, stale_ok=True, verify=_hp_ca_bundle())
+        try:
+            body = get(url, timeout=120, cache_key=key, max_age=QUARTERLY, stale_ok=True, verify=_hp_ca_bundle())
+        except RuntimeError:  # unreachable from outside India (GitHub's runners)
+            continue
         if not body:
             continue
         try:
