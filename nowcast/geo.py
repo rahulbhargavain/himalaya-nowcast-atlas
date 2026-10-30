@@ -115,21 +115,32 @@ def make_frame(w_lon=W_LON, e_lon=E_LON, s_lat=S_LAT, n_lat=N_LAT, z=ZOOM) -> Fr
 FRAME = make_frame()
 
 
+# A server that's up accepts a connection within seconds; timeout is for
+# slow responses. Waiting the full timeout to connect to a dead host, six
+# times per request, ran the build past its 30-minute limit when ICIMOD's
+# map server went down (October 2026).
+CONNECT_S = 30
+_down = {}  # host -> the error that showed it unreachable in this run
+
+
 def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None, stale_ok=False, verify=True):
     """GET with retries. With cache_key, the body is cached on disk
     (forever, or for max_age seconds). With stale_ok, an expired copy is
     returned if the fetch fails - for slow-refresh pages, where last month's
-    data beats no page; never for live layers."""
+    data beats no page; never for live layers. A host that refused every
+    connection attempt is skipped for the rest of the run."""
+    from urllib.parse import urlsplit
     path = None
     if cache_key:
         path = os.path.join(CACHE, cache_key)
         if os.path.exists(path) and (max_age is None or time.time() - os.path.getmtime(path) < max_age):
             with open(path, "rb") as f:
                 return f.read()
-    last = None
-    for attempt in range(tries):
+    host = urlsplit(url).hostname
+    last, connect_failures = _down.get(host), 0
+    for attempt in range(0 if host in _down else tries):
         try:
-            r = _session.get(url, params=params, timeout=timeout, verify=verify)
+            r = _session.get(url, params=params, timeout=(min(CONNECT_S, timeout), timeout), verify=verify)
             if r.status_code == 404:
                 return None
             if r.status_code == 429 or r.status_code >= 500:
@@ -146,12 +157,17 @@ def get(url, params=None, timeout=60, tries=6, cache_key=None, max_age=None, sta
             return r.content
         except requests.RequestException as e:
             last = e
+            connect_failures += isinstance(e, requests.ConnectionError)
             time.sleep(1.5 * (attempt + 1))
+    if tries and connect_failures == tries:
+        _down[host] = last
     if stale_ok and path and os.path.exists(path):
         print(f"  GET failed, using the cached copy from {time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(path)))}: "
               f"{url} ({last})", flush=True)
         with open(path, "rb") as f:
             return f.read()
+    if host in _down and connect_failures < tries:
+        raise RuntimeError(f"GET skipped: {host} was unreachable earlier in this run: {url}")
     raise RuntimeError(f"GET failed after {tries} tries: {url} ({last})")
 
 
